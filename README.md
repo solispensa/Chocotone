@@ -10,6 +10,8 @@
 
 ---
 
+![Chocotone Slide](Chocotone Slide Screenshot.png)
+
 ## Features
 
 ### Hardware
@@ -31,6 +33,8 @@
 - **Export/Import** - Backup and restore configurations as JSON
 - **NVS Storage** - All settings persist across power cycles
 - **OTA Ready** - Architecture supports over-the-air updates
+
+![Chocotone Editor](Chocotone Editor Screenshot.png)
 
 ---
 
