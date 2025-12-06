@@ -1,5 +1,5 @@
 # Fix BleMidi.cpp - add global pClient
-$file = ".\ESP32_MIDI\BleMidi.cpp"
+$file = ".\Chocotone\BleMidi.cpp"
 $lines = Get-Content $file
 
 # Find line with myDevice and add pClient after it

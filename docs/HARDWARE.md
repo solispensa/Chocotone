@@ -152,7 +152,7 @@ Two hardware variants are available depending on your use case:
 
 ### ESP32 Pin Definitions
 
-From `ESP32_MIDI/Config.h`:
+From `Chocotone/Config.h`:
 
 ```cpp
 // Display (I2C)
@@ -170,7 +170,7 @@ From `ESP32_MIDI/Config.h`:
 
 ### Button Pin Array
 
-From `ESP32_MIDI/Globals.cpp`:
+From `Chocotone/Globals.cpp`:
 
 ```cpp
 int buttonPins[8] = {27, 14, 12, 13, 15, 2, 34, 35};

@@ -1,4 +1,4 @@
-# ESP32_MIDI Source Code
+# Chocotone Source Code
 
 This directory contains the Arduino source code for the ESP32 MIDI Controller.
 
@@ -6,7 +6,7 @@ This directory contains the Arduino source code for the ESP32 MIDI Controller.
 
 | File | Purpose |
 |------|---------|
-| `ESP32_MIDI.ino` | Main Arduino sketch with setup() and loop() |
+| `Chocotone.ino` | Main Arduino sketch with setup() and loop() |
 | `Config.h` | Pin definitions and compile-time constants |
 | `Globals.h/cpp` | Global variables, objects, and data structures |
 | `BleMidi.h/cpp` | BLE MIDI client implementation and SysEx handling |
@@ -19,7 +19,7 @@ This directory contains the Arduino source code for the ESP32 MIDI Controller.
 
 ## Module Responsibilities
 
-### Core System (ESP32_MIDI.ino)
+### Core System (Chocotone.ino)
 - System initialization
 - Main loop coordination
 - Mode switching (preset vs menu)
@@ -130,7 +130,7 @@ Edit `Config.h` - update defaults:
 ## Development Tips
 
 ### Serial Debugging
-Enable verbose logging in `ESP32_MIDI.ino`:
+Enable verbose logging in `Chocotone.ino`:
 ```cpp
 Serial.begin(115200);
 ```

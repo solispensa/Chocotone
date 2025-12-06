@@ -127,7 +127,7 @@ ArduinoJson @ ^6.21.0
 ```bash
 1. Install ESP32 board support
 2. Install required libraries (see above)
-3. Open ESP32_MIDI/ESP32_MIDI.ino
+3. Open Chocotone/Chocotone.ino
 4. Select your ESP32 board from Tools > Board
 5. Select COM port from Tools > Port
 6. Upload to ESP32
@@ -243,8 +243,8 @@ Connection status shown on OLED: `SPM:Y` (connected) or `SPM:N` (disconnected)
 ## Project Structure
 
 ```
-ESP32_MIDI/
-├── ESP32_MIDI.ino       # Main Arduino sketch
+Chocotone/
+├── Chocotone.ino        # Main Arduino sketch
 ├── Config.h             # Pin definitions and constants
 ├── Globals.h/cpp        # Global variables and objects
 ├── BleMidi.h/cpp        # BLE MIDI client implementation
