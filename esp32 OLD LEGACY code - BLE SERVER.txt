@@ -1,0 +1,2705 @@
+#include <Arduino.h>
+
+#include <Wire.h>              // Required for I2C communication with OLED
+
+#include <Adafruit_GFX.h>      // Core graphics library
+
+#include <Adafruit_SSD1306.h>  // OLED display library
+
+
+
+// --- Standard ESP32 BLE Libraries ---
+
+#include <BLEDevice.h>
+
+#include <BLEUtils.h>
+
+#include <BLEServer.h>
+
+#include <BLE2902.h> // Required for notifications
+
+
+
+// --- STANDARD WEB SERVER LIBRARIES ---
+
+#include <WiFi.h>
+
+#include <WebServer.h>
+
+
+
+// --- Other Libraries ---
+
+#include <ESP32Encoder.h>    // Rotary encoder library
+
+#include <Preferences.h>     // Non-Volatile Storage (NVS) for saving presets
+
+#include <Adafruit_NeoPixel.h> // NeoPixel Library
+
+#include <ArduinoJson.h>     // For Import/Export
+
+#include "esp_gap_ble_api.h" // For clearing BLE bonds
+
+
+
+// --- OLED Display Definitions ---
+
+#define SCREEN_WIDTH 128
+
+#define SCREEN_HEIGHT 64
+
+#define OLED_RESET -1
+
+#define OLED_SDA_PIN 21
+
+#define OLED_SCL_PIN 22
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+
+
+// --- Encoder Definitions ---
+
+#define ENCODER_A_PIN 18
+
+#define ENCODER_B_PIN 19
+
+#define ENCODER_BUTTON_PIN 23
+
+ESP32Encoder encoder;
+
+long oldEncoderPosition = 0;
+
+unsigned long lastEncoderButtonPress = 0; // Tracks last registered press for debounce
+
+const long ENCODER_BUTTON_DEBOUNCE_DELAY = 50; // Short debounce for press/release detection
+
+bool encoderButtonPressed = false; // Tracks if the button is *currently* held down
+
+unsigned long encoderButtonPressStartTime = 0; // Tracks when the button was pressed down
+
+const long LONG_PRESS_DURATION = 1000; // 1 second for long press
+
+
+
+// --- Push Button Definitions (8 buttons) ---
+
+const int buttonPins[] = {14, 27, 26, 25, 33, 32, 16, 17};
+
+#define NUM_BUTTONS 8
+
+unsigned long lastButtonPressTime_pads[NUM_BUTTONS];
+
+bool buttonPinActive[NUM_BUTTONS];
+
+int activeNotesOnButtonPins[NUM_BUTTONS];
+
+
+
+// --- NeoPixel Definitions ---
+
+#define NEOPIXEL_PIN 5
+
+#define NUM_LEDS NUM_BUTTONS
+
+Adafruit_NeoPixel strip(NUM_LEDS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+
+const int ledMap[NUM_LEDS] = {0, 1, 2, 3, 7, 6, 5, 4};
+
+
+
+// --- MIDI Definitions ---
+
+const char *MIDI_NOTE_NAMES[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+
+
+
+// --- Data Structures ---
+
+enum MidiCommandType { OFF, NOTE_MOMENTARY, NOTE_ON, NOTE_OFF, CC, PC };
+
+
+
+struct MidiMessage {
+
+    MidiCommandType type = NOTE_MOMENTARY;
+
+    byte channel = 1;
+
+    byte data1 = 36;
+
+    byte data2 = 100;
+
+    byte rgb[3] = {141, 141, 255};
+
+};
+
+
+
+struct ButtonConfig {
+
+    char name[21] = "Button";
+
+    bool isAlternate = false;
+
+    bool nextIsB = false;
+
+    MidiMessage messageA;
+
+    MidiMessage messageB;
+
+};
+
+
+
+char presetNames[4][21];
+
+ButtonConfig buttonConfigs[4][NUM_BUTTONS];
+
+int currentPreset = 0;
+
+char lastSentMidiString[20] = "---";
+
+unsigned long buttonNameDisplayUntil = 0;
+
+char buttonNameToShow[21];
+
+
+
+// --- WiFi AP & Web Server Definitions ---
+
+char apSSID[32] = "ESP32_MIDI_AP";
+
+char apPassword[64] = "your_password";
+
+const char* ssid = apSSID;
+
+const char* password = apPassword;
+
+IPAddress local_ip(192, 168, 4, 1);
+
+IPAddress gateway(192, 168, 4, 1);
+
+IPAddress subnet(255, 255, 255, 0);
+
+WebServer server(80);
+
+bool isWifiOn = false; // Will be loaded from settings
+
+bool wifiBootOnDefault = false; // NEW: Boot setting
+
+
+
+// --- NVS Preferences ---
+
+Preferences preferences;
+
+Preferences systemPrefs;
+
+const char* PREFERENCES_NAMESPACE = "midi-presets";
+
+const char* SYSTEM_NAMESPACE = "midi-system";
+
+const char* PREFERENCES_VERSION_KEY = "version";
+
+const char* LAST_PRESET_KEY = "lastPreset";
+
+const int CURRENT_PREFERENCES_VERSION = 5;
+
+
+
+// --- System-wide Config Variables ---
+
+char bleDeviceName[32] = "ESP32 MIDI Controller";
+
+int ledBrightnessOn = 255;
+
+int ledBrightnessDim = 102;
+
+long buttonDebounce = 300; // Default pad debounce
+
+int buttonNameFontSize = 2; // NEW: Font size for temp name display
+
+
+
+// --- Menu State Machine ---
+
+enum AppMode { MODE_PRESET, MODE_MENU };
+
+AppMode currentMode = MODE_PRESET;
+
+int menuSelection = 0;
+
+bool inSubMenu = false;
+
+int editingValue = 0;
+
+// UPDATED: Added new menu items
+
+const char* menuItems[] = {"Exit Menu", "Save Config", "Bright (On)", "Bright (Dim)", "Pad Debounce(ms)", "Clear All Bonds", "Wi-Fi AP:", "Wi-Fi at Boot:", "Name Font Size"};
+
+int numMenuItems = 9; // UPDATED
+
+
+
+// --- Standard BLE MIDI Definitions ---
+
+#define MIDI_SERVICE_UUID "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
+
+#define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
+
+BLECharacteristic *pMidiCharacteristic;
+
+bool deviceConnected = false;
+
+BLESecurity *pSecurity; // Global variable
+
+
+
+// --- Function Prototypes ---
+
+void displayOLED();
+
+void midiNoteNumberToString(char* buffer, size_t bufferSize, int note);
+
+void handleRoot();
+
+void handleSave();
+
+void handleSaveSystem();
+
+void handleExport();
+
+void handleImport();
+
+void handleImportUpload();
+
+void rebootESP(String message);
+
+void updateLeds();
+
+void saveCurrentPresetIndex();
+
+void saveSystemSettings();
+
+void loadSystemSettings();
+
+void displayMenu();
+
+void handleMenuSelection();
+
+void handleEncoderButtonPress();
+
+void loop_presetMode();
+
+void loop_menuMode();
+
+void clearBLEBonds();
+
+void getButtonSummary(char* b, size_t s, const MidiMessage& c);
+
+void displayButtonName();
+
+void turnWifiOn();
+
+void turnWifiOff();
+
+
+
+
+
+// --- BLE Callbacks ---
+
+class MyServerCallbacks : public BLEServerCallbacks {
+
+    void onConnect(BLEServer* pServer) {
+
+        deviceConnected = true;
+
+        displayOLED();
+
+        Serial.println("Client Connected");
+
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+
+        deviceConnected = false;
+
+        for (int i=0; i<NUM_BUTTONS; i++) { activeNotesOnButtonPins[i] = -1; buttonPinActive[i] = false; }
+
+        strcpy(lastSentMidiString, "---");
+
+        displayOLED();
+
+        Serial.println("Client Disconnected. Restarting Advertising...");
+
+        // Ensure advertising starts safely
+
+        pServer->getAdvertising()->start();
+
+    }
+
+};
+
+class MySecurityCallbacks : public BLESecurityCallbacks {
+
+    uint32_t onPassKeyRequest() { return 123456; }
+
+    void onPassKeyNotify(uint32_t pass_key) {}
+
+    bool onConfirmPIN(uint32_t pin) { return true; }
+
+    bool onSecurityRequest() { return true; }
+
+    void onAuthenticationComplete(esp_ble_auth_cmpl_t auth_cmpl) {
+
+        if(auth_cmpl.success) Serial.println("Pairing and Bonding Success");
+
+        else Serial.printf("Authentication Failure, reason=0x%x\n", auth_cmpl.fail_reason);
+
+    }
+
+};
+
+
+
+// --- Setup Functions ---
+
+void setup_ble_midi() {
+
+    BLEDevice::setSecurityCallbacks(new MySecurityCallbacks());
+
+    BLEDevice::init(bleDeviceName);
+
+    BLEServer *pServer = BLEDevice::createServer();
+
+    pServer->setCallbacks(new MyServerCallbacks());
+
+
+
+    pSecurity = new BLESecurity();
+
+
+
+    pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+
+    pSecurity->setCapability(ESP_IO_CAP_NONE);
+
+    pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+
+    BLEService *pMidiService = pServer->createService(MIDI_SERVICE_UUID);
+
+    pMidiCharacteristic = pMidiService->createCharacteristic(MIDI_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE_NR);
+
+    pMidiCharacteristic->addDescriptor(new BLE2902());
+
+    pMidiService->start();
+
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+
+    pAdvertising->addServiceUUID(MIDI_SERVICE_UUID);
+
+    pAdvertising->setScanResponse(true);
+
+    Serial.println("BLE Configured with Bonding Enabled...");
+
+}
+
+
+
+// --- MIDI Send Functions ---
+
+void sendMidiMessage(const MidiMessage& msg) {
+
+    switch(msg.type) {
+
+        case NOTE_ON: case NOTE_MOMENTARY: sendMidiNoteOn(msg.channel, msg.data1, msg.data2); break;
+
+        case NOTE_OFF: sendMidiNoteOff(msg.channel, msg.data1, msg.data2); break;
+
+        case CC: sendMidiCC(msg.channel, msg.data1, msg.data2); break;
+
+        case PC: sendMidiPC(msg.channel, msg.data1); break;
+
+        case OFF: default: break;
+
+    }
+
+}
+
+void sendMidiNoteOn(byte ch, byte n, byte v) { if(deviceConnected){if(ch<1)ch=1;if(ch>16)ch=16;uint8_t m[5]={0x80,0x80,(uint8_t)(0x90|((ch-1)&0x0F)),n,v};pMidiCharacteristic->setValue(m,5);pMidiCharacteristic->notify();}}
+
+void sendMidiNoteOff(byte ch, byte n, byte v){ if(deviceConnected){if(ch<1)ch=1;if(ch>16)ch=16;uint8_t m[5]={0x80,0x80,(uint8_t)(0x80|((ch-1)&0x0F)),n,v};pMidiCharacteristic->setValue(m,5);pMidiCharacteristic->notify();}}
+
+void sendMidiCC(byte ch, byte n, byte v){ if(deviceConnected){if(ch<1)ch=1;if(ch>16)ch=16;uint8_t m[5]={0x80,0x80,(uint8_t)(0xB0|((ch-1)&0x0F)),n,v};pMidiCharacteristic->setValue(m,5);pMidiCharacteristic->notify();}}
+
+void sendMidiPC(byte ch, byte n){ if(deviceConnected){if(ch<1)ch=1;if(ch>16)ch=16;uint8_t m[5]={0x80,0x80,(uint8_t)(0xC0|((ch-1)&0x0F)),n,0};pMidiCharacteristic->setValue(m,5);pMidiCharacteristic->notify();}}
+
+
+
+
+
+// --- System Settings Storage ---
+
+void loadSystemSettings() {
+
+    systemPrefs.begin(SYSTEM_NAMESPACE, false);
+
+    systemPrefs.getString("bleName", bleDeviceName, sizeof(bleDeviceName));
+
+    systemPrefs.getString("apSSID", apSSID, sizeof(apSSID));
+
+    systemPrefs.getString("apPass", apPassword, sizeof(apPassword));
+
+    ledBrightnessOn = systemPrefs.getInt("brightOn", 255);
+
+    ledBrightnessDim = systemPrefs.getInt("brightDim", 102);
+
+    // UPDATED: Set default debounce to 300ms
+
+    buttonDebounce = systemPrefs.getLong("debounce", 300);
+
+    buttonNameFontSize = systemPrefs.getInt("nameFontSize", 2);
+
+
+
+    // Load Wi-Fi boot default first, then set current state based on it
+
+    wifiBootOnDefault = systemPrefs.getBool("wifiBootOn", false); // Default to OFF
+
+    isWifiOn = wifiBootOnDefault; // Start in the default boot state
+
+
+
+    if (strcmp(apPassword, "your_password") == 0) {
+
+        strcpy(apPassword, "password123");
+
+        systemPrefs.putString("apPass", apPassword);
+
+    }
+
+    systemPrefs.end();
+
+    Serial.println("System settings loaded.");
+
+    Serial.printf("Wi-Fi Boot Default: %s\n", wifiBootOnDefault ? "On" : "Off");
+
+    Serial.printf("Wi-Fi Current State: %s\n", isWifiOn ? "On" : "Off");
+
+}
+
+
+
+void saveSystemSettings() {
+
+    systemPrefs.begin(SYSTEM_NAMESPACE, false);
+
+    systemPrefs.putString("bleName", bleDeviceName);
+
+    systemPrefs.putString("apSSID", apSSID);
+
+    systemPrefs.putString("apPass", apPassword);
+
+    systemPrefs.putInt("brightOn", ledBrightnessOn);
+
+    systemPrefs.putInt("brightDim", ledBrightnessDim);
+
+    systemPrefs.putLong("debounce", buttonDebounce);
+
+    // systemPrefs.putBool("isWifiOn", isWifiOn); // Don't save current state, load boot state
+
+    systemPrefs.putBool("wifiBootOn", wifiBootOnDefault); // Save boot state
+
+    systemPrefs.putInt("nameFontSize", buttonNameFontSize); // NEW: Save font size
+
+    systemPrefs.end();
+
+    Serial.println("System settings saved.");
+
+}
+
+
+
+
+
+// --- Preset Storage Functions ---
+
+void savePresets() {
+
+    preferences.begin(PREFERENCES_NAMESPACE, false);
+
+    preferences.putInt(PREFERENCES_VERSION_KEY, CURRENT_PREFERENCES_VERSION);
+
+    preferences.putInt(LAST_PRESET_KEY, currentPreset);
+
+    for(int p=0;p<4;p++) {
+
+        String presetNameKey = "pName" + String(p);
+
+        preferences.putString(presetNameKey.c_str(), presetNames[p]);
+
+        for(int t=0; t<NUM_BUTTONS; t++){
+
+            String key = "cfg_p" + String(p) + "t" + String(t);
+
+            preferences.putBytes(key.c_str(), &buttonConfigs[p][t], sizeof(ButtonConfig));
+
+        }
+
+    }
+
+    preferences.end();
+
+    Serial.println("Presets saved with version " + String(CURRENT_PREFERENCES_VERSION));
+
+}
+
+
+
+void saveCurrentPresetIndex() {
+
+     preferences.begin(PREFERENCES_NAMESPACE, false);
+
+     preferences.putInt(LAST_PRESET_KEY, currentPreset);
+
+     preferences.end();
+
+     Serial.println("Saved current preset index: " + String(currentPreset));
+
+}
+
+
+
+void setDefaultButtonConfig(int p, int t) {
+
+    // UPDATED: Default name is "B1", "B2", etc.
+
+    snprintf(buttonConfigs[p][t].name, sizeof(buttonConfigs[p][t].name), "B%d", t + 1);
+
+    buttonConfigs[p][t].isAlternate = false;
+
+    buttonConfigs[p][t].nextIsB = false;
+
+    buttonConfigs[p][t].messageA = {NOTE_MOMENTARY, 1, (byte)(36 + p*NUM_BUTTONS + t), 100, {141,141,255}};
+
+    buttonConfigs[p][t].messageB = {OFF, 1, 0, 0, {0,0,0}};
+
+}
+
+
+
+void loadPresets() {
+
+    preferences.begin(PREFERENCES_NAMESPACE, true);
+
+    int savedVersion = preferences.getInt(PREFERENCES_VERSION_KEY, 0);
+
+    bool needsSave = false;
+
+    currentPreset = preferences.getInt(LAST_PRESET_KEY, 0);
+
+    if (currentPreset < 0 || currentPreset > 3) currentPreset = 0;
+
+    preferences.end();
+
+
+
+    if (savedVersion < CURRENT_PREFERENCES_VERSION) {
+
+        Serial.println("Old preferences version found (" + String(savedVersion) + "). Migrating to " + String(CURRENT_PREFERENCES_VERSION) + "...");
+
+        needsSave = true;
+
+        preferences.begin(PREFERENCES_NAMESPACE, false);
+
+        struct OldButtonConfigV4 { char name[21]; bool isAlternate; bool nextIsB; MidiMessage messageA; MidiMessage messageB; };
+
+        for(int p=0; p<4; p++) {
+
+            String presetNameKey = "pName" + String(p);
+
+            String defaultName = "Preset " + String(p + 1);
+
+            strncpy(presetNames[p], preferences.getString(presetNameKey.c_str(), defaultName).c_str(), 20);
+
+            presetNames[p][20] = '\0';
+
+            for(int t=0; t<NUM_BUTTONS; t++) {
+
+                String key = "cfg_p" + String(p) + "t" + String(t);
+
+                if (preferences.isKey(key.c_str())) {
+
+                    OldButtonConfigV4 oldConfig;
+
+                    size_t len = preferences.getBytesLength(key.c_str());
+
+                    if (len > 0 && preferences.getBytes(key.c_str(), &oldConfig, len) > 0){
+
+                        strncpy(buttonConfigs[p][t].name, oldConfig.name, 20); buttonConfigs[p][t].name[20] = '\0';
+
+                        buttonConfigs[p][t].isAlternate = oldConfig.isAlternate; buttonConfigs[p][t].nextIsB = oldConfig.nextIsB;
+
+                        buttonConfigs[p][t].messageA = oldConfig.messageA; buttonConfigs[p][t].messageB = oldConfig.messageB;
+
+                    } else { setDefaultButtonConfig(p, t); }
+
+                } else { setDefaultButtonConfig(p, t); }
+
+            }
+
+        }
+
+        preferences.end();
+
+    } else {
+
+        Serial.println("Current preferences version found. Loading normally.");
+
+        preferences.begin(PREFERENCES_NAMESPACE, false);
+
+        for(int p=0;p<4;p++) {
+
+            String presetNameKey = "pName" + String(p);
+
+            String defaultName = "Preset " + String(p + 1);
+
+            strncpy(presetNames[p], preferences.getString(presetNameKey.c_str(), defaultName).c_str(), 20);
+
+            presetNames[p][20] = '\0';
+
+            for(int t=0;t<NUM_BUTTONS;t++){
+
+                String key = "cfg_p" + String(p) + "t" + String(t);
+
+                if(preferences.isKey(key.c_str())) {
+
+                    preferences.getBytes(key.c_str(), &buttonConfigs[p][t], sizeof(ButtonConfig));
+
+                } else {
+
+                    needsSave = true;
+
+                    setDefaultButtonConfig(p, t);
+
+                }
+
+            }
+
+        }
+
+         preferences.end();
+
+    }
+
+    if(needsSave) {
+
+        Serial.println("Migration/default load complete or key missing. Saving new format to NVS.");
+
+        savePresets();
+
+    }
+
+}
+
+
+
+// --- Main Setup ---
+
+void setup() {
+
+    Serial.begin(115200);
+
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+
+        Serial.println(F("SSD1306 allocation failed")); for (;;);
+
+    }
+
+    display.clearDisplay(); display.setTextColor(SSD1306_WHITE); display.setTextSize(1);
+
+    display.setCursor(0, 0); display.println(F("Starting...")); display.display(); delay(200);
+
+
+
+    loadSystemSettings(); // Loads Wi-Fi settings
+
+    loadPresets();
+
+
+
+    encoder.attachHalfQuad(ENCODER_A_PIN, ENCODER_B_PIN);
+
+    // Encoder position is now primarily for menu, preset cycling via button press
+
+    encoder.setCount(0); // Start at 0 for menu
+
+    oldEncoderPosition = 0;
+
+    pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+
+
+
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+
+        int pin = buttonPins[i];
+
+        if (pin == 34 || pin == 35) pinMode(pin, INPUT);
+
+        else pinMode(pin, INPUT_PULLUP);
+
+        activeNotesOnButtonPins[i] = -1; buttonPinActive[i] = false; lastButtonPressTime_pads[i] = 0;
+
+    }
+
+
+
+    strip.begin();
+
+    strip.show();
+
+    strip.setBrightness(255);
+
+
+
+    setup_ble_midi(); // Configure BLE
+
+
+
+    // Start Wi-Fi based on loaded boot setting
+
+    if(isWifiOn) {
+
+        turnWifiOn();
+
+    } else {
+
+        Serial.println("Wi-Fi is Off on boot.");
+
+    }
+
+
+
+    displayOLED();
+
+    updateLeds();
+
+
+
+    BLEDevice::startAdvertising();
+
+    Serial.println("Initial Advertising Started.");
+
+}
+
+
+
+
+
+// --- Main Loop (State Machine) ---
+
+void loop() {
+
+    if(isWifiOn) {
+
+        server.handleClient(); // Only handle web clients if Wi-Fi is on
+
+    }
+
+    // Handle encoder button press/release logic
+
+    handleEncoderButtonPress();
+
+
+
+    switch (currentMode) {
+
+        case MODE_PRESET:
+
+            loop_presetMode();
+
+            break;
+
+        case MODE_MENU:
+
+            loop_menuMode();
+
+            break;
+
+    }
+
+}
+
+
+
+// --- Preset Mode Logic ---
+
+void loop_presetMode() {
+
+    // Keep encoder position updated in case we enter the menu via long press
+
+    oldEncoderPosition = encoder.getCount();
+
+
+
+    bool oledNeedsUpdate = false;
+
+    bool ledsNeedUpdate = false;
+
+    char noteStrBuffer[8];
+
+
+
+    for (int i=0; i<NUM_BUTTONS; i++) {
+
+        bool isPressed = (digitalRead(buttonPins[i]) == LOW);
+
+        if (isPressed && !buttonPinActive[i]) {
+
+            if (millis() - lastButtonPressTime_pads[i] > buttonDebounce) {
+
+                buttonPinActive[i] = true; lastButtonPressTime_pads[i] = millis();
+
+                ledsNeedUpdate = true;
+
+
+
+                ButtonConfig &config = buttonConfigs[currentPreset][i];
+
+
+
+                // --- Trigger full-screen name display ---
+
+                strncpy(buttonNameToShow, config.name, 20);
+
+                buttonNameToShow[20] = '\0';
+
+                buttonNameDisplayUntil = millis() + 1000; // 1 second
+
+                displayButtonName(); // Display it NOW
+
+                oledNeedsUpdate = false; // Suppress normal OLED update this loop
+
+                // --- End New ---
+
+
+
+                const MidiMessage& msgToSend = config.isAlternate ? (config.nextIsB ? config.messageB : config.messageA) : config.messageA;
+
+
+
+                sendMidiMessage(msgToSend);
+
+
+
+                if (config.isAlternate) {
+
+                    config.nextIsB = !config.nextIsB;
+
+                }
+
+
+
+                if (msgToSend.type == NOTE_MOMENTARY) { activeNotesOnButtonPins[i] = msgToSend.data1; }
+
+
+
+                midiNoteNumberToString(noteStrBuffer, 8, msgToSend.data1);
+
+                switch(msgToSend.type) {
+
+                    case NOTE_MOMENTARY: case NOTE_ON: snprintf(lastSentMidiString,20, noteStrBuffer); break;
+
+                    case NOTE_OFF: snprintf(lastSentMidiString,20, noteStrBuffer); break;
+
+                    case CC: snprintf(lastSentMidiString,20,"CC%d=%d",msgToSend.data1,msgToSend.data2); break;
+
+                    case PC: snprintf(lastSentMidiString,20,"PC: %d",msgToSend.data1); break;
+
+                    case OFF: default: strcpy(lastSentMidiString, "---"); break;
+
+                }
+
+            }
+
+        } else if (!isPressed && buttonPinActive[i]) {
+
+            buttonPinActive[i] = false;
+
+            ledsNeedUpdate = true;
+
+            if (activeNotesOnButtonPins[i] != -1) {
+
+                sendMidiNoteOff(buttonConfigs[currentPreset][i].messageA.channel, activeNotesOnButtonPins[i], 0);
+
+                midiNoteNumberToString(noteStrBuffer,8,activeNotesOnButtonPins[i]);
+
+                snprintf(lastSentMidiString,20,"%s",noteStrBuffer);
+
+                activeNotesOnButtonPins[i] = -1; oledNeedsUpdate = true; // Needs update to clear last sent
+
+            }
+
+        }
+
+    } // End of button loop
+
+
+
+    // Check if temp display timer has expired
+
+    if (buttonNameDisplayUntil > 0 && millis() >= buttonNameDisplayUntil) {
+
+        buttonNameDisplayUntil = 0; // Clear the timer
+
+        oledNeedsUpdate = true;    // Force redraw of the main screen
+
+    }
+
+
+
+    // Only update normal display if NOT in temp mode
+
+    if (oledNeedsUpdate && buttonNameDisplayUntil == 0) displayOLED();
+
+    if (ledsNeedUpdate) updateLeds();
+
+}
+
+
+
+// --- Menu Mode Logic ---
+
+void loop_menuMode() {
+
+    long newEncoderPosition = encoder.getCount();
+
+    if (newEncoderPosition == oldEncoderPosition) return;
+
+
+
+    int change = (newEncoderPosition - oldEncoderPosition);
+
+
+
+    if (inSubMenu) {
+
+        editingValue += change;
+
+        oldEncoderPosition = newEncoderPosition;
+
+        if (menuSelection == 2) editingValue = constrain(editingValue, 0, 255); // Bright On
+
+        if (menuSelection == 3) editingValue = constrain(editingValue, 0, 255); // Bright Dim
+
+        // UPDATED: Increased max debounce constraint to 500ms
+
+        if (menuSelection == 4) editingValue = constrain(editingValue, 1, 500); // Pad Debounce
+
+        if (menuSelection == 8) editingValue = constrain(editingValue, 1, 3); // Name Font Size (1, 2, or 3)
+
+    } else {
+
+        // Use half-quad steps for menu navigation
+
+        long menuStep = newEncoderPosition / 2;
+
+        long oldMenuStep = oldEncoderPosition / 2;
+
+        if (menuStep != oldMenuStep) {
+
+             menuSelection += (menuStep - oldMenuStep);
+
+             menuSelection = (menuSelection % numMenuItems + numMenuItems) % numMenuItems;
+
+        }
+
+         // Update oldEncoderPosition regardless to track raw changes for submenu entry
+
+         oldEncoderPosition = newEncoderPosition;
+
+    }
+
+    displayMenu();
+
+} // Added missing brace
+
+
+
+// --- UPDATED: Encoder Button Handler (Short/Long Press) ---
+
+void handleEncoderButtonPress() {
+
+    bool currentState = (digitalRead(ENCODER_BUTTON_PIN) == LOW);
+
+
+
+    // Rising edge (Button released)
+
+    if (!currentState && encoderButtonPressed) {
+
+        encoderButtonPressed = false; // Mark as released
+
+        unsigned long pressDuration = millis() - encoderButtonPressStartTime;
+
+
+
+        // Debounce on release and check if it was a short press
+
+        if (pressDuration > ENCODER_BUTTON_DEBOUNCE_DELAY && pressDuration < LONG_PRESS_DURATION) {
+
+
+
+            if (currentMode == MODE_MENU && !inSubMenu) {
+
+                // If in main menu, button click selects the item
+
+                Serial.println("Menu Select Press");
+
+                handleMenuSelection();
+
+            }
+
+            else if (currentMode == MODE_MENU && inSubMenu) {
+
+                 // If in submenu, button click confirms value
+
+                 Serial.println("Submenu Confirm Press");
+
+                 handleMenuSelection();
+
+            }
+
+            else if (currentMode == MODE_PRESET) {
+
+                // If in preset mode, short press cycles preset
+
+                Serial.println("Short Press Detected - Cycling Preset");
+
+
+
+                // Turn off any active momentary notes before switching
+
+                if (deviceConnected) {
+
+                    for (int i=0; i<NUM_BUTTONS; i++) {
+
+                        if (buttonPinActive[i] && activeNotesOnButtonPins[i] != -1) {
+
+                            sendMidiNoteOff(buttonConfigs[currentPreset][i].messageA.channel, activeNotesOnButtonPins[i], 0);
+
+                            activeNotesOnButtonPins[i] = -1; // Clear note state
+
+                            // Don't change buttonPinActive[i] here, let the normal loop handle release
+
+                        }
+
+                    }
+
+                }
+
+
+
+                currentPreset = (currentPreset + 1) % 4; // Cycle 0, 1, 2, 3
+
+                saveCurrentPresetIndex();
+
+                strcpy(lastSentMidiString, "---");
+
+                displayOLED(); // Update display immediately
+
+                updateLeds(); // Update LEDs immediately
+
+            }
+
+        } else if (pressDuration >= LONG_PRESS_DURATION) {
+
+            // This is the release *after* a long press. Do nothing, action already taken.
+
+            Serial.println("Release after long press - ignored");
+
+        } else {
+
+            // Duration too short, likely noise/bounce.
+
+            Serial.println("Press too short - ignored");
+
+        }
+
+        // Reset start time after handling release
+
+        encoderButtonPressStartTime = 0;
+
+    }
+
+    // Falling edge (Button pressed down)
+
+    else if (currentState && !encoderButtonPressed) {
+
+        // Only register press if enough time has passed since the last *registered* press
+
+        if (millis() - lastEncoderButtonPress > ENCODER_BUTTON_DEBOUNCE_DELAY) {
+
+            encoderButtonPressed = true;
+
+            encoderButtonPressStartTime = millis();
+
+            lastEncoderButtonPress = encoderButtonPressStartTime; // Update time of last valid press start
+
+            Serial.println("Encoder Button Pressed Down");
+
+        }
+
+    }
+
+
+
+    // Long press check (while button is held down AND in preset mode)
+
+    if (encoderButtonPressed && currentMode == MODE_PRESET && encoderButtonPressStartTime != 0 && (millis() - encoderButtonPressStartTime >= LONG_PRESS_DURATION)) {
+
+        Serial.println("Long Press Detected - Entering Menu");
+
+        currentMode = MODE_MENU;
+
+        menuSelection = 0; // Default to first item
+
+        inSubMenu = false;
+
+        encoder.setCount(0); // Reset encoder for menu navigation
+
+        oldEncoderPosition = 0;
+
+        displayMenu();
+
+
+
+        // --- Crucial Fix for False Press ---
+
+        // Mark button as released internally *immediately* after entering menu via long press.
+
+        // Also invalidate start time to prevent re-triggering long press check immediately
+
+        encoderButtonPressed = false;
+
+        encoderButtonPressStartTime = 0;
+
+        // Do NOT update lastEncoderButtonPress here, wait for physical release
+
+    }
+
+}
+
+
+
+
+
+// --- UPDATED: Menu Selection Logic (Re-ordered + Font Size + Minor Delays) ---
+
+void handleMenuSelection() {
+
+    if (inSubMenu) {
+
+        // We were editing a value, now apply and save it
+
+        switch (menuSelection) {
+
+            case 2: ledBrightnessOn = editingValue; saveSystemSettings(); updateLeds(); break;
+
+            case 3: ledBrightnessDim = editingValue; saveSystemSettings(); updateLeds(); break;
+
+            case 4: buttonDebounce = editingValue; saveSystemSettings(); break;
+
+            case 8: buttonNameFontSize = editingValue; saveSystemSettings(); break; // NEW
+
+        }
+
+        inSubMenu = false; // Exit submenu
+
+
+
+    } else {
+
+        // We are in the main menu, select an item
+
+        switch (menuSelection) {
+
+            case 0: // Exit Menu
+
+                currentMode = MODE_PRESET;
+
+                // Don't reset encoder count here, keep it for potential re-entry
+
+                // Save current Wi-Fi state on exit
+
+                systemPrefs.begin(SYSTEM_NAMESPACE, false);
+
+                systemPrefs.putBool("isWifiOn", isWifiOn);
+
+                systemPrefs.end();
+
+                displayOLED();
+
+                updateLeds();
+
+                return; // Exit function
+
+            case 1: // Save Config
+
+                savePresets();
+
+                display.clearDisplay(); display.setCursor(0, SCREEN_HEIGHT/2-4);
+
+                display.print(F("Config Saved!")); display.display(); delay(1000);
+
+                break;
+
+            case 2: // Bright On
+
+                inSubMenu = true;
+
+                editingValue = ledBrightnessOn;
+
+                encoder.setCount(editingValue);
+
+                oldEncoderPosition = editingValue;
+
+                break;
+
+            case 3: // Bright Dim
+
+                inSubMenu = true;
+
+                editingValue = ledBrightnessDim;
+
+                encoder.setCount(editingValue);
+
+                oldEncoderPosition = editingValue;
+
+                break;
+
+            case 4: // Pad Debounce
+
+                inSubMenu = true;
+
+                editingValue = buttonDebounce;
+
+                encoder.setCount(editingValue);
+
+                oldEncoderPosition = editingValue;
+
+                break;
+
+            case 5: // Clear All Bonds
+
+                clearBLEBonds();
+
+                // The device will reboot, so no further action needed
+
+                break;
+
+            case 6: // Wi-Fi AP: On/Off
+
+                isWifiOn = !isWifiOn; // Toggle
+
+                if (isWifiOn) {
+
+                    turnWifiOn();
+
+                } else {
+
+                    turnWifiOff();
+
+                }
+
+                // Save current state immediately
+
+                systemPrefs.begin(SYSTEM_NAMESPACE, false);
+
+                systemPrefs.putBool("isWifiOn", isWifiOn);
+
+                systemPrefs.end();
+
+                delay(100); // Small delay for visual feedback
+
+                break;
+
+            case 7: // Wi-Fi at Boot: On/Off
+
+                wifiBootOnDefault = !wifiBootOnDefault; // Toggle
+
+                saveSystemSettings(); // Save immediately
+
+                Serial.printf("Set Wi-Fi at Boot to: %s\n", wifiBootOnDefault ? "On" : "Off");
+
+                delay(100); // Small delay for visual feedback
+
+                break;
+
+            case 8: // NEW: Name Font Size
+
+                 inSubMenu = true;
+
+                 editingValue = buttonNameFontSize;
+
+                 encoder.setCount(editingValue); // Encoder directly reflects value 1, 2, or 3
+
+                 oldEncoderPosition = editingValue;
+
+                 break;
+
+        }
+
+    }
+
+    displayMenu(); // Refresh menu screen after action or entering/exiting submenu
+
+}
+
+
+
+// --- FIXED: Function to clear BLE bonds (using low-level IDF calls) ---
+
+void clearBLEBonds() {
+
+    Serial.println("Clearing all bonded BLE devices...");
+
+
+
+    int bonded_device_count = esp_ble_get_bond_device_num();
+
+    if (bonded_device_count <= 0) {
+
+        Serial.println("No bonded devices to remove.");
+
+    } else {
+
+        Serial.printf("Found %d bonded devices. Removing...\n", bonded_device_count);
+
+        esp_ble_bond_dev_t *bonded_devices = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * bonded_device_count);
+
+        if (bonded_devices) {
+
+            esp_ble_get_bond_device_list(&bonded_device_count, bonded_devices);
+
+            for (int i = 0; i < bonded_device_count; i++) {
+
+                esp_err_t err = esp_ble_remove_bond_device(bonded_devices[i].bd_addr);
+
+                if(err == ESP_OK) {
+
+                  Serial.printf("Removed device %d\n", i);
+
+                } else {
+
+                  Serial.printf("Failed to remove device %d, error=0x%x\n", i, err);
+
+                }
+
+            }
+
+            free(bonded_devices);
+
+        } else {
+
+            Serial.println("Failed to allocate memory for device list");
+
+        }
+
+    }
+
+
+
+    Serial.println("Bond clearing finished. Rebooting to take effect...");
+
+
+
+    display.clearDisplay(); display.setTextSize(1);
+
+    display.setCursor(0, (SCREEN_HEIGHT/2)-10);
+
+    display.println(F("All Bonds Cleared!"));
+
+    display.println(F("Rebooting..."));
+
+    display.display();
+
+
+
+    delay(2000); // Wait for user to see message
+
+    ESP.restart();
+
+}
+
+
+
+
+
+// --- Function to update NeoPixel LEDs ---
+
+void updateLeds() {
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+
+        const ButtonConfig& config = buttonConfigs[currentPreset][i];
+
+        const MidiMessage* msgColorSource = nullptr;
+
+
+
+        if (buttonPinActive[i]) {
+
+            if (config.isAlternate) {
+
+                msgColorSource = config.nextIsB ? &config.messageA : &config.messageB;
+
+            } else {
+
+                msgColorSource = &config.messageA;
+
+            }
+
+        } else {
+
+            if (config.isAlternate) {
+
+                msgColorSource = config.nextIsB ? &config.messageB : &config.messageA;
+
+            } else {
+
+                msgColorSource = &config.messageA;
+
+            }
+
+        }
+
+
+
+        uint8_t brightness = buttonPinActive[i] ? ledBrightnessOn : ledBrightnessDim;
+
+        // Prevent division by zero if brightness is somehow 0
+
+        if (brightness == 0) brightness = 1;
+
+        uint8_t r = (uint8_t)(((uint16_t)msgColorSource->rgb[0] * brightness) / 255);
+
+        uint8_t g = (uint8_t)(((uint16_t)msgColorSource->rgb[1] * brightness) / 255);
+
+        uint8_t b = (uint8_t)(((uint16_t)msgColorSource->rgb[2] * brightness) / 255);
+
+
+
+        int ledIndex = ledMap[i];
+
+        strip.setPixelColor(ledIndex, strip.Color(r, g, b));
+
+    }
+
+    strip.show();
+
+}
+
+
+
+
+
+// --- Display & Helper Functions ---
+
+
+
+// --- NEW: Function to show button name full-screen ---
+
+void displayButtonName() {
+
+    display.clearDisplay();
+
+    // Use the stored font size
+
+    display.setTextSize(buttonNameFontSize);
+
+    display.setTextColor(SSD1306_WHITE);
+
+
+
+    // Center the text
+
+    int16_t x1, y1;
+
+    uint16_t w, h;
+
+    // Use a truncated name for centering
+
+    char truncatedName[21];
+
+    // Limit displayed name based on font size to prevent overflow
+
+    int maxChars = (buttonNameFontSize == 1) ? 20 : ((buttonNameFontSize == 2) ? 10 : 6);
+
+    snprintf(truncatedName, sizeof(truncatedName), "%.*s", maxChars, buttonNameToShow);
+
+
+
+    display.getTextBounds(truncatedName, 0, 0, &x1, &y1, &w, &h);
+
+
+
+    int16_t x = (SCREEN_WIDTH - w) / 2;
+
+    // Adjust Y position slightly based on font size for better centering
+
+    int16_t y = (SCREEN_HEIGHT - h) / 2;
+
+     if (buttonNameFontSize == 3) y -= 4; // Shift larger font up a bit
+
+
+
+    display.setCursor(x, y);
+
+    display.print(truncatedName);
+
+    display.display();
+
+    display.setTextSize(1); // Reset for other functions
+
+}
+
+
+
+
+
+// --- UPDATED: Cleaned up note display ---
+
+void getButtonSummary(char* b, size_t s, const MidiMessage& c) {
+
+    char n[8]; b[0] = '\0';
+
+    switch(c.type){
+
+        case NOTE_MOMENTARY: midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"%.4s", n); break; // Limit to 4 chars
+
+        case NOTE_ON:  midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"^%.3s",n); break; // Limit to 3 chars + ^
+
+        case NOTE_OFF: midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"v%.3s",n); break; // Limit to 3 chars + v
+
+        case CC: snprintf(b,s,"CC%d",c.data1); break; // CC format fits
+
+        case PC: snprintf(b,s,"PC%d",c.data1); break; // PC format fits
+
+        case OFF: strncpy(b,"OFF",s-1); b[s-1] = '\0'; break;
+
+        default: strncpy(b,"---",s-1); b[s-1] = '\0'; break;
+
+    }
+
+}
+
+
+
+
+
+// --- UPDATED to match user's new layout reference ---
+
+void displayOLED() {
+
+    // This is the main preset display
+
+    if (buttonNameDisplayUntil > 0) return; // Don't draw if temp name is active
+
+
+
+    display.clearDisplay();
+
+    display.setTextSize(1);
+
+    char summary[10]; // Buffer for getButtonSummary
+
+
+
+    // --- Top Row (Buttons 5-8, indices 4-7) ---
+
+    // User physical layout: 5 6 7 8
+
+    for (int i = 0; i < 4; i++) {
+
+        int buttonIndex = i + 4; // 4, 5, 6, 7
+
+
+
+        const ButtonConfig& config = buttonConfigs[currentPreset][buttonIndex];
+
+        char defaultName[21];
+
+        snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1); // UPDATED: "B1"
+
+
+
+        char toDisplay[10];
+
+        if (strncmp(config.name, defaultName, 20) == 0) {
+
+            getButtonSummary(summary, sizeof(summary), config.messageA);
+
+            snprintf(toDisplay, sizeof(toDisplay), "%.4s", summary);
+
+        } else {
+
+            snprintf(toDisplay, sizeof(toDisplay), "%.4s", config.name);
+
+        }
+
+        display.setCursor(i * 32, 0); // 0, 32, 64, 96
+
+        display.print(toDisplay);
+
+    }
+
+
+
+    // --- Bottom Row (Buttons 1-4, indices 0-3) ---
+
+    // User physical layout: 1 2 3 4
+
+    int bottomY = SCREEN_HEIGHT - 8; // Last line (approx 56)
+
+    for (int i = 0; i < 4; i++) {
+
+        int buttonIndex = i; // 0, 1, 2, 3
+
+
+
+        const ButtonConfig& config = buttonConfigs[currentPreset][buttonIndex];
+
+        char defaultName[21];
+
+        snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1); // UPDATED: "B1"
+
+
+
+        char toDisplay[10];
+
+        if (strncmp(config.name, defaultName, 20) == 0) {
+
+            getButtonSummary(summary, sizeof(summary), config.messageA);
+
+            snprintf(toDisplay, sizeof(toDisplay), "%.4s", summary);
+
+        } else {
+
+            snprintf(toDisplay, sizeof(toDisplay), "%.4s", config.name);
+
+        }
+
+        display.setCursor(i * 32, bottomY); // 0, 32, 64, 96
+
+        display.print(toDisplay);
+
+    }
+
+
+
+    // --- Middle Area ---
+
+
+
+    // Preset Name (Centered) - UPDATED
+
+    int16_t x1, y1;
+
+    uint16_t w, h;
+
+    char truncatedName[11];
+
+    snprintf(truncatedName, sizeof(truncatedName), "%.10s", presetNames[currentPreset]);
+
+    display.setTextSize(2); // Set font size to 2
+
+    display.getTextBounds(truncatedName, 0, 0, &x1, &y1, &w, &h);
+
+    display.setCursor((SCREEN_WIDTH - w) / 2, 16); // Y-position 16
+
+    display.print(truncatedName);
+
+    display.setTextSize(1); // Reset font size to 1
+
+
+
+    // BLE Status (Left) - UPDATED
+
+    const char* bleStatus = deviceConnected ? "ON" : "OFF";
+
+    display.setCursor(0, 36); // Y-position 36
+
+    display.printf("BLE:%s", bleStatus);
+
+
+
+    // Last Sent (Right) - UPDATED
+
+    // Ensure lastSentMidiString is null-terminated before calculating width
+
+    lastSentMidiString[19] = '\0';
+
+    display.getTextBounds(lastSentMidiString, 0, 0, &x1, &y1, &w, &h);
+
+    // Add small padding (2px) from the right edge
+
+    int16_t lastNoteX = SCREEN_WIDTH - w - 2;
+
+    if (lastNoteX < SCREEN_WIDTH / 2) { // Prevent overlap with BLE status
+
+       lastNoteX = SCREEN_WIDTH / 2;
+
+    }
+
+    display.setCursor(lastNoteX, 36); // Y-position 36
+
+    display.print(lastSentMidiString); // Print only the value
+
+
+
+    display.display();
+
+}
+
+
+
+void displayMenu() {
+
+    display.clearDisplay();
+
+    display.setTextSize(1);
+
+    display.setTextColor(SSD1306_WHITE);
+
+    display.setCursor(0, 0);
+
+
+
+    display.printf("--- Menu (BLE:%s) ---", deviceConnected ? "On" : "Off");
+
+
+
+    if (inSubMenu) {
+
+        display.setCursor(10, 20);
+
+        // Special display for font size
+
+        if(menuSelection == 8) {
+
+            display.printf("Editing: %s (%d)", menuItems[menuSelection], editingValue);
+
+        } else {
+
+            display.printf("Editing: %s", menuItems[menuSelection]);
+
+        }
+
+       
+
+        display.setTextSize(2);
+
+        // Calculate centered X position for the value
+
+        char valueStr[10];
+
+        snprintf(valueStr, sizeof(valueStr), "%d", editingValue);
+
+        int16_t x1, y1; uint16_t w, h;
+
+        display.getTextBounds(valueStr, 0, 0, &x1, &y1, &w, &h);
+
+        display.setCursor( (SCREEN_WIDTH - w) / 2, 40);
+
+        display.print(valueStr);
+
+        display.setTextSize(1); // Reset size
+
+
+
+    } else {
+
+        char menuItemBuffer[30]; // Buffer for dynamic menu items
+
+        for (int i = 0; i < numMenuItems; i++) {
+
+            // Show 5 lines at a time, scrolling
+
+            int lineOffset = menuSelection - 2; // Index of the top visible line
+
+            if (lineOffset < 0) lineOffset = 0;
+
+            if (lineOffset > numMenuItems - 5) lineOffset = numMenuItems - 5;
+
+           
+
+            int displayLine = i - lineOffset; // 0 to 4
+
+
+
+            if (displayLine >= 0 && displayLine < 5) { // Only draw if within visible range
+
+                display.setCursor(0, 14 + (displayLine * 10)); // Start below title
+
+
+
+                if (i == menuSelection) {
+
+                    display.print(F("> "));
+
+                } else {
+
+                    display.print(F("  "));
+
+                }
+
+
+
+                // Handle dynamic menu items
+
+                if (i == 6) { // Wi-Fi AP:
+
+                    snprintf(menuItemBuffer, sizeof(menuItemBuffer), "%s %s", menuItems[i], isWifiOn ? "On" : "Off");
+
+                    display.println(menuItemBuffer);
+
+                } else if (i == 7) { // Wi-Fi at Boot:
+
+                    snprintf(menuItemBuffer, sizeof(menuItemBuffer), "%s %s", menuItems[i], wifiBootOnDefault ? "On" : "Off");
+
+                    display.println(menuItemBuffer);
+
+                } else if (i == 8) { // Name Font Size:
+
+                    snprintf(menuItemBuffer, sizeof(menuItemBuffer), "%s (%d)", menuItems[i], buttonNameFontSize);
+
+                    display.println(menuItemBuffer);
+
+                }
+
+                else {
+
+                    display.println(menuItems[i]);
+
+                }
+
+            }
+
+        }
+
+    }
+
+    display.display();
+
+}
+
+
+
+
+
+void midiNoteNumberToString(char* b, size_t s, int n){if(n<0||n>127){snprintf(b,s,"N/A");return;}snprintf(b,s,"%s%d",MIDI_NOTE_NAMES[n%12],(n/12-1));}
+
+
+
+// --- NEW Wi-Fi Toggle Functions ---
+
+void turnWifiOn() {
+
+    if (isWifiOn && WiFi.status() != WL_DISCONNECTED) return; // Already on
+
+   
+
+    Serial.println("Turning Wi-Fi AP On...");
+
+    display.clearDisplay(); display.setCursor(0, SCREEN_HEIGHT/2-4);
+
+    display.print(F("Starting Wi-Fi...")); display.display();
+
+
+
+    WiFi.mode(WIFI_AP);
+
+    WiFi.softAPConfig(local_ip, gateway, subnet);
+
+    bool apStarted = WiFi.softAP(ssid, password);
+
+   
+
+    if (apStarted) {
+
+        Serial.print("AP Started! IP address: "); Serial.println(WiFi.softAPIP());
+
+    } else {
+
+        Serial.println("!!! AP FAILED TO START !!!");
+
+    }
+
+
+
+    // Re-register handlers (needed after server.stop())
+
+    server.on("/", HTTP_GET, handleRoot);
+
+    server.on("/save", HTTP_POST, handleSave);
+
+    server.on("/saveSystem", HTTP_POST, handleSaveSystem);
+
+    server.on("/export", HTTP_GET, handleExport);
+
+    server.on("/import", HTTP_GET, handleImport);
+
+    server.on("/import", HTTP_POST, handleImportUpload);
+
+    server.begin();
+
+    isWifiOn = true; // Mark as successfully on
+
+    Serial.println("Web Server Started");
+
+}
+
+
+
+void turnWifiOff() {
+
+    if (!isWifiOn) return; // Already off
+
+   
+
+    Serial.println("Turning Wi-Fi AP Off...");
+
+    display.clearDisplay(); display.setCursor(0, SCREEN_HEIGHT/2-4);
+
+    display.print(F("Stopping Wi-Fi...")); display.display();
+
+   
+
+    server.stop();
+
+    WiFi.softAPdisconnect(true);
+
+    WiFi.mode(WIFI_OFF);
+
+    isWifiOn = false; // Mark as off
+
+    Serial.println("Wi-Fi AP and Server Stopped.");
+
+}
+
+
+
+
+
+// --- Web Server Helper Functions ---
+
+const char* getCommandTypeName(MidiCommandType t){switch(t){case NOTE_MOMENTARY:return"Note (Momentary)";case NOTE_ON:return"Note On";case NOTE_OFF:return"Note Off";case CC:return"CC";case PC:return"PC";default:return"Off";}}
+
+const char* getCommandTypeString(MidiCommandType t){switch(t){case NOTE_MOMENTARY:return"NOTE_MOMENTARY";case NOTE_ON:return"NOTE_ON";case NOTE_OFF:return"NOTE_OFF";case CC:return"CC";case PC:return"PC";default:return"OFF";}}
+
+MidiCommandType parseCommandType(String s){if(s=="NOTE_MOMENTARY")return NOTE_MOMENTARY;if(s=="NOTE_ON")return NOTE_ON;if(s=="NOTE_OFF")return NOTE_OFF;if(s=="CC")return CC;if(s=="PC")return PC;return OFF;}
+
+void rgbToHex(char* buffer, size_t size, const byte rgb[3]) { snprintf(buffer, size, "#%02x%02x%02x", rgb[0], rgb[1], rgb[2]); }
+
+void hexToRgb(const String& hex, byte rgb[3]) { long c = strtol(hex.substring(1).c_str(), NULL, 16); rgb[0]=(c>>16)&0xFF; rgb[1]=(c>>8)&0xFF; rgb[2]=c&0xFF; }
+
+
+
+void generateMessageFields(char* buffer, size_t size, const char* id_prefix, const MidiMessage& msg) {
+
+    char options[512] = "";
+
+    MidiCommandType types[] = {OFF, NOTE_MOMENTARY, NOTE_ON, NOTE_OFF, CC, PC};
+
+    for(auto type:types){char o[100];snprintf(o,sizeof(o),"<option value='%s'%s>%s</option>",getCommandTypeString(type),(type==msg.type?" selected":""),getCommandTypeName(type));strncat(options,o,sizeof(options)-strlen(options)-1);}
+
+    char hexColor[8]; rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+
+    snprintf(buffer, size,
+
+        "<div class='config-grid'><label for='%s_type'>Type:</label><select id='%s_type' name='%s_type' onchange='u(this)'>%s</select></div>"
+
+        "<div class='config-grid'><label for='%s_ch'>Channel:</label><input type='number' id='%s_ch' name='%s_ch' min='1' max='16' value='%d'></div>"
+
+        "<div class='config-grid grid-d1'><label>Data 1:</label><input type='number' id='%s_d1' name='%s_d1' min='0' max='127' value='%d'></div>"
+
+        "<div class='config-grid grid-d2'><label>Data 2:</label><input type='number' id='%s_d2' name='%s_d2' min='0' max='127' value='%d'></div>"
+
+        "<div class='config-grid'><label for='%s_color'>Color:</label><input type='color' id='%s_color' name='%s_color' value='%s'></div>",
+
+        id_prefix,id_prefix,id_prefix,options,id_prefix,id_prefix,id_prefix,msg.channel,id_prefix,id_prefix,msg.data1,id_prefix,id_prefix,msg.data2,id_prefix,id_prefix,id_prefix,hexColor);
+
+}
+
+
+
+// --- UPDATED: Web Server Handler (Optimized) ---
+
+void handleRoot() {
+
+    int pagePreset = 0;
+
+    if (server.hasArg("preset")) pagePreset = server.arg("preset").toInt();
+
+    if (pagePreset < 0 || pagePreset > 3) pagePreset = 0;
+
+
+
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+
+    server.send(200, "text/html", "");
+
+
+
+    // Send header and CSS in one block
+
+    String header = F("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>ESP32 MIDI Config</title>");
+
+    header += F("<style>body{font-family:'Inter',sans-serif;background-color:#1a1a2e;color:#e0e0e0;margin:10px;display:flex;justify-content:center;align-items:flex-start;}");
+
+    header += F(".container{width:100%;max-width:800px;padding:15px;background-color:#2a2a4a;border-radius:12px;}h1,h2{text-align:center;color:#8d8dff;margin-bottom:20px;}");
+
+    header += F(".preset-bar{display:flex;justify-content:space-around;margin-bottom:10px;background-color:#3a3a5a;padding:5px;border-radius:8px;} .preset-bar a{text-decoration:none;color:#e0e0e0;padding:8px 12px;border-radius:6px;transition:background-color .3s;} .preset-bar a.active{background-color:#8d8dff;color:white;font-weight:bold;}");
+
+    header += F(".preset-name-field{margin-bottom:15px;display:flex;align-items:center;background-color:#3a3a5a;padding:8px;border-radius:8px;} .preset-name-field label{margin-right:10px;font-weight:bold;color:#a0a0ff;}");
+
+    header += F(".buttons-grid{display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px;}");
+
+    header += F(".button-config{border:1px solid #5a5a7a;border-radius:8px;padding:10px;} .button-config h3 input{width:100%;background:none;border:none;color:#c8c8ff;font-size:1em;font-weight:bold;padding:4px;margin-bottom: 4px; border-radius:4px;}.button-config h3 input:focus{background-color:#4a4a6a;}");
+
+    header += F(".mode-toggle{display:flex;align-items:center;margin-bottom:10px;} .mode-toggle label{margin-right:8px;}");
+
+    header += F(".msg-fields{border: 1px solid #4a4a6a; border-radius: 6px; padding: 8px; margin-top: 5px;}");
+
+    header += F(".msg-b-fields{border-top:1px dashed #5a5a7a;margin-top:10px;padding-top:10px;}");
+
+    header += F(".config-grid{display:grid;grid-template-columns:110px 1fr;gap:6px;align-items:center;margin-bottom:6px;} label{text-align:right;padding-right:8px;}"); // Increased label width
+
+    header += F("input,select{padding:6px;border:1px solid #5a5a7a;border-radius:4px;background-color:#4a4a6a;color:#e0e0e0;width:100%;box-sizing:border-box;font-size:0.9em;} input[type='color']{padding:1px;min-height:32px;}");
+
+    header += F("button{width:100%;padding:10px 18px;background-color:#8d8dff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:1em;margin-top: 15px;font-weight:bold;} button:hover{background-color:#7a7aff;}");
+
+    header += F(".info{text-align:center;margin-top:20px;font-size:0.8em;color:#b0b0b0;line-height:1.4;} .info p{margin: 5px 0;} .info a{color: #aaaaff; text-decoration:none;} .info a:hover{text-decoration:underline;}");
+
+    header += F(".system-settings{background-color:#3a3a5a; padding: 15px; border-radius: 8px; margin-top: 20px;}");
+
+    header += F("</style><script>function u(s){var t=s.value,p=s.closest('.msg-fields'),d1=p.querySelector('.grid-d1'),d2=p.querySelector('.grid-d2');d1.style.display='grid';d2.style.display='grid';if(t==='PC'||t==='OFF'){d2.style.display='none';if(t==='OFF')d1.style.display='none';}} function t(c){var b=c.closest('.button-config').querySelector('.msg-b-fields');b.style.display=c.checked?'block':'none';} document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('select').forEach(function(s){u(s);}); document.querySelectorAll('.alt-toggle').forEach(function(c){t(c);});});</script>");
+
+    header += F("</head><body><div class='container'><h1>MIDI Controller Config</h1><form action='/save' method='POST'>");
+
+    server.sendContent(header);
+
+
+
+    char buffer[1024];
+
+
+
+    // Send Preset Bar
+
+    String presetBar = F("<div class='preset-bar'>");
+
+    for (int p=0; p<4; p++) {
+
+        snprintf(buffer, sizeof(buffer), "<a href='/?preset=%d'%s>%s</a>", p, (p == pagePreset ? " class='active'" : ""), presetNames[p]);
+
+        presetBar += buffer;
+
+    }
+
+    presetBar += F("</div>");
+
+    server.sendContent(presetBar);
+
+
+
+    // Send Preset Name field
+
+    snprintf(buffer, sizeof(buffer), "<div class='preset-name-field'><label for='presetName'>Preset Name:</label><input type='text' id='presetName' name='presetName' value='%s' maxlength='20'></div>", presetNames[pagePreset]);
+
+    server.sendContent(buffer);
+
+
+
+    snprintf(buffer, sizeof(buffer), "<input type='hidden' name='preset' value='%d'>", pagePreset);
+
+    server.sendContent(buffer);
+
+
+
+    // --- Build all button HTML and send as one block ---
+
+    String buttonsHTML = F("<div class='buttons-grid'>");
+
+    for (int t = 0; t < NUM_BUTTONS; t++) {
+
+        const ButtonConfig& config = buttonConfigs[pagePreset][t];
+
+        char p_t[8]; snprintf(p_t, sizeof(p_t), "p%dt%d", pagePreset, t);
+
+
+
+        snprintf(buffer, sizeof(buffer), "<div class='button-config'><h3><input type='text' name='%s_name' value='%s' placeholder='Button %d Name' maxlength='20'></h3>", p_t, config.name, t+1);
+
+        buttonsHTML += buffer;
+
+        snprintf(buffer, sizeof(buffer), "<div class='mode-toggle'><label for='%s_alt'>Alternate Mode:</label><input type='checkbox' class='alt-toggle' id='%s_alt' name='%s_alt' onchange='t(this)'%s></div>", p_t, p_t, p_t, (config.isAlternate ? " checked" : ""));
+
+        buttonsHTML += buffer;
+
+
+
+        buttonsHTML += F("<h4>Message A</h4><div class='msg-fields'>");
+
+        char id_a[12]; snprintf(id_a, sizeof(id_a), "%s_a", p_t);
+
+        generateMessageFields(buffer, sizeof(buffer), id_a, config.messageA);
+
+        buttonsHTML += buffer;
+
+        buttonsHTML += F("</div>");
+
+
+
+        buttonsHTML += F("<div class='msg-b-fields' style='display:"); // Inline style based on state
+
+        buttonsHTML += config.isAlternate ? F("block") : F("none");
+
+        buttonsHTML += F(";'><h4>Message B</h4><div class='msg-fields'>");
+
+        char id_b[12]; snprintf(id_b, sizeof(id_b), "%s_b", p_t);
+
+        generateMessageFields(buffer, sizeof(buffer), id_b, config.messageB);
+
+        buttonsHTML += buffer;
+
+        buttonsHTML += F("</div></div></div>"); // Close msg-b-fields, msg-fields, button-config
+
+
+
+        // Don't yield(), build the whole string
+
+    }
+
+    buttonsHTML += F("</div>"); // Close buttons-grid
+
+    server.sendContent(buttonsHTML); // Send all 8 buttons at once
+
+
+
+
+
+    // --- Build footer and send as one block ---
+
+    String footer = F("<button type='submit'>Update & Save Preset</button></form>");
+
+    footer += F("<h2>System Settings</h2><form action='/saveSystem' method='POST'><div class='system-settings'>");
+
+    snprintf(buffer, sizeof(buffer), "<div class='config-grid'><label for='bleName'>BLE Name:</label><input type='text' id='bleName' name='bleName' value='%s' maxlength='31'></div>", bleDeviceName);
+
+    footer += buffer;
+
+    snprintf(buffer, sizeof(buffer), "<div class='config-grid'><label for='apSSID'>WiFi AP SSID:</label><input type='text' id='apSSID' name='apSSID' value='%s' maxlength='31'></div>", apSSID);
+
+    footer += buffer;
+
+    snprintf(buffer, sizeof(buffer), "<div class='config-grid'><label for='apPass'>WiFi AP Pass:</label><input type='text' id='apPass' name='apPass' value='%s' minlength='8' maxlength='63' placeholder='Min 8 chars'></div>", apPassword);
+
+    footer += buffer;
+
+    footer += F("<p style='font-size:0.8em;text-align:center;color:#ffccaa;margin-top:10px;'>Warning: Saving system settings will reboot the device.</p>");
+
+    footer += F("<button type='submit'>Save System & Reboot</button></div></form>");
+
+
+
+    footer += F("<div class='info'><p>Connect to Wi-Fi: <strong>");
+
+    footer += ssid;
+
+    footer += F("</strong></p><p>Password: <strong>");
+
+    footer += password;
+
+    footer += F("</strong></p><p>Open in browser: <strong>http://");
+
+    footer += WiFi.softAPIP().toString();
+
+    footer += F("</strong></p><p style='margin-top:10px;'><a href='/export'>Export All Presets</a> &nbsp; | &nbsp; <a href='/import'>Import All Presets</a></p>");
+
+    footer += F("<p>Preset changes are saved automatically.</p></div></div></body></html>");
+
+
+
+    server.sendContent(footer);
+
+    server.sendContent(""); // Final empty packet
+
+}
+
+
+
+void handleSave() {
+
+    bool changed = false;
+
+    int preset = server.hasArg("preset") ? server.arg("preset").toInt() : 0;
+
+
+
+    if(server.hasArg("presetName")) {
+
+        String newName = server.arg("presetName");
+
+        if(strncmp(presetNames[preset], newName.c_str(), 20) != 0) {
+
+            strncpy(presetNames[preset], newName.c_str(), 20);
+
+            presetNames[preset][20] = '\0';
+
+            changed = true;
+
+        }
+
+    }
+
+
+
+    for (int t = 0; t < NUM_BUTTONS; t++) {
+
+        char p_t[8]; snprintf(p_t, sizeof(p_t), "p%dt%d", preset, t);
+
+        ButtonConfig &config = buttonConfigs[preset][t];
+
+
+
+        if(server.hasArg(String(p_t)+"_name")) {
+
+            String newName = server.arg(String(p_t)+"_name");
+
+            if(strncmp(config.name, newName.c_str(), 20) != 0) {
+
+                strncpy(config.name, newName.c_str(), 20);
+
+                config.name[20] = '\0';
+
+                changed = true;
+
+            }
+
+        }
+
+
+
+        bool newIsAlternate = server.hasArg(String(p_t) + "_alt");
+
+        if(config.isAlternate != newIsAlternate) { config.isAlternate = newIsAlternate; changed = true; }
+
+
+
+        char id_a[12]; snprintf(id_a, sizeof(id_a), "%s_a", p_t);
+
+        MidiMessage &msgA = config.messageA;
+
+        MidiCommandType newTypeA=parseCommandType(server.arg(String(id_a)+"_type"));
+
+        byte newChA=server.arg(String(id_a)+"_ch").toInt();
+
+        byte newD1A=server.arg(String(id_a)+"_d1").toInt();
+
+        byte newD2A=server.arg(String(id_a)+"_d2").toInt();
+
+        byte newRgbA[3]; hexToRgb(server.arg(String(id_a)+"_color"), newRgbA);
+
+        if(msgA.type!=newTypeA||msgA.channel!=newChA||msgA.data1!=newD1A||msgA.data2!=newD2A||memcmp(msgA.rgb,newRgbA,3)!=0){
+
+            msgA={newTypeA,newChA,newD1A,newD2A,{newRgbA[0],newRgbA[1],newRgbA[2]}}; changed=true;
+
+        }
+
+
+
+        if(newIsAlternate) {
+
+            char id_b[12]; snprintf(id_b, sizeof(id_b), "%s_b", p_t);
+
+            MidiMessage &msgB = config.messageB;
+
+            MidiCommandType newTypeB=parseCommandType(server.arg(String(id_b)+"_type"));
+
+            byte newChB=server.arg(String(id_b)+"_ch").toInt();
+
+            byte newD1B=server.arg(String(id_b)+"_d1").toInt();
+
+            byte newD2B=server.arg(String(id_b)+"_d2").toInt();
+
+            byte newRgbB[3]; hexToRgb(server.arg(String(id_b)+"_color"), newRgbB);
+
+            if(msgB.type!=newTypeB||msgB.channel!=newChB||msgB.data1!=newD1B||msgB.data2!=newD2B||memcmp(msgB.rgb,newRgbB,3)!=0){
+
+                msgB={newTypeB,newChB,newD1B,newD2B,{newRgbB[0],newRgbB[1],newRgbB[2]}}; changed=true;
+
+            }
+
+        }
+
+    }
+
+
+
+    String responseHTML = F("<!DOCTYPE html><html><head><meta http-equiv='refresh' content='2;url=/?preset=");
+
+    responseHTML += String(preset);
+
+    responseHTML += F("'><title>Save Status</title><style>body{font-family:Inter,sans-serif;background-color:#1a1a2e;color:#e0e0e0;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center;}.message-box{background-color:#2a2a4a;padding:30px;border-radius:12px;}h1{color:#8d8dff;}</style></head><body><div class='message-box'>");
+
+    if (changed) {
+
+        displayOLED();
+
+        updateLeds();
+
+        savePresets();
+
+        responseHTML += F("<h1>Configuration Updated and Saved!</h1><p>Redirecting...</p>");
+
+    } else {
+
+        responseHTML += F("<h1>No Changes Detected.</h1><p>Redirecting...</p>");
+
+    }
+
+    responseHTML += F("</div></body></html>");
+
+    server.send(200, "text/html", responseHTML);
+
+}
+
+
+
+void handleSaveSystem() {
+
+    bool changed = false;
+
+    if(server.hasArg("bleName")) {
+
+        String newName = server.arg("bleName");
+
+        if(strncmp(bleDeviceName, newName.c_str(), 31) != 0) {
+
+            strncpy(bleDeviceName, newName.c_str(), 31);
+
+            bleDeviceName[31] = '\0';
+
+            changed = true;
+
+        }
+
+    }
+
+    if(server.hasArg("apSSID")) {
+
+        String newSSID = server.arg("apSSID");
+
+        if(strncmp(apSSID, newSSID.c_str(), 31) != 0) {
+
+            strncpy(apSSID, newSSID.c_str(), 31);
+
+            apSSID[31] = '\0';
+
+            changed = true;
+
+        }
+
+    }
+
+    if(server.hasArg("apPass")) {
+
+        String newPass = server.arg("apPass");
+
+        if(newPass.length() >= 8 && newPass.length() < 64 && strncmp(apPassword, newPass.c_str(), 63) != 0) {
+
+            strncpy(apPassword, newPass.c_str(), 63);
+
+            apPassword[63] = '\0';
+
+            changed = true;
+
+        }
+
+    }
+
+
+
+    if (changed) {
+
+        saveSystemSettings();
+
+        rebootESP("Settings Saved!");
+
+    } else {
+
+        rebootESP("No Changes.");
+
+    }
+
+}
+
+
+
+void rebootESP(String message) {
+
+    String html = F("<!DOCTYPE html><html><head><title>Rebooting...</title><style>body{font-family:Inter,sans-serif;background-color:#1a1a2e;color:#e0e0e0;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center;}.message-box{background-color:#2a2a4a;padding:30px;border-radius:12px;}h1{color:#8d8dff;}</style></head><body><div class='message-box'><h1>");
+
+    html += message;
+
+    html += F("</h1><p>Device is rebooting. Please reconnect to the new Wi-Fi AP if you changed it.</p></div></body></html>");
+
+    server.send(200, "text/html", html);
+
+    delay(1000);
+
+    ESP.restart();
+
+}
+
+
+
+
+
+// --- Import/Export Handlers ---
+
+void handleExport() {
+
+    StaticJsonDocument<8192> doc;
+
+    doc["version"] = CURRENT_PREFERENCES_VERSION;
+
+    JsonArray presets = doc.createNestedArray("presets");
+
+
+
+    for (int p = 0; p < 4; p++) {
+
+        JsonObject pObj = presets.createNestedObject();
+
+        pObj["name"] = presetNames[p];
+
+        JsonArray bArray = pObj.createNestedArray("buttons");
+
+        for (int t = 0; t < NUM_BUTTONS; t++) {
+
+            JsonObject bObj = bArray.createNestedObject();
+
+            const ButtonConfig& config = buttonConfigs[p][t];
+
+            bObj["name"] = config.name;
+
+            bObj["isAlternate"] = config.isAlternate;
+
+
+
+            JsonObject msgA = bObj.createNestedObject("messageA");
+
+            msgA["type"] = getCommandTypeString(config.messageA.type);
+
+            msgA["channel"] = config.messageA.channel;
+
+            msgA["data1"] = config.messageA.data1;
+
+            msgA["data2"] = config.messageA.data2;
+
+            char hexColor[8];
+
+            rgbToHex(hexColor, sizeof(hexColor), config.messageA.rgb);
+
+            msgA["color"] = hexColor;
+
+
+
+            JsonObject msgB = bObj.createNestedObject("messageB");
+
+            msgB["type"] = getCommandTypeString(config.messageB.type);
+
+            msgB["channel"] = config.messageB.channel;
+
+            msgB["data1"] = config.messageB.data1;
+
+            msgB["data2"] = config.messageB.data2;
+
+            rgbToHex(hexColor, sizeof(hexColor), config.messageB.rgb);
+
+            msgB["color"] = hexColor;
+
+        }
+
+    }
+
+
+
+    String jsonOutput;
+
+    serializeJson(doc, jsonOutput);
+
+    server.sendHeader("Content-Disposition", "attachment; filename=\"midi_presets.json\"");
+
+    server.send(200, "application/json", jsonOutput);
+
+}
+
+
+
+void handleImport() {
+
+    String html = F("<!DOCTYPE html><html><head><title>Import Presets</title>");
+
+    html += F("<style>body{font-family:Inter,sans-serif;background-color:#1a1a2e;color:#e0e0e0;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center;}.container{background-color:#2a2a4a;padding:30px;border-radius:12px;width:80%;max-width:600px;}h1{color:#8d8dff;}textarea{width:100%;box-sizing:border-box;background-color:#3a3a5a;color:#e0e0e0;border:1px solid #5a5a7a;border-radius:8px;padding:10px;height:200px;margin-top:15px;font-family:monospace;}button{width:100%;padding:10px 18px;background-color:#8d8dff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:1em;margin-top: 15px;font-weight:bold;} button:hover{background-color:#7a7aff;}</style>");
+
+    html += F("</head><body><div class='container'><h1>Import Presets</h1><p>Paste your JSON content below. This will <strong style='color:#ffccaa;'>OVERWRITE</strong> all presets.</p>");
+
+    html += F("<form action='/import' method='POST'>");
+
+    html += F("<textarea name='json_data' placeholder='Paste midi_presets.json content here...'></textarea>");
+
+    html += F("<button type='submit'>Import & Save All Presets</button></form>");
+
+    html += F("<p style='margin-top:15px;font-size:0.9em;'><a href='/' style='color:#aaaaff;'>Cancel and go back</a></p>");
+
+    html += F("</div></body></html>");
+
+    server.send(200, "text/html", html);
+
+}
+
+
+
+void handleImportUpload() {
+
+    if (!server.hasArg("json_data")) {
+
+        server.send(400, "text/plain", "Bad Request: No json_data");
+
+        return;
+
+    }
+
+
+
+    String jsonData = server.arg("json_data");
+
+    StaticJsonDocument<8192> doc;
+
+    DeserializationError error = deserializeJson(doc, jsonData);
+
+
+
+    if (error) {
+
+        server.send(400, "text/plain", "JSON Deserialization Failed: " + String(error.c_str()));
+
+        return;
+
+    }
+
+
+
+    JsonArray presets = doc["presets"];
+
+    if (presets.isNull() || presets.size() != 4) {
+
+        server.send(400, "text/plain", "Invalid JSON structure or preset count != 4");
+
+        return;
+
+    }
+
+
+
+    for (int p = 0; p < 4; p++) {
+
+        JsonObject pObj = presets[p];
+
+        strncpy(presetNames[p], pObj["name"] | "Imported Preset", 20);
+
+        presetNames[p][20] = '\0';
+
+
+
+        JsonArray bArray = pObj["buttons"];
+
+        if (bArray.isNull() || bArray.size() != NUM_BUTTONS) {
+
+             continue;
+
+        }
+
+
+
+        for (int t = 0; t < NUM_BUTTONS; t++) {
+
+            JsonObject bObj = bArray[t];
+
+            ButtonConfig& config = buttonConfigs[p][t];
+
+
+
+            strncpy(config.name, bObj["name"] | "Imported Btn", 20);
+
+            config.name[20] = '\0';
+
+            config.isAlternate = bObj["isAlternate"] | false;
+
+            config.nextIsB = false;
+
+
+
+            JsonObject msgA = bObj["messageA"];
+
+            config.messageA.type = parseCommandType(msgA["type"] | "OFF");
+
+            config.messageA.channel = msgA["channel"] | 1;
+
+            config.messageA.data1 = msgA["data1"] | 0;
+
+            config.messageA.data2 = msgA["data2"] | 0;
+
+            hexToRgb(msgA["color"] | "#000000", config.messageA.rgb);
+
+
+
+            JsonObject msgB = bObj["messageB"];
+
+            config.messageB.type = parseCommandType(msgB["type"] | "OFF");
+
+            config.messageB.channel = msgB["channel"] | 1;
+
+            config.messageB.data1 = msgB["data1"] | 0;
+
+            config.messageB.data2 = msgB["data2"] | 0;
+
+            hexToRgb(msgB["color"] | "#000000", config.messageB.rgb);
+
+        }
+
+    }
+
+
+
+    savePresets();
+
+
+
+    String responseHTML = F("<!DOCTYPE html><html><head><meta http-equiv='refresh' content='2;url=/'><title>Import Success</title><style>body{font-family:Inter,sans-serif;background-color:#1a1a2e;color:#e0e0e0;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center;}.message-box{background-color:#2a2a4a;padding:30px;border-radius:12px;}h1{color:#8d8dff;}</style></head><body><div class='message-box'>");
+
+    responseHTML += F("<h1>Import Successful!</h1><p>Presets have been overwritten and saved. Redirecting...</p>");
+
+    responseHTML += F("</div></body></html>");
+
+    server.send(200, "text/html", responseHTML);
+
+}

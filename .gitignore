@@ -1,0 +1,68 @@
+# Arduino/ESP32 Build Artifacts
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# Arduino IDE
+.build/
+build/
+.development/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# VS Code
+.vscode/
+.theia/
+
+# Compilation
+*.o
+*.a
+*.d
+*.su
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary Files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# PowerShell
+*.ps1~
+
+# IDE specific
+*.code-workspace
+.idea/
+
+# Personal/Test Files
+test_*
+debug_*
+scratch_*
+
+# Logs
+*.log
+
+# Reference files (not part of project)
+pocketedit.*
+Sysex*.txt
+*current\ code.txt
+
+# Archive (old versions kept for reference)
+archive/
+!archive/README.md

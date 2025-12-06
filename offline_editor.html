@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1'>
+    <title>Chocotone MIDI Editor - OFFLINE</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #bb86fc;
+            --input-bg: #2c2c2c;
+            --border-color: #333;
+            --success-color: #03dac6;
+            --spacing: 15px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 300;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            font-size: 1.8rem;
+        }
+
+        .subline {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Navigation */
+        .nav {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: var(--spacing);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: var(--spacing);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: #444;
+        }
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        h4 {
+            margin: 0;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        /* Form Fields */
+        .f {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 8px;
+            transition: opacity 0.3s;
+        }
+
+        label {
+            font-size: 0.9em;
+            color: #bbb;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent-color);
+        }
+
+        input[type="color"] {
+            padding: 0;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            accent-color: var(--accent-color);
+        }
+
+        /* Section Headers */
+        .msg-header {
+            background: #252525;
+            padding: 6px 10px;
+            margin: 12px -15px 12px -15px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        /* Buttons */
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #3700b3;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #4e00ff;
+        }
+
+        /* Footer Links */
+        .footer-links {
+            text-align: center;
+            margin: 30px;
+        }
+
+        .footer-links a {
+            color: var(--accent-color);
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Disabled State */
+        .disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* System Settings Spacing Fix */
+        .card>h4 {
+            margin-bottom: 15px;
+        }
+
+        /* MOBILE OPTIMIZATIONS */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .card {
+                padding: 10px;
+                border-radius: 8px;
+            }
+
+            .f {
+                grid-template-columns: 1fr;
+                gap: 2px;
+                margin-bottom: 6px;
+            }
+
+            .f label {
+                font-size: 11px;
+            }
+
+            input,
+            select {
+                padding: 4px 6px;
+                font-size: 12px;
+                height: 28px;
+            }
+
+            input[type="color"] {
+                height: 28px;
+            }
+
+            h4 {
+                font-size: 13px;
+            }
+
+            .head {
+                margin-bottom: 8px;
+                padding-bottom: 4px;
+            }
+
+            .msg-header {
+                margin: 8px -10px 8px -10px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+
+            .card>h4 {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+    <script>
+        // --- DATA STRUCTURES ---
+        var currentPreset = 0; // Default to Preset 1 (Index 0)
+        var config = {
+            presets: [
+                { name: "Note", buttons: [] },
+                { name: "STOMP", buttons: [] },
+                { name: "BANKS 1-8", buttons: [] },
+                { name: "BANKS 9-16", buttons: [] }
+            ],
+            system: { ble: "ESP32 MIDI Controller", ssid: "ESP32_MIDI_Config", pass: "12345678" }
+        };
+
+        // --- POPULATE DEFAULT PRESETS (From DefaultPresets.h) ---
+
+        // Helper to create button config
+        function createBtn(name, alt, typeA, chA, d1A, d2A, rgbA, typeB, chB, d1B, d2B, rgbB) {
+            return {
+                name: name,
+                alt: alt,
+                msgA: { type: typeA, ch: chA, d1: d1A, d2: d2A, rgb: rgbA },
+                msgB: { type: typeB, ch: chB, d1: d1B, d2: d2B, rgb: rgbB }
+            };
+        }
+
+        // Preset 0: "Note"
+        config.presets[0].buttons = [
+            createBtn("C2", false, "NOTE_MOMENTARY", 1, 36, 127, "#fd0000", "CC", 1, 10, 127, "#ff0000"),
+            createBtn("C#2", false, "NOTE_MOMENTARY", 1, 37, 127, "#fd0000", "CC", 1, 11, 127, "#ff0000"),
+            createBtn("D2", false, "NOTE_MOMENTARY", 1, 38, 127, "#fd0000", "CC", 1, 12, 127, "#ff0000"),
+            createBtn("D#2", false, "NOTE_MOMENTARY", 1, 39, 127, "#fd0000", "CC", 1, 13, 127, "#ff0000"),
+            createBtn("E2", false, "NOTE_MOMENTARY", 1, 40, 127, "#fd0000", "CC", 1, 14, 127, "#ff0000"),
+            createBtn("F2", false, "NOTE_MOMENTARY", 1, 41, 127, "#fd0000", "CC", 1, 15, 127, "#ff0000"),
+            createBtn("F#2", false, "NOTE_MOMENTARY", 1, 42, 127, "#fd0000", "CC", 1, 16, 127, "#ff0000"),
+            createBtn("G2", false, "NOTE_MOMENTARY", 1, 43, 127, "#fd0000", "CC", 1, 17, 127, "#ff0000")
+        ];
+
+        // Preset 1: "STOMP"
+        config.presets[1].buttons = [
+            createBtn("NR", true, "CC", 1, 43, 127, "#ffffff", "CC", 1, 43, 0, "#ffffff"),
+            createBtn("FX1", true, "CC", 1, 44, 127, "#3f67ff", "CC", 1, 44, 0, "#3f67ff"),
+            createBtn("DRV", true, "CC", 1, 45, 127, "#fc2c00", "CC", 1, 45, 0, "#ff0000"),
+            createBtn("TAP", false, "TAP_TEMPO", 1, 13, 127, "#ffffff", "CC", 1, 13, 127, "#ff0000"),
+            createBtn("EQ", true, "CC", 1, 48, 127, "#0af500", "CC", 1, 48, 0, "#0af500"),
+            createBtn("FX2", true, "CC", 1, 49, 127, "#11f3ff", "CC", 1, 49, 0, "#11f3ff"),
+            createBtn("DLY", true, "CC", 1, 50, 127, "#332aff", "CC", 1, 50, 0, "#332aff"),
+            createBtn("RVB", true, "CC", 1, 51, 127, "#8400f7", "CC", 1, 51, 0, "#8400f7")
+        ];
+
+        // Preset 2: "BANKS 1-8"
+        config.presets[2].buttons = [
+            createBtn("B1", false, "CC", 1, 1, 1, "#ffffff", "CC", 1, 10, 127, "#ff0000"),
+            createBtn("B2", false, "CC", 1, 1, 2, "#ffffff", "CC", 1, 11, 127, "#ff0000"),
+            createBtn("B3", false, "CC", 1, 1, 3, "#ffffff", "CC", 1, 12, 127, "#ff0000"),
+            createBtn("B4", false, "CC", 1, 1, 4, "#ffffff", "CC", 1, 13, 127, "#ff0000"),
+            createBtn("B5", false, "CC", 1, 1, 5, "#0af500", "CC", 1, 14, 127, "#ff0000"),
+            createBtn("B6", false, "CC", 1, 1, 6, "#0af500", "CC", 1, 15, 127, "#ff0000"),
+            createBtn("B7", false, "CC", 1, 1, 7, "#0af500", "CC", 1, 16, 127, "#ff0000"),
+            createBtn("B8", false, "CC", 1, 1, 8, "#0af500", "CC", 1, 17, 127, "#ff0000")
+        ];
+
+        // Preset 3: "BANKS 9-16"
+        config.presets[3].buttons = [
+            createBtn("B9", false, "CC", 1, 1, 9, "#11f3ff", "CC", 1, 10, 127, "#ff0000"),
+            createBtn("B10", false, "CC", 1, 1, 10, "#11f3ff", "CC", 1, 11, 127, "#ff0000"),
+            createBtn("B11", false, "CC", 1, 1, 11, "#11f3ff", "CC", 1, 12, 127, "#ff0000"),
+            createBtn("B12", false, "CC", 1, 1, 12, "#11f3ff", "CC", 1, 12, 127, "#ff0000"), // Note: MsgB is copy of A in source
+            createBtn("B13", false, "CC", 1, 1, 13, "#fe63ff", "CC", 1, 14, 127, "#ff0000"),
+            createBtn("B14", false, "CC", 1, 1, 14, "#fe63ff", "CC", 1, 15, 127, "#ff0000"),
+            createBtn("B15", false, "CC", 1, 1, 15, "#fe63ff", "CC", 1, 16, 127, "#ff0000"),
+            createBtn("B16", false, "CC", 1, 1, 16, "#fe63ff", "CC", 1, 17, 127, "#ff0000")
+        ];
+
+        // --- UI LOGIC ---
+
+        function toggleAlt(btn, id) {
+            var alt = document.getElementById('alt_' + id);
+            alt.style.display = alt.style.display == 'none' ? 'block' : 'none';
+        }
+
+        function toggleFields(select) {
+            var baseName = select.name.replace('_type', '');
+            var isTap = (select.value === 'TAP_TEMPO');
+            var fields = ['ch', 'd1', 'd2'];
+            fields.forEach(function (suffix) {
+                var input = document.getElementsByName(baseName + '_' + suffix)[0];
+                if (input) {
+                    var row = input.parentElement;
+                    if (isTap) {
+                        row.classList.add('disabled');
+                        input.disabled = true;
+                    } else {
+                        row.classList.remove('disabled');
+                        input.disabled = false;
+                    }
+                }
+            });
+        }
+
+        function renderUI() {
+            // Load System Settings
+            document.getElementById('sys_ble').value = config.system.ble;
+            document.getElementById('sys_ssid').value = config.system.ssid;
+            document.getElementById('sys_pass').value = config.system.pass;
+
+            // Load Preset Name
+            document.getElementById('preset_name').value = config.presets[currentPreset].name;
+            document.getElementById('preset_select').value = currentPreset;
+
+            // Load Buttons
+            var container = document.getElementById('grid_container');
+            container.innerHTML = '';
+
+            var btns = config.presets[currentPreset].buttons;
+            for (var i = 0; i < 8; i++) {
+                var b = btns[i];
+                var html = `
+        <div class='card'>
+            <div class='head'><h4>Button ${i + 1}</h4><label><input type='checkbox' name='b${i}_alt' style='width:auto' onchange='toggleAlt(this,"b${i}")' ${b.alt ? 'checked' : ''}> Alt</label></div>
+            <div class='f'><label>Label:</label><input name='b${i}_n' value='${b.name}' maxlength='20'></div>
+            <div class='msg-header'>PRIMARY MSG</div>
+            <div class='f'><label>Type:</label><select name='b${i}_a_type' onchange='toggleFields(this)'>${renderOptions(b.msgA.type)}</select></div>
+            <div class='f'><label>Ch:</label><input type='number' name='b${i}_a_ch' min='1' max='16' value='${b.msgA.ch}'></div>
+            <div class='f'><label>D1:</label><input type='number' name='b${i}_a_d1' min='0' max='127' value='${b.msgA.d1}'></div>
+            <div class='f'><label>D2:</label><input type='number' name='b${i}_a_d2' min='0' max='127' value='${b.msgA.d2}'></div>
+            <div class='f'><label>RGB:</label><input type='color' name='b${i}_a_rgb' value='${b.msgA.rgb}'></div>
+            
+            <div id='alt_b${i}' style='display:${b.alt ? 'block' : 'none'};margin-top:15px'>
+                <div class='msg-header'>ALTERNATE MSG</div>
+                <div class='f'><label>Type:</label><select name='b${i}_b_type' onchange='toggleFields(this)'>${renderOptions(b.msgB.type)}</select></div>
+                <div class='f'><label>Ch:</label><input type='number' name='b${i}_b_ch' min='1' max='16' value='${b.msgB.ch}'></div>
+                <div class='f'><label>D1:</label><input type='number' name='b${i}_b_d1' min='0' max='127' value='${b.msgB.d1}'></div>
+                <div class='f'><label>D2:</label><input type='number' name='b${i}_b_d2' min='0' max='127' value='${b.msgB.d2}'></div>
+                <div class='f'><label>RGB:</label><input type='color' name='b${i}_b_rgb' value='${b.msgB.rgb}'></div>
+            </div>
+        </div>`;
+                container.innerHTML += html;
+            }
+
+            // Re-apply toggleFields logic
+            var selects = document.querySelectorAll('select[name$="_type"]');
+            selects.forEach(function (s) { toggleFields(s); });
+
+            // Attach change listeners to update config object
+            attachListeners();
+        }
+
+        function renderOptions(selected) {
+            var opts = [
+                { v: 'NOTE_MOMENTARY', t: 'Note (Mom)' },
+                { v: 'NOTE_ON', t: 'Note On' },
+                { v: 'NOTE_OFF', t: 'Note Off' },
+                { v: 'CC', t: 'CC' },
+                { v: 'PC', t: 'PC' },
+                { v: 'TAP_TEMPO', t: 'Tap Tempo' }
+            ];
+            return opts.map(o => `<option value='${o.v}' ${o.v === selected ? 'selected' : ''}>${o.t}</option>`).join('');
+        }
+
+        function attachListeners() {
+            var inputs = document.querySelectorAll('input, select');
+            inputs.forEach(function (el) {
+                el.addEventListener('change', function () {
+                    saveState();
+                });
+            });
+        }
+
+        function saveState() {
+            // Save System
+            config.system.ble = document.getElementById('sys_ble').value;
+            config.system.ssid = document.getElementById('sys_ssid').value;
+            config.system.pass = document.getElementById('sys_pass').value;
+
+            // Save Preset Name
+            config.presets[currentPreset].name = document.getElementById('preset_name').value;
+
+            // Save Buttons
+            var btns = config.presets[currentPreset].buttons;
+            for (var i = 0; i < 8; i++) {
+                btns[i].name = document.getElementsByName(`b${i}_n`)[0].value;
+                btns[i].alt = document.getElementsByName(`b${i}_alt`)[0].checked;
+
+                btns[i].msgA.type = document.getElementsByName(`b${i}_a_type`)[0].value;
+                btns[i].msgA.ch = parseInt(document.getElementsByName(`b${i}_a_ch`)[0].value);
+                btns[i].msgA.d1 = parseInt(document.getElementsByName(`b${i}_a_d1`)[0].value);
+                btns[i].msgA.d2 = parseInt(document.getElementsByName(`b${i}_a_d2`)[0].value);
+                btns[i].msgA.rgb = document.getElementsByName(`b${i}_a_rgb`)[0].value;
+
+                btns[i].msgB.type = document.getElementsByName(`b${i}_b_type`)[0].value;
+                btns[i].msgB.ch = parseInt(document.getElementsByName(`b${i}_b_ch`)[0].value);
+                btns[i].msgB.d1 = parseInt(document.getElementsByName(`b${i}_b_d1`)[0].value);
+                btns[i].msgB.d2 = parseInt(document.getElementsByName(`b${i}_b_d2`)[0].value);
+                btns[i].msgB.rgb = document.getElementsByName(`b${i}_b_rgb`)[0].value;
+            }
+        }
+
+        function chgPreset(s) {
+            saveState(); // Ensure current is saved
+            currentPreset = parseInt(s.value);
+            renderUI();
+        }
+
+        // --- IMPORT / EXPORT ---
+
+        function exportJSON() {
+            saveState();
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+            var dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "chocotone_config.json");
+            dlAnchorElem.click();
+        }
+
+        function importJSON() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                var file = e.target.files[0];
+                var reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = readerEvent => {
+                    try {
+                        var content = readerEvent.target.result;
+                        config = JSON.parse(content);
+                        currentPreset = 0; // Reset to first preset
+                        renderUI();
+                        alert("Configuration loaded successfully!");
+                    } catch (err) {
+                        alert("Error loading JSON: " + err);
+                    }
+                }
+            }
+            input.click();
+        }
+
+        window.onload = function () {
+            renderUI();
+        };
+    </script>
+</head>
+
+<body>
+
+    <header>
+        <h1>Chocotone MIDI Editor - OFFLINE</h1>
+        <div class="subline">made by André Solis - 2025 - v1.0</div>
+    </header>
+
+    <div class='nav'><label>Preset:</label><select id='preset_select' onchange='chgPreset(this)'>
+            <option value='0'>Preset 1</option>
+            <option value='1'>Preset 2</option>
+            <option value='2'>Preset 3</option>
+            <option value='3'>Preset 4</option>
+        </select></div>
+
+    <!-- Preset Name -->
+    <div class='card' style='margin-bottom:var(--spacing)'>
+        <div class='f'><label>Name:</label><input id='preset_name' maxlength='20'></div>
+    </div>
+
+    <!-- Grid Container (Populated by JS) -->
+    <div class='grid' id='grid_container'></div>
+
+    <!-- Footer / System Settings -->
+    <div class='card' style='margin-top:20px'>
+        <h4>System Settings</h4>
+        <form onsubmit="return false;">
+            <div class='f'><label style='min-width:60px'>BLE:</label><input id='sys_ble'></div>
+            <div class='f'><label style='min-width:60px'>SSID:</label><input id='sys_ssid'></div>
+            <div class='f'><label style='min-width:60px'>Pass:</label><input id='sys_pass'></div>
+            <!-- Save button in offline mode just saves to JS state, which is auto-handled, but we keep it for visual consistency -->
+            <button style='background:#17a2b8;margin-top:10px'
+                onclick='saveState(); alert("Settings saved to memory. Export JSON to save to file.")'>Save System
+                Settings</button>
+        </form>
+    </div>
+
+    <div class='footer-links'>
+        <a onclick='exportJSON()'>Export JSON</a>
+        <a onclick='importJSON()'>Import JSON</a>
+    </div>
+
+</body>
+
+</html>

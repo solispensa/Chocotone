@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chocotone Features</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=VT323&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f12;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .slide-container {
+            width: 100%;
+            max-width: 1600px;
+            background: linear-gradient(135deg, #1a1a20 0%, #0f0f12 100%);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            gap: 20px;
+        }
+
+        /* Desktop: Fixed aspect ratio */
+        @media (min-width: 768px) {
+            .slide-container {
+                height: 900px;
+                aspect-ratio: 16 / 9;
+            }
+        }
+
+        /* Mobile: Allow scrolling */
+        @media (max-width: 767px) {
+            body {
+                align-items: flex-start;
+            }
+
+            .slide-container {
+                min-height: 100vh;
+                padding: 20px;
+                gap: 16px;
+            }
+        }
+
+        /* Background Accents */
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            top: -200px;
+            right: -200px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-glow-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+            bottom: -100px;
+            left: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Header Layout */
+        header {
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 220px;
+        }
+
+        @media (max-width: 767px) {
+            header {
+                grid-template-columns: 1fr;
+                height: auto;
+                gap: 16px;
+            }
+        }
+
+        .header-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 767px) {
+            .header-box {
+                padding: 24px;
+                border-radius: 16px;
+            }
+        }
+
+        .header-image-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        @media (max-width: 767px) {
+            .header-image-box {
+                height: 200px;
+                border-radius: 16px;
+            }
+        }
+
+        .header-image-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        h1 {
+            font-size: 72px;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(to right, #fff, #a78bfa);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        @media (max-width: 767px) {
+            h1 {
+                font-size: 48px;
+            }
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #9ca3af;
+            font-weight: 400;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 767px) {
+            .subtitle {
+                font-size: 18px;
+            }
+        }
+
+        .version-tag {
+            margin-top: 16px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        @media (max-width: 767px) {
+            .version-tag {
+                font-size: 12px;
+                margin-top: 12px;
+            }
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            flex-grow: 1;
+            z-index: 1;
+        }
+
+        @media (max-width: 767px) {
+            .bento-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                gap: 16px;
+                flex-grow: 0;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 12px;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        @media (max-width: 767px) {
+            .card {
+                padding: 20px;
+                border-radius: 16px;
+                min-height: 150px;
+            }
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        @media (max-width: 767px) {
+            .card:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 45px;
+            display: inline-block;
+        }
+
+        @media (max-width: 767px) {
+            .card-icon {
+                font-size: 36px;
+                margin-bottom: 12px;
+            }
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            color: #fff;
+        }
+
+        @media (max-width: 767px) {
+            .card-title {
+                font-size: 20px;
+            }
+        }
+
+        .card-desc {
+            font-size: 16px;
+            color: #9ca3af;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        @media (max-width: 767px) {
+            .card-desc {
+                font-size: 14px;
+            }
+        }
+
+        /* Accents */
+        .accent-purple {
+            color: #a78bfa;
+        }
+
+        .accent-pink {
+            color: #f472b6;
+        }
+
+        .accent-blue {
+            color: #60a5fa;
+        }
+
+        .accent-green {
+            color: #4ade80;
+        }
+
+        .accent-orange {
+            color: #fb923c;
+        }
+
+        /* Visual Elements */
+        .buttons-visual {
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        @media (max-width: 767px) {
+            .buttons-visual {
+                top: 20px;
+                right: 20px;
+                gap: 6px;
+            }
+        }
+
+        .btn-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #333;
+        }
+
+        @media (max-width: 767px) {
+            .btn-dot {
+                width: 10px;
+                height: 10px;
+            }
+        }
+
+        .btn-dot.active {
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .oled-visual {
+            background: #000;
+            border: 2px solid #222;
+            border-radius: 6px;
+            padding: 4px 6px;
+            font-family: 'VT323', monospace;
+            color: #00ffff;
+            text-shadow: 0 0 2px rgba(0, 255, 255, 0.6);
+            font-size: 12px;
+            line-height: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 80px;
+            width: 120px;
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05);
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 767px) {
+            .oled-visual {
+                height: 70px;
+                width: 100px;
+                font-size: 10px;
+                top: 20px;
+                right: 20px;
+            }
+        }
+
+        .oled-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .oled-center-group {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2px 0;
+        }
+
+        .oled-preset {
+            font-size: 20px;
+            letter-spacing: 1px;
+            margin-bottom: 0;
+            transform: scaleY(0.9);
+        }
+
+        @media (max-width: 767px) {
+            .oled-preset {
+                font-size: 16px;
+            }
+        }
+
+        .oled-bpm {
+            font-size: 12px;
+            transform: scaleY(0.9);
+        }
+
+        @media (max-width: 767px) {
+            .oled-bpm {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container">
+        <div class="bg-glow"></div>
+        <div class="bg-glow-2"></div>
+
+        <header>
+            <div class="header-box">
+                <h1>CHOCOTONE</h1>
+                <div class="subtitle">Advanced BLE MIDI Controller</div>
+                <div class="version-tag">Made by André Solis Albuquerque - 2025</div>
+            </div>
+            <div class="header-image-box">
+                <img src="chocotone_header.png" alt="Chocotone Controller">
+            </div>
+        </header>
+
+        <div class="bento-grid">
+            <!-- Card 1: 8 Buttons -->
+            <div class="card">
+                <div class="card-icon accent-pink">🎛️</div>
+                <h3 class="card-title">8 Programmable Buttons</h3>
+                <p class="card-desc">Fully configurable MIDI messages with RGB LED feedback for instant visual status.
+                </p>
+                <div class="buttons-visual">
+                    <div class="btn-dot active" style="background: #f472b6; color: #f472b6;"></div>
+                    <div class="btn-dot" style="background: #333;"></div>
+                    <div class="btn-dot active" style="background: #60a5fa; color: #60a5fa;"></div>
+                    <div class="btn-dot" style="background: #333;"></div>
+                    <div class="btn-dot active" style="background: #4ade80; color: #4ade80;"></div>
+                    <div class="btn-dot" style="background: #333;"></div>
+                    <div class="btn-dot" style="background: #333;"></div>
+                    <div class="btn-dot active" style="background: #fb923c; color: #fb923c;"></div>
+                </div>
+            </div>
+
+            <!-- Card 2: BLE MIDI -->
+            <div class="card">
+                <div class="card-icon accent-blue">⚡</div>
+                <h3 class="card-title">BLE MIDI</h3>
+                <p class="card-desc">Wireless connectivity. Auto-connects to Sonicake Pocket Master & other BLE devices.
+                </p>
+            </div>
+
+            <!-- Card 3: OLED Display -->
+            <div class="card">
+                <div class="card-icon accent-green">📟</div>
+                <h3 class="card-title">OLED Display</h3>
+                <p class="card-desc">128x64 pixel screen for real-time status, presets, and menu navigation.</p>
+                <div class="oled-visual">
+                    <div class="oled-row">
+                        <span>EQ</span><span>FX2</span><span>DLY</span><span>RVB</span>
+                    </div>
+                    <div class="oled-center-group">
+                        <div class="oled-preset">STOMP</div>
+                        <div class="oled-bpm">BPM:83.6</div>
+                    </div>
+                    <div class="oled-row">
+                        <span>SPM:Y</span><span>WiFi:N</span>
+                    </div>
+                    <div class="oled-row">
+                        <span>NR</span><span>FX1</span><span>DRV</span><span>TAP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Rotary Encoder -->
+            <div class="card">
+                <div class="card-icon accent-purple">🔄</div>
+                <h3 class="card-title">Rotary Encoder</h3>
+                <p class="card-desc">Intuitive navigation and precise parameter adjustment with push-button.</p>
+            </div>
+
+            <!-- Card 5: 4 Presets -->
+            <div class="card">
+                <div class="card-icon accent-pink">💾</div>
+                <h3 class="card-title">4 Presets</h3>
+                <p class="card-desc">Store different configurations for banks or stomp mode. Easy switching between
+                    setups.</p>
+            </div>
+
+            <!-- Card 6: Rechargeable Battery -->
+            <div class="card">
+                <div class="card-icon accent-green">🔋</div>
+                <h3 class="card-title">Rechargeable Battery</h3>
+                <p class="card-desc">Built-in rechargeable battery for portable operation without external power.</p>
+            </div>
+
+            <!-- Card 7: Tap Tempo -->
+            <div class="card">
+                <div class="card-icon accent-orange">🥁</div>
+                <h3 class="card-title">Tap Tempo</h3>
+                <p class="card-desc">Built-in tap tempo with multiple rhythm patterns (1/4, 1/8, 1/8d, 1/2).</p>
+                <div class="oled-visual">
+                    <div class="oled-row">
+                        <span>TAP TEMPO</span><span>500ms</span>
+                    </div>
+                    <div class="oled-center-group">
+                        <div class="oled-preset">120.0</div>
+                    </div>
+                    <div class="oled-row">
+                        <span>Pattern: 1/4</span><span>500ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 8: Web Config -->
+            <div class="card">
+                <div class="card-icon accent-purple">🌐</div>
+                <h3 class="card-title">Wireless Config</h3>
+                <p class="card-desc">Host a local web server to configure mappings, name presets, and manage settings.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
