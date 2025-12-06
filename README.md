@@ -10,7 +10,7 @@
 
 ---
 
-![Chocotone Slide](Chocotone Slide Screenshot.png)
+![Chocotone Slide](chocotone_slide.png)
 
 ## Features
 
@@ -34,7 +34,7 @@
 - **NVS Storage** - All settings persist across power cycles
 - **OTA Ready** - Architecture supports over-the-air updates
 
-![Chocotone Editor](Chocotone Editor Screenshot.png)
+![Chocotone Editor](chocotone_editor.png)
 
 ---
 
