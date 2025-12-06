@@ -32,7 +32,6 @@
 - **Web Interface** - Edit MIDI mappings, button names, and settings via browser
 - **Export/Import** - Backup and restore configurations as JSON
 - **NVS Storage** - All settings persist across power cycles
-- **OTA Ready** - Architecture supports over-the-air updates
 
 ![Chocotone Editor](chocotone_editor.png)
 
