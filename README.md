@@ -52,6 +52,8 @@
 
 See [docs/WIRING.md](docs/WIRING.md) for detailed wiring diagrams.
 
+![Wiring Schematic](docs/wiring_schematic.png)
+
 ```
 Component          | ESP32 Pin | Notes
 -------------------|-----------|------------------
