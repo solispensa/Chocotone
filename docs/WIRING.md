@@ -21,24 +21,22 @@ Visual pin connection guide for the ESP32 MIDI Controller.
 | | VCC | 5V | Red |
 | | GND | GND | Black |
 | | DIN | GPIO 5 | Orange |
-| **Button 1** | One side | GPIO 27 | - |
+| **Button 1** | One side | GPIO 14 | - |
 | | Other side | GND | Black |
-| **Button 2** | One side | GPIO 14 | - |
+| **Button 2** | One side | GPIO 27 | - |
 | | Other side | GND | Black |
-| **Button 3** | One side | GPIO 12 | - |
+| **Button 3** | One side | GPIO 26 | - |
 | | Other side | GND | Black |
-| **Button 4** | One side | GPIO 13 | - |
+| **Button 4** | One side | GPIO 25 | - |
 | | Other side | GND | Black |
-| **Button 5** | One side | GPIO 15 | - |
+| **Button 5** | One side | GPIO 33 | - |
 | | Other side | GND | Black |
-| **Button 6** | One side | GPIO 2 | - |
+| **Button 6** | One side | GPIO 32 | - |
 | | Other side | GND | Black |
-| **Button 7** | One side | GPIO 34 | - |
+| **Button 7** | One side | GPIO 16 | - |
 | | Other side | GND | Black |
-| | **10kΩ to 3.3V** | **Required** | **Red** |
-| **Button 8** | One side | GPIO 35 | - |
+| **Button 8** | One side | GPIO 17 | - |
 | | Other side | GND | Black |
-| | **10kΩ to 3.3V** | **Required** | **Red** |
 
 ## GPIO Pin Layout (ESP32-DevKitC)
 

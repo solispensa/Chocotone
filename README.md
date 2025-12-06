@@ -66,18 +66,15 @@ Encoder A          | GPIO 18   |
 Encoder B          | GPIO 19   | 
 Encoder Button     | GPIO 23   | INPUT_PULLUP
 NeoPixel Data      | GPIO 5    | 
-Button 1           | GPIO 27   | INPUT_PULLUP
-Button 2           | GPIO 14   | INPUT_PULLUP
-Button 3           | GPIO 12   | INPUT_PULLUP
-Button 4           | GPIO 13   | INPUT_PULLUP
-Button 5           | GPIO 15   | INPUT_PULLUP
-Button 6           | GPIO 2    | INPUT_PULLUP
-Button 7           | GPIO 34   | INPUT only
-Button 8           | GPIO 35   | INPUT only
+Button 1           | GPIO 14   | INPUT_PULLUP
+Button 2           | GPIO 27   | INPUT_PULLUP
+Button 3           | GPIO 26   | INPUT_PULLUP
+Button 4           | GPIO 25   | INPUT_PULLUP
+Button 5           | GPIO 33   | INPUT_PULLUP
+Button 6           | GPIO 32   | INPUT_PULLUP
+Button 7           | GPIO 16   | INPUT_PULLUP
+Button 8           | GPIO 17   | INPUT_PULLUP
 ```
-
-> [!NOTE]
-> GPIO 34 and 35 are input-only pins and do not support internal pull-up resistors. **External 10kΩ pull-up resistors are strongly recommended** for reliable operation, though some breadboard prototypes may work without them.
 
 ### Power Consumption
 

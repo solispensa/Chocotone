@@ -173,7 +173,7 @@ From `Chocotone/Config.h`:
 From `Chocotone/Globals.cpp`:
 
 ```cpp
-int buttonPins[8] = {27, 14, 12, 13, 15, 2, 34, 35};
+int buttonPins[8] = {14, 27, 26, 25, 33, 32, 16, 17};
 // Button mapping: [B1, B2, B3, B4, B5, B6, B7, B8]
 ```
 
@@ -195,9 +195,6 @@ int buttonPins[8] = {27, 14, 12, 13, 15, 2, 34, 35};
 | 27 | ✓ | ✓ | ✓ | ✓ | |
 | 34 | ✓ | ✗ | ✓ | - | **Input only, no pull-up** |
 | 35 | ✓ | ✗ | ✓ | - | **Input only, no pull-up** |
-
-> [!IMPORTANT]
-> **GPIO 34 and 35** are input-only and do not support internal pull-up resistors. **External 10kΩ pull-up resistors are strongly recommended** for reliable button operation, though some breadboard prototypes may work without them in clean electrical environments.
 
 > [!NOTE]
 > **GPIO 12 and 15** are boot-mode pins. Avoid holding these buttons pressed during power-on or reset to prevent boot issues. Normal operation after boot is unaffected.
