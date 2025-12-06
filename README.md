@@ -1,6 +1,6 @@
 # Chocotone MIDI Controller
 
-![Chocotone Header](chocotone_header.png)
+![Chocotone Header](images/chocotone_header.png)
 
 **A powerful, customizable ESP32-based BLE MIDI controller designed for wireless control of BLE MIDI devices like the Sonicake Pocket Master.**
 
@@ -10,7 +10,7 @@
 
 ---
 
-![Chocotone Slide](chocotone_slide.png)
+![Chocotone Slide](images/chocotone_slide.png)
 
 ## Features
 
@@ -33,7 +33,7 @@
 - **Export/Import** - Backup and restore configurations as JSON
 - **NVS Storage** - All settings persist across power cycles
 
-![Chocotone Editor](chocotone_editor.png)
+![Chocotone Editor](images/chocotone_editor.png)
 
 ---
 
