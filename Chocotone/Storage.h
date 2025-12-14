@@ -9,5 +9,6 @@ void savePresets();
 void loadPresets();
 void saveCurrentPresetIndex();
 void loadCurrentPresetIndex();
+// initializeGlobalOverrides() removed - no longer needed
 
 #endif

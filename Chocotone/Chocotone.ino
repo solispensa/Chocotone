@@ -24,32 +24,63 @@ void setup() {
     }
     display.clearDisplay();
     display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(1);
     
-    // Calculate centering for "Chocotone MIDI"
+    // === Chocotone v1.1 Loading Screen ===
     int16_t x1, y1;
     uint16_t w, h;
-    display.getTextBounds("Chocotone MIDI", 0, 0, &x1, &y1, &w, &h);
-    display.setCursor((SCREEN_WIDTH - w) / 2, 20);
-    display.println(F("Chocotone MIDI"));
     
-    // Center "v1.0"
-    display.getTextBounds("v1.0", 0, 0, &x1, &y1, &w, &h);
-    display.setCursor((SCREEN_WIDTH - w) / 2, 32);
-    display.println(F("v1.0"));
+    // Title: "CHOCOTONE" - Size 2, Centered
+    display.setTextSize(2);
+    display.getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, 10);
+    display.print(F("CHOCOTONE"));
     
-    // Center "Loading...."
-    display.getTextBounds("Loading....", 0, 0, &x1, &y1, &w, &h);
-    display.setCursor((SCREEN_WIDTH - w) / 2, 44);
-    display.println(F("Loading...."));
+    // Subtitle: "MIDI by ANDRE SOLIS" - Size 1, Centered
+    display.setTextSize(1);
+    display.getTextBounds("MIDI by ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, 30);
+    display.print(F("MIDI by ANDRE SOLIS"));
+    
+    // 8 Dots Grid (2 rows × 4 cols) - Initially hollow
+    for (int row = 0; row < 2; row++) {
+        for (int col = 0; col < 4; col++) {
+            int x = 4 + col * 8 + 2;
+            int y = 45 + row * 8 + 2;
+            display.drawCircle(x, y, 2, SSD1306_WHITE);
+        }
+    }
+    
+    // Version Badge - White rounded rect with black text
+    display.fillRoundRect(94, 47, 28, 10, 2, SSD1306_WHITE);
+    display.setTextColor(SSD1306_BLACK);
+    display.setTextSize(1);
+    display.setCursor(96, 48);
+    display.print(F("v1.1"));
+    display.setTextColor(SSD1306_WHITE);  // Reset
     
     display.display();
-    delay(200);
+    
+    // Helper lambda to fill a loading dot (0-7)
+    auto fillLoadingDot = [](int dotIndex) {
+        int row = dotIndex / 4;
+        int col = dotIndex % 4;
+        int x = 4 + col * 8 + 2;
+        int y = 45 + row * 8 + 2;
+        display.fillCircle(x, y, 2, SSD1306_WHITE);
+        display.display();
+    };
+    
+    // Dot 0: Display initialized
+    fillLoadingDot(0);
 
     // Load Settings
     Serial.println("Loading settings...");
     loadSystemSettings();
+    fillLoadingDot(1);  // Dot 1: System settings loaded
+    
     loadPresets();
+    fillLoadingDot(2);  // Dot 2: Presets loaded
+    
     loadCurrentPresetIndex();  // Restore last used preset
 
     // Initialize Encoder
@@ -57,38 +88,51 @@ void setup() {
     encoder.setCount(0);
     oldEncoderPosition = 0;
     pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+    fillLoadingDot(3);  // Dot 3: Encoder initialized
 
     // Initialize Buttons
     Serial.println("Initializing buttons...");
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        int pin = buttonPins[i];
+    Serial.print("Button pins: ");
+    for (int i = 0; i < systemConfig.buttonCount; i++) {
+        Serial.printf("%d ", systemConfig.buttonPins[i]);
+    }
+    Serial.println();
+    
+    for (int i = 0; i < systemConfig.buttonCount; i++) {
+        int pin = systemConfig.buttonPins[i];
         if (pin == 34 || pin == 35) pinMode(pin, INPUT);
         else pinMode(pin, INPUT_PULLUP);
         activeNotesOnButtonPins[i] = -1;
         buttonPinActive[i] = false;
         lastButtonPressTime_pads[i] = 0;
     }
+    fillLoadingDot(4);  // Dot 4: Buttons initialized
 
     // Initialize LEDs
     Serial.println("Initializing LEDs...");
     strip.begin();
     strip.show();
     strip.setBrightness(ledBrightnessOn);
+    fillLoadingDot(5);  // Dot 5: LEDs initialized
 
-    // Initialize BLE Client only (for SPM connection)
-    Serial.println("Initializing BLE Client...");
+    // Initialize BLE (Client and/or Server based on bleMode)
+    Serial.println("Initializing BLE...");
     setup_ble_midi();
+    fillLoadingDot(6);  // Dot 6: BLE initialized
     
-    // Start BLE Scan for SPM
-    Serial.println("Scanning for SPM...");
-    startBleScan();
+    // Start BLE Scan for SPM (only if Client or Dual mode)
+    if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+        Serial.println("Scanning for SPM...");
+        startBleScan();
+    }
 
     // Setup web server routes
     Serial.println("Setting up web server...");
     setup_web_server();
+    fillLoadingDot(7);  // Dot 7: Web server ready
 
     // Start WiFi if enabled at boot
-    if (wifiOnAtBoot) {
+    if (systemConfig.wifiOnAtBoot) {
         Serial.println("WiFi On at Boot enabled - starting WiFi AP...");
         turnWifiOn();
     }
@@ -98,10 +142,23 @@ void setup() {
     updateLeds();
 
     Serial.println("=== Setup Complete ===");
-    Serial.printf("BLE Name: %s\n", bleDeviceName);
+    Serial.printf("BLE Name: %s\n", systemConfig.bleDeviceName);
+    Serial.printf("BLE Mode: %s\n", 
+        systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT_ONLY (→SPM)" :
+        systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER_ONLY (DAW→)" : "DUAL_MODE (DAW→ESP→SPM)");
     Serial.printf("WiFi: %s\n", isWifiOn ? "ON" : "OFF");
-    Serial.printf("WiFi On at Boot: %s\n", wifiOnAtBoot ? "ENABLED" : "DISABLED");
-    Serial.println("Controller is CLIENT-ONLY - connects TO SPM via BLE");
+    Serial.printf("WiFi On at Boot: %s\n", systemConfig.wifiOnAtBoot ? "ENABLED" : "DISABLED");
+    
+    // Debug: Print hold/combo settings for button 4 (has factory combo)
+    Serial.println("\n=== Button 4 (User Button 5) Hold/Combo Settings ===");
+    Serial.printf("Hold Enabled: %s, Threshold: %d ms\n", 
+        buttonConfigs[currentPreset][4].hold.enabled ? "YES" : "NO",
+        buttonConfigs[currentPreset][4].hold.thresholdMs);
+    Serial.printf("Combo Enabled: %s, Partner: %d (User Button %d)\n",
+        buttonConfigs[currentPreset][4].combo.enabled ? "YES" : "NO",
+        buttonConfigs[currentPreset][4].combo.partner,
+        buttonConfigs[currentPreset][4].combo.partner + 1);
+    Serial.printf("Combo Type: PRESET_DOWN\n");
 }
 
 void loop() {
@@ -125,13 +182,32 @@ void loop() {
         }
     }
     
-    // Handle deferred display/LED updates from web interface
-    if (pendingDisplayUpdate) {
-        pendingDisplayUpdate = false;
-        safeDisplayOLED();
+    // Update LEDs continuously (needed for tap tempo blink)
+    // Skip when heap is critically low (WiFi on uses ~56KB)
+    if (ESP.getFreeHeap() > 50000 || !isWifiOn) {
         updateLeds();
     }
     
-    handleBleConnection();
-    checkForSysex();
+    // Handle deferred display updates from web interface
+    if (pendingDisplayUpdate) {
+        pendingDisplayUpdate = false;
+        // Lower threshold to 25KB - OLED update is safe even with WiFi
+        if (ESP.getFreeHeap() > 25000) {
+            safeDisplayOLED();
+            updateLeds();  // Also update LEDs!
+            Serial.println("Deferred display update completed");
+        } else {
+            // Critical low heap - just update LEDs (safer than OLED)
+            updateLeds();
+            Serial.println("Low heap - skipped OLED, updated LEDs only");
+        }
+    }
+    
+    // Skip BLE operations when WiFi is on (already paused)
+    if (!isWifiOn) {
+        handleBleConnection();
+        checkForSysex();
+    }
+    
+    yield();  // Feed watchdog
 }

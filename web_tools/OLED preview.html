@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLED Pixel Simulator - SSD1306 128x64</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            font-weight: 300;
+            margin-bottom: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .oled-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        /* OLED Display - 128x64 pixels, each pixel = 4px for visibility */
+        .oled-frame {
+            background: #111;
+            padding: 8px;
+            border-radius: 4px;
+            border: 2px solid #333;
+        }
+
+        #oledCanvas {
+            background: #000;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .controls {
+            background: #222;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .control-group input,
+        .control-group select {
+            width: 100%;
+            padding: 8px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-row>div {
+            flex: 1;
+        }
+
+        #refreshBtn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+            border: none;
+            border-radius: 6px;
+            color: #000;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #refreshBtn:hover {
+            opacity: 0.9;
+        }
+
+        .code-section {
+            background: #222;
+            padding: 20px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 900px;
+            margin-top: 20px;
+        }
+
+        .code-section h3 {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        #arduinoCode {
+            width: 100%;
+            height: 350px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #00ff88;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            padding: 10px;
+            resize: vertical;
+        }
+
+        .info {
+            text-align: center;
+            color: #555;
+            font-size: 11px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>OLED Pixel Simulator - SSD1306 128×64</h1>
+
+    <div class="main-container">
+        <div class="oled-section">
+            <div class="label">128×64 Pixel Display (4x scale)</div>
+            <div class="oled-frame">
+                <canvas id="oledCanvas" width="512" height="256"></canvas>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Title Text</label>
+                <input type="text" id="titleText" value="CHOCOTONE">
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Title Font Size</label>
+                    <select id="titleSize">
+                        <option value="1">Size 1 (6×8px)</option>
+                        <option value="2" selected>Size 2 (12×16px)</option>
+                        <option value="3">Size 3 (18×24px)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Title Y Position</label>
+                    <input type="number" id="titleY" value="5" min="0" max="60">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Subtitle Text</label>
+                <input type="text" id="subtitleText" value="MIDI Controller">
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Subtitle Font Size</label>
+                    <select id="subtitleSize">
+                        <option value="1" selected>Size 1 (6×8px)</option>
+                        <option value="2">Size 2 (12×16px)</option>
+                        <option value="3">Size 3 (18×24px)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Subtitle Y Position</label>
+                    <input type="number" id="subtitleY" value="24" min="0" max="60">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Version Badge Text</label>
+                <input type="text" id="versionText" value="v1.1">
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Badge X Position</label>
+                    <input type="number" id="badgeX" value="94" min="0" max="120">
+                </div>
+                <div class="control-group">
+                    <label>Badge Y Position</label>
+                    <input type="number" id="badgeY" value="50" min="0" max="60">
+                </div>
+            </div>
+
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Dots X Position</label>
+                    <input type="number" id="dotsX" value="4" min="0" max="100">
+                </div>
+                <div class="control-group">
+                    <label>Dots Y Position</label>
+                    <input type="number" id="dotsY" value="48" min="0" max="60">
+                </div>
+            </div>
+
+            <button id="refreshBtn">⟳ Refresh Display</button>
+        </div>
+    </div>
+
+    <div class="code-section" style="margin: 20px auto;">
+        <h3>Generated Arduino Code (copy to Chocotone.ino)</h3>
+        <textarea id="arduinoCode" readonly></textarea>
+    </div>
+
+    <p class="info">SSD1306 default font: 6×8 pixels per character. Size 2 = 12×16, Size 3 = 18×24</p>
+
+    <script>
+        // 5x7 pixel font data (standard Arduino/Adafruit GFX font)
+        const font5x7 = {
+            ' ': [0x00, 0x00, 0x00, 0x00, 0x00],
+            '!': [0x00, 0x00, 0x5F, 0x00, 0x00],
+            '"': [0x00, 0x07, 0x00, 0x07, 0x00],
+            '#': [0x14, 0x7F, 0x14, 0x7F, 0x14],
+            '$': [0x24, 0x2A, 0x7F, 0x2A, 0x12],
+            '%': [0x23, 0x13, 0x08, 0x64, 0x62],
+            '&': [0x36, 0x49, 0x55, 0x22, 0x50],
+            "'": [0x00, 0x05, 0x03, 0x00, 0x00],
+            '(': [0x00, 0x1C, 0x22, 0x41, 0x00],
+            ')': [0x00, 0x41, 0x22, 0x1C, 0x00],
+            '*': [0x08, 0x2A, 0x1C, 0x2A, 0x08],
+            '+': [0x08, 0x08, 0x3E, 0x08, 0x08],
+            ',': [0x00, 0x50, 0x30, 0x00, 0x00],
+            '-': [0x08, 0x08, 0x08, 0x08, 0x08],
+            '.': [0x00, 0x60, 0x60, 0x00, 0x00],
+            '/': [0x20, 0x10, 0x08, 0x04, 0x02],
+            '0': [0x3E, 0x51, 0x49, 0x45, 0x3E],
+            '1': [0x00, 0x42, 0x7F, 0x40, 0x00],
+            '2': [0x42, 0x61, 0x51, 0x49, 0x46],
+            '3': [0x21, 0x41, 0x45, 0x4B, 0x31],
+            '4': [0x18, 0x14, 0x12, 0x7F, 0x10],
+            '5': [0x27, 0x45, 0x45, 0x45, 0x39],
+            '6': [0x3C, 0x4A, 0x49, 0x49, 0x30],
+            '7': [0x01, 0x71, 0x09, 0x05, 0x03],
+            '8': [0x36, 0x49, 0x49, 0x49, 0x36],
+            '9': [0x06, 0x49, 0x49, 0x29, 0x1E],
+            ':': [0x00, 0x36, 0x36, 0x00, 0x00],
+            ';': [0x00, 0x56, 0x36, 0x00, 0x00],
+            '<': [0x00, 0x08, 0x14, 0x22, 0x41],
+            '=': [0x14, 0x14, 0x14, 0x14, 0x14],
+            '>': [0x41, 0x22, 0x14, 0x08, 0x00],
+            '?': [0x02, 0x01, 0x51, 0x09, 0x06],
+            '@': [0x32, 0x49, 0x79, 0x41, 0x3E],
+            'A': [0x7E, 0x11, 0x11, 0x11, 0x7E],
+            'B': [0x7F, 0x49, 0x49, 0x49, 0x36],
+            'C': [0x3E, 0x41, 0x41, 0x41, 0x22],
+            'D': [0x7F, 0x41, 0x41, 0x22, 0x1C],
+            'E': [0x7F, 0x49, 0x49, 0x49, 0x41],
+            'F': [0x7F, 0x09, 0x09, 0x01, 0x01],
+            'G': [0x3E, 0x41, 0x41, 0x51, 0x32],
+            'H': [0x7F, 0x08, 0x08, 0x08, 0x7F],
+            'I': [0x00, 0x41, 0x7F, 0x41, 0x00],
+            'J': [0x20, 0x40, 0x41, 0x3F, 0x01],
+            'K': [0x7F, 0x08, 0x14, 0x22, 0x41],
+            'L': [0x7F, 0x40, 0x40, 0x40, 0x40],
+            'M': [0x7F, 0x02, 0x04, 0x02, 0x7F],
+            'N': [0x7F, 0x04, 0x08, 0x10, 0x7F],
+            'O': [0x3E, 0x41, 0x41, 0x41, 0x3E],
+            'P': [0x7F, 0x09, 0x09, 0x09, 0x06],
+            'Q': [0x3E, 0x41, 0x51, 0x21, 0x5E],
+            'R': [0x7F, 0x09, 0x19, 0x29, 0x46],
+            'S': [0x46, 0x49, 0x49, 0x49, 0x31],
+            'T': [0x01, 0x01, 0x7F, 0x01, 0x01],
+            'U': [0x3F, 0x40, 0x40, 0x40, 0x3F],
+            'V': [0x1F, 0x20, 0x40, 0x20, 0x1F],
+            'W': [0x3F, 0x40, 0x38, 0x40, 0x3F],
+            'X': [0x63, 0x14, 0x08, 0x14, 0x63],
+            'Y': [0x07, 0x08, 0x70, 0x08, 0x07],
+            'Z': [0x61, 0x51, 0x49, 0x45, 0x43],
+            '[': [0x00, 0x00, 0x7F, 0x41, 0x41],
+            '\\': [0x02, 0x04, 0x08, 0x10, 0x20],
+            ']': [0x41, 0x41, 0x7F, 0x00, 0x00],
+            '^': [0x04, 0x02, 0x01, 0x02, 0x04],
+            '_': [0x40, 0x40, 0x40, 0x40, 0x40],
+            '`': [0x00, 0x01, 0x02, 0x04, 0x00],
+            'a': [0x20, 0x54, 0x54, 0x54, 0x78],
+            'b': [0x7F, 0x48, 0x44, 0x44, 0x38],
+            'c': [0x38, 0x44, 0x44, 0x44, 0x20],
+            'd': [0x38, 0x44, 0x44, 0x48, 0x7F],
+            'e': [0x38, 0x54, 0x54, 0x54, 0x18],
+            'f': [0x08, 0x7E, 0x09, 0x01, 0x02],
+            'g': [0x08, 0x14, 0x54, 0x54, 0x3C],
+            'h': [0x7F, 0x08, 0x04, 0x04, 0x78],
+            'i': [0x00, 0x44, 0x7D, 0x40, 0x00],
+            'j': [0x20, 0x40, 0x44, 0x3D, 0x00],
+            'k': [0x00, 0x7F, 0x10, 0x28, 0x44],
+            'l': [0x00, 0x41, 0x7F, 0x40, 0x00],
+            'm': [0x7C, 0x04, 0x18, 0x04, 0x78],
+            'n': [0x7C, 0x08, 0x04, 0x04, 0x78],
+            'o': [0x38, 0x44, 0x44, 0x44, 0x38],
+            'p': [0x7C, 0x14, 0x14, 0x14, 0x08],
+            'q': [0x08, 0x14, 0x14, 0x18, 0x7C],
+            'r': [0x7C, 0x08, 0x04, 0x04, 0x08],
+            's': [0x48, 0x54, 0x54, 0x54, 0x20],
+            't': [0x04, 0x3F, 0x44, 0x40, 0x20],
+            'u': [0x3C, 0x40, 0x40, 0x20, 0x7C],
+            'v': [0x1C, 0x20, 0x40, 0x20, 0x1C],
+            'w': [0x3C, 0x40, 0x30, 0x40, 0x3C],
+            'x': [0x44, 0x28, 0x10, 0x28, 0x44],
+            'y': [0x0C, 0x50, 0x50, 0x50, 0x3C],
+            'z': [0x44, 0x64, 0x54, 0x4C, 0x44]
+        };
+
+        const canvas = document.getElementById('oledCanvas');
+        const ctx = canvas.getContext('2d');
+        const SCALE = 4; // Each OLED pixel = 4 screen pixels
+
+        let activeDot = 0;
+
+        // Draw a single OLED pixel (scaled)
+        function setPixel(x, y, on) {
+            if (x < 0 || x >= 128 || y < 0 || y >= 64) return;
+            ctx.fillStyle = on ? '#fff' : '#000';
+            ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+        }
+
+        // Draw character using 5x7 font
+        function drawChar(ch, x, y, size) {
+            const data = font5x7[ch] || font5x7['?'];
+            for (let col = 0; col < 5; col++) {
+                const bits = data[col];
+                for (let row = 0; row < 7; row++) {
+                    if (bits & (1 << row)) {
+                        // Scale the character
+                        for (let sy = 0; sy < size; sy++) {
+                            for (let sx = 0; sx < size; sx++) {
+                                setPixel(x + col * size + sx, y + row * size + sy, true);
+                            }
+                        }
+                    }
+                }
+            }
+            return 6 * size; // Return width including spacing
+        }
+
+        // Draw text string
+        function drawText(text, x, y, size) {
+            let curX = x;
+            for (let i = 0; i < text.length; i++) {
+                curX += drawChar(text[i], curX, y, size);
+            }
+            return curX - x; // Return total width
+        }
+
+        // Calculate text width
+        function textWidth(text, size) {
+            return text.length * 6 * size;
+        }
+
+        // Draw centered text
+        function drawCenteredText(text, y, size) {
+            const w = textWidth(text, size);
+            const x = Math.floor((128 - w) / 2);
+            drawText(text, x, y, size);
+            return x;
+        }
+
+        // Draw filled circle
+        function drawFilledCircle(cx, cy, r) {
+            for (let y = -r; y <= r; y++) {
+                for (let x = -r; x <= r; x++) {
+                    if (x * x + y * y <= r * r) {
+                        setPixel(cx + x, cy + y, true);
+                    }
+                }
+            }
+        }
+
+        // Draw hollow circle (ring)
+        function drawCircle(cx, cy, r) {
+            for (let angle = 0; angle < 360; angle += 5) {
+                const rad = angle * Math.PI / 180;
+                const x = Math.round(cx + r * Math.cos(rad));
+                const y = Math.round(cy + r * Math.sin(rad));
+                setPixel(x, y, true);
+            }
+        }
+
+        // Draw filled rounded rectangle
+        function drawFilledRoundRect(x, y, w, h, r) {
+            // Main body
+            for (let py = y + r; py < y + h - r; py++) {
+                for (let px = x; px < x + w; px++) {
+                    setPixel(px, py, true);
+                }
+            }
+            // Top and bottom
+            for (let py = y; py < y + r; py++) {
+                for (let px = x + r; px < x + w - r; px++) {
+                    setPixel(px, py, true);
+                }
+            }
+            for (let py = y + h - r; py < y + h; py++) {
+                for (let px = x + r; px < x + w - r; px++) {
+                    setPixel(px, py, true);
+                }
+            }
+            // Corners (approximate)
+            for (let py = 0; py < r; py++) {
+                for (let px = 0; px < r; px++) {
+                    if (px * px + py * py <= r * r) {
+                        setPixel(x + r - 1 - px, y + r - 1 - py, true);
+                        setPixel(x + w - r + px, y + r - 1 - py, true);
+                        setPixel(x + r - 1 - px, y + h - r + py, true);
+                        setPixel(x + w - r + px, y + h - r + py, true);
+                    }
+                }
+            }
+        }
+
+        // Draw black text on white (inverted)
+        function drawInvertedText(text, x, y, size) {
+            // First draw white background
+            const w = textWidth(text, size) + 2;
+            const h = 7 * size + 2;
+            drawFilledRoundRect(x - 1, y - 1, w, h, 2);
+
+            // Then draw black text by clearing pixels
+            let curX = x;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const data = font5x7[ch] || font5x7['?'];
+                for (let col = 0; col < 5; col++) {
+                    const bits = data[col];
+                    for (let row = 0; row < 7; row++) {
+                        if (bits & (1 << row)) {
+                            for (let sy = 0; sy < size; sy++) {
+                                for (let sx = 0; sx < size; sx++) {
+                                    setPixel(curX + col * size + sx, y + row * size + sy, false);
+                                }
+                            }
+                        }
+                    }
+                }
+                curX += 6 * size;
+            }
+        }
+
+        // Main render function
+        function render() {
+            // Clear display
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Get values
+            const titleText = document.getElementById('titleText').value;
+            const titleSize = parseInt(document.getElementById('titleSize').value);
+            const titleY = parseInt(document.getElementById('titleY').value);
+
+            const subtitleText = document.getElementById('subtitleText').value;
+            const subtitleSize = parseInt(document.getElementById('subtitleSize').value);
+            const subtitleY = parseInt(document.getElementById('subtitleY').value);
+
+            const versionText = document.getElementById('versionText').value;
+            const badgeX = parseInt(document.getElementById('badgeX').value);
+            const badgeY = parseInt(document.getElementById('badgeY').value);
+
+            const dotsX = parseInt(document.getElementById('dotsX').value);
+            const dotsY = parseInt(document.getElementById('dotsY').value);
+
+            // Draw title (centered)
+            const titleX = drawCenteredText(titleText, titleY, titleSize);
+
+            // Draw subtitle (centered)
+            const subtitleX = drawCenteredText(subtitleText, subtitleY, subtitleSize);
+
+            // Draw 8 dots (2x4 grid)
+            for (let row = 0; row < 2; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const dotIndex = row * 4 + col;
+                    const cx = dotsX + col * 8 + 2;
+                    const cy = dotsY + row * 8 + 2;
+
+                    if (dotIndex === activeDot) {
+                        drawFilledCircle(cx, cy, 2);
+                    } else {
+                        drawCircle(cx, cy, 2);
+                    }
+                }
+            }
+
+            // Draw version badge (inverted - white bg, black text)
+            drawInvertedText(versionText, badgeX, badgeY, 1);
+
+            // Generate Arduino code
+            generateCode(titleText, titleSize, titleY, subtitleText, subtitleSize, subtitleY,
+                versionText, badgeX, badgeY, dotsX, dotsY);
+        }
+
+        // Generate Arduino code
+        function generateCode(title, titleSize, titleY, subtitle, subtitleSize, subtitleY,
+            version, badgeX, badgeY, dotsX, dotsY) {
+            const code = `// Chocotone v1.1 Loading Screen
+// SSD1306 128x64 OLED Display
+
+void displayLoadingScreen() {
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    
+    // Title: "${title}" - Size ${titleSize}, Centered
+    display.setTextSize(${titleSize});
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds("${title}", 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, ${titleY});
+    display.print("${title}");
+    
+    // Subtitle: "${subtitle}" - Size ${subtitleSize}, Centered
+    display.setTextSize(${subtitleSize});
+    display.getTextBounds("${subtitle}", 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, ${subtitleY});
+    display.print("${subtitle}");
+    
+    // 8 Dots Grid (2 rows × 4 cols) at (${dotsX}, ${dotsY})
+    // Hollow circles, filled one at a time during animation
+    for (int row = 0; row < 2; row++) {
+        for (int col = 0; col < 4; col++) {
+            int x = ${dotsX} + col * 8 + 2;
+            int y = ${dotsY} + row * 8 + 2;
+            display.drawCircle(x, y, 2, SSD1306_WHITE);
+        }
+    }
+    
+    // Version Badge - White rounded rect with black text
+    display.fillRoundRect(${badgeX}, ${badgeY}, ${version.length * 6 + 4}, 10, 2, SSD1306_WHITE);
+    display.setTextColor(SSD1306_BLACK);
+    display.setTextSize(1);
+    display.setCursor(${badgeX + 2}, ${badgeY + 1});
+    display.print("${version}");
+    display.setTextColor(SSD1306_WHITE);  // Reset
+    
+    display.display();
+}
+
+// Call in setup():
+// displayLoadingScreen();
+
+// For animated dots during loading, use:
+// display.fillCircle(x, y, 2, SSD1306_WHITE); // Fill active dot
+// display.drawCircle(x, y, 2, SSD1306_WHITE); // Hollow inactive dot`;
+
+            document.getElementById('arduinoCode').value = code;
+        }
+
+        // Animate dots
+        setInterval(function () {
+            activeDot = (activeDot + 1) % 8;
+            render();
+        }, 100);
+
+        // Event listeners
+        document.getElementById('refreshBtn').addEventListener('click', render);
+
+        // Auto-refresh on any input change
+        document.querySelectorAll('input, select').forEach(function (el) {
+            el.addEventListener('input', render);
+        });
+
+        // Initial render
+        render();
+    </script>
+</body>
+
+</html>

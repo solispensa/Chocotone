@@ -102,15 +102,20 @@ See [../README.md](../README.md#software-dependencies) for library versions.
 ### Change Pin Assignments
 Edit `Config.h` - update GPIO definitions:
 ```cpp
-#define ENCODER_A_PIN 18    // Change encoder pins
-#define OLED_SDA_PIN 21     // Change I2C pins
+#define ENCODER_A_PIN 18        // Encoder A pin (verified)
+#define ENCODER_B_PIN 19        // Encoder B pin (verified)
+#define ENCODER_BUTTON_PIN 23   // Encoder button (verified)
+#define OLED_SDA_PIN 21         // I2C SDA
+#define OLED_SCL_PIN 22         // I2C SCL
+#define NEOPIXEL_PIN 5          // NeoPixel data pin
 // etc.
 ```
 
 ### Change Button Layout
-Edit `Globals.cpp` - update buttonPins array:
+Edit `Config.h` - verified button pins (8 buttons):
 ```cpp
-int buttonPins[NUM_BUTTONS] = {27, 14, 12, 13, 15, 2, 34, 35};
+// Buttons 1-8: verified physical layout
+const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {14, 27, 26, 25, 33, 32, 16, 17, 0, 0};
 ```
 
 ### Change LED Mapping

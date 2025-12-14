@@ -2,7 +2,36 @@
 
 All notable changes to the ESP32 MIDI Controller project will be documented in this file.
 
-## [Unreleased] - Current Version
+## [v1.1] - 2024-12-14
+
+### Added
+- **BLE Dual-Mode Support** - ESP32 can now act as both BLE Client (for SPM) AND BLE Server (for DAW/Apps) simultaneously
+  - Three modes available: CLIENT (SPM only), DUAL (both), SERVER (DAW/Apps only)
+  - Runtime mode selection via web interface or OLED menu
+  - MIDI messages routed to both connected devices in Dual Mode
+- **BLE Mode in OLED Menu** - Toggle between CLIENT/DUAL/SERVER modes directly from the controller
+  - Changes apply on "Save and Exit" with automatic reboot
+- **Web Editor Stability Improvements**
+  - Request throttling to prevent crashes from double-clicks or rapid requests
+  - Low memory protection with graceful error pages
+  - Fixed memory leak in error page generation
+- **Gradient Header** - Web editor now features a stylish gradient "Chocotone" title matching the presentation page
+- **OLED Refresh on Preset Change** - Display updates when changing presets via web editor
+
+### Fixed
+- **BLE + WiFi Crash** - Properly stops BLE Server advertising when turning WiFi on (prevents radio conflicts)
+- **Special Actions Save Bug** - Saving from Special Actions view no longer erases RGB values or main message settings
+- **Alternate Mode Reset** - isAlternate checkbox preserved when saving from Special Actions view
+- **Web Editor Crashes** - Added request throttling and heap checks to prevent crashes
+- **Duplicate Variable Definition** - Resolved linker error for `serverConnected` variable
+
+### Changed
+- Web editor subtitle updated to "MIDI Editor - by André Solis - v1.1"
+- Lowered OLED update heap threshold from 50KB to 25KB for better WiFi compatibility
+- BLE Mode persists across reboots via NVS storage
+- Increased WiFi startup delay for BLE resource release
+
+## [v1.0] - 2024-12-13 (Initial Release)
 
 ### Added
 - Web-based configuration interface for editing MIDI mappings

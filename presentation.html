@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chocotone Manual & Walkthrough</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-card: #141414;
+            --bg-section: #111111;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --accent: #bb86fc;
+            /* Chocotone Purple */
+            --accent-glow: rgba(187, 134, 252, 0.2);
+            --border: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* Nav */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            letter-spacing: 1px;
+        }
+
+        .nav-logo span {
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+
+        /* Sections */
+        section {
+            padding: 6rem 2rem;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        section:nth-child(even) {
+            background-color: var(--bg-section);
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            text-align: center;
+            color: var(--accent);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Hero */
+        #hero {
+            text-align: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 70%);
+        }
+
+        .hero-img {
+            max-width: 800px;
+            width: 100%;
+            margin: 2rem 0;
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Controls Grid */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+
+
+        .control-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .control-icon {
+            font-size: 48px;
+            margin-bottom: 45px;
+            display: inline-block;
+        }
+
+        /* Bento Card Styles (from slide) */
+        .control-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            gap: 12px;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            min-height: 140px;
+        }
+
+        .control-card h3,
+        .control-card p {
+            text-align: left;
+            width: 70%;
+        }
+
+        .control-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+        }
+
+        /* VIRTUAL CONTROLLER CSS + VARIABLES */
+        .controller-wrapper {
+            position: relative;
+            width: 100%;
+            width: 100%;
+            max-width: var(--chassis-w, 800px);
+            margin: 0 auto;
+            perspective: 1000px;
+
+            /* LAYOUT VARIABLES (Editable) */
+            /* FINAL LAYOUT CONFIG */
+            --chassis-w: 800px;
+            --chassis-ar: 51.5%;
+            --chassis-rad: 40px;
+            --oled-w: 23%;
+            --oled-h: 25.5%;
+            --oled-x: 74.5%;
+            --oled-y: 50%;
+            --btn-y-top: 23.5%;
+            --btn-y-btm: 5%;
+            --btn-spacing: 25%;
+            --enc-x: 7%;
+            --enc-y: 50%;
+        }
+
+        .chassis {
+            position: relative;
+            width: 100%;
+            padding-bottom: var(--chassis-ar);
+            background: #1a1a1a;
+            border-radius: var(--chassis-rad);
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px #333;
+            overflow: hidden;
+        }
+
+        /* Screws */
+        .screw {
+            position: absolute;
+            width: 1.5%;
+            height: 2.5%;
+            background: radial-gradient(circle, #555, #222);
+            border-radius: 50%;
+            box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .screw::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            width: 80%;
+            height: 15%;
+            background: #111;
+            transform: translateY(-50%) rotate(45deg);
+        }
+
+        .tl {
+            top: 5%;
+            left: 3%;
+        }
+
+        .tr {
+            top: 5%;
+            right: 3%;
+        }
+
+        .bl {
+            bottom: 5%;
+            left: 3%;
+        }
+
+        .br {
+            bottom: 5%;
+            right: 3%;
+        }
+
+        /* Buttons */
+        .button-unit {
+            position: absolute;
+            width: 9%;
+            padding-bottom: 9%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Button Positions via Vars (Uniform Spacing) */
+        #btn-5 {
+            top: var(--btn-y-top);
+            left: calc(50% - 1.5 * var(--btn-spacing));
+        }
+
+        #btn-6 {
+            top: var(--btn-y-top);
+            left: calc(50% - 0.5 * var(--btn-spacing));
+        }
+
+        #btn-7 {
+            top: var(--btn-y-top);
+            left: calc(50% + 0.5 * var(--btn-spacing));
+        }
+
+        #btn-8 {
+            top: var(--btn-y-top);
+            left: calc(50% + 1.5 * var(--btn-spacing));
+        }
+
+        #btn-1 {
+            bottom: var(--btn-y-btm);
+            left: calc(50% - 1.5 * var(--btn-spacing));
+        }
+
+        #btn-2 {
+            bottom: var(--btn-y-btm);
+            left: calc(50% - 0.5 * var(--btn-spacing));
+        }
+
+        #btn-3 {
+            bottom: var(--btn-y-btm);
+            left: calc(50% + 0.5 * var(--btn-spacing));
+        }
+
+        #btn-4 {
+            bottom: var(--btn-y-btm);
+            left: calc(50% + 1.5 * var(--btn-spacing));
+        }
+
+        .footswitch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #e0e0e0 10%, #999 40%, #666 100%);
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            border: 1px solid #111;
+        }
+
+        .footswitch:active {
+            transform: scale(0.92);
+        }
+
+        .led-ring {
+            position: absolute;
+            top: -18%;
+            left: -18%;
+            right: -18%;
+            bottom: -18%;
+            border-radius: 50%;
+            border: 3px solid #333;
+            z-index: -1;
+            transition: border-color 0.1s, box-shadow 0.1s;
+        }
+
+        /* Encoder */
+        .encoder-unit {
+            position: absolute;
+            top: var(--enc-y);
+            right: var(--enc-x);
+            width: 8%;
+            padding-bottom: 8%;
+            transform: translate(50%, -50%);
+            cursor: pointer;
+        }
+
+        .knob-cap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #222, #000);
+            border-radius: 50%;
+            border: 2px solid #444;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
+        }
+
+        .knob-cap::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            width: 2px;
+            height: 30%;
+            background: #888;
+            transform: translateX(-50%);
+        }
+
+        /* OLED */
+        .oled-frame {
+            position: absolute;
+            top: var(--oled-y);
+            left: var(--oled-x);
+            width: var(--oled-w);
+            height: var(--oled-h);
+            transform: translate(-50%, -50%);
+            background: #000;
+            border-radius: 4px;
+            padding: 2px;
+            box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.1);
+            border: 1px solid #333;
+            z-index: 5;
+        }
+
+        .oled-glass {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .oled-pixel-grid {
+            width: 100%;
+            height: 100%;
+            font-family: 'VT323', monospace;
+            color: #00FFFF;
+            text-shadow: 0 0 2px rgba(0, 255, 255, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3px 5px;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .oled-row-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+        }
+
+        .oled-row-btm {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            margin-top: auto;
+        }
+
+        .oled-main-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .oled-preset-name {
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+
+        .oled-bpm {
+            font-size: 1.0em;
+            margin-top: 2px;
+        }
+
+        .oled-status {
+            font-size: 0.7em;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #005555;
+            margin-top: 2px;
+            padding-top: 2px;
+            color: #00AAAA;
+        }
+
+        .oled-menu-header {
+            text-align: left;
+            font-size: 0.8em;
+            border-bottom: 1px solid #00AAAA;
+            margin-bottom: 2px;
+            color: #00FFFF;
+        }
+
+        .oled-menu-list {
+            text-align: left;
+            width: 100%;
+            font-size: 0.9em;
+        }
+
+        .oled-menu-item {
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .oled-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            color: #00FFFF;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            .oled-pixel-grid {
+                font-size: 0.8rem;
+            }
+
+            .oled-overlay {
+                font-size: 1.5em;
+            }
+        }
+
+        .v-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 5px 10px;
+            border: 1px solid #00FFFF;
+            color: #00FFFF;
+            font-family: 'VT323', monospace;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 100;
+            font-size: 1rem;
+        }
+
+        /* --- COMPONENT STYLES (Dynamic) --- */
+
+        /* Button Shapes & Styles */
+        .btn-round {
+            border-radius: 50%;
+        }
+
+        .btn-square {
+            border-radius: 4px;
+        }
+
+        .btn-rect {
+            border-radius: 6px;
+            width: 140% !important;
+            height: 80% !important;
+            margin-left: -20%;
+            margin-top: 10%;
+        }
+
+        .btn-metal {
+            /* Classic Chrome Footswitch */
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, #ccc, #888);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5), inset 0 0 5px rgba(255, 255, 255, 0.8);
+            border: 1px solid #666;
+        }
+
+        .btn-metal::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 60%;
+            height: 60%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #eee, #999);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-metal-flat {
+            /* Flat Top Metal */
+            border-radius: 50%;
+            background: conic-gradient(#ccc, #fff, #ccc, #888, #ccc);
+            box-shadow: 0 4px 0 #555, 0 8px 10px rgba(0, 0, 0, 0.6);
+            border: 1px solid #444;
+        }
+
+        .btn-soft {
+            /* Rubberized */
+            border-radius: 4px;
+            background: #333;
+            box-shadow: inset 0 0 10px #000;
+            border: 2px solid #222;
+        }
+
+        .btn-arcade {
+            /* Convex Glossy */
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ff4444, #cc0000);
+            box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.4), 0 5px 10px rgba(0, 0, 0, 0.5);
+            border: 4px solid #880000;
+        }
+
+        .btn-illuminated {
+            /* Full Glow */
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 10px var(--accent), inset 0 0 20px var(--accent);
+        }
+
+        .btn-hex {
+            /* Hexagonal */
+            border-radius: 0;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            background: #444;
+            border: none;
+        }
+
+        .btn-transparent {
+            /* Acrylic */
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(2px);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Aspect adjustment */
+
+        /* LED Formats */
+        .led-ring {
+            border-width: 5px;
+            border-radius: inherit;
+        }
+
+        .btn-hex .led-ring {
+            border: none;
+            background-color: transparent;
+            background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='50,3 97,27 97,73 50,97 3,73 3,27' fill='none' stroke='%23ffffff' stroke-width='5' /%3E%3C/svg%3E");
+            background-size: 100% 100%;
+            opacity: 0.5;
+            /* Match ring opacity? */
+        }
+
+
+        .led-strip {
+            border: none;
+            border-radius: 2px;
+            top: auto;
+            bottom: -20%;
+            left: 0;
+            right: 0;
+            height: 6px;
+            width: 60%;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.5);
+            /* Mask background */
+            box-shadow: 0 0 2px #000;
+        }
+
+        /* Active LED Strip/Dot needs to shine through */
+        .led-strip.active,
+        .led-dot.active,
+        .led-rect.active {
+            background-color: var(--led-color, #222) !important;
+            box-shadow: 0 0 10px var(--led-color, #222) !important;
+        }
+
+        .led-dot {
+            border: none;
+            border-radius: 50%;
+            bottom: auto;
+            top: -20%;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: 12px;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            /* Mask */
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .led-rect {
+            border: none;
+            border-radius: 1px;
+            bottom: auto;
+            top: -20%;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: 20px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            /* Mask */
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .led-inside {
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: none;
+            border-radius: inherit;
+            background: transparent;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Refined Button Styles */
+        .btn-transparent {
+            /* Acrylic */
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            /* Let LED shine through */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(2px);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-arcade {
+            /* Convex Glossy */
+            border-radius: 50%;
+            background: transparent;
+            /* Inner transparent */
+            box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.1);
+            border: 4px solid white;
+            /* Outer ring white */
+        }
+
+        .btn-illuminated {
+            /* Full Glow */
+            border-radius: 4px;
+            background: var(--active-led-color, rgba(255, 255, 255, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 15px var(--active-led-color, transparent);
+            opacity: 0.8;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+
+        /* Screen Models */
+        .screen-oled .oled-pixel-grid {
+            font-family: 'VT323', monospace;
+            text-shadow: 0 0 2px rgba(0, 255, 255, 0.7);
+        }
+
+        .screen-tft {
+            background: #222;
+            border-color: #444;
+        }
+
+        .screen-tft .oled-pixel-grid {
+            font-family: 'Outfit', sans-serif;
+            color: #fff;
+            text-shadow: none;
+            font-weight: 300;
+        }
+
+        .screen-tft .oled-status {
+            border-top: 1px solid #444;
+            color: #888;
+        }
+
+        .screen-tft .oled-menu-header {
+            border-bottom: 1px solid #444;
+            color: var(--accent);
+        }
+
+        .screen-ips {
+            background: #000;
+            border: 1px solid #111;
+        }
+
+        .screen-ips .oled-pixel-grid {
+            font-family: sans-serif;
+            letter-spacing: 0.5px;
+            text-shadow: none;
+        }
+
+        .screen-lcd {
+            background: #9ea792;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .screen-lcd .oled-glass {
+            background: transparent;
+        }
+
+        .screen-lcd .oled-pixel-grid {
+            color: #111;
+            font-family: 'VT323', monospace;
+            text-shadow: none;
+            opacity: 0.85;
+        }
+
+        .screen-lcd .oled-menu-header,
+        .screen-lcd .oled-status {
+            color: #000;
+            border-color: #000;
+        }
+
+        .screen-lcd .oled-overlay {
+            background: rgba(158, 167, 146, 0.95);
+            color: #000;
+        }
+
+        /* Encoder Styles */
+        /* 1: Default */
+        .enc-2 .knob-cap {
+            background: #ddd;
+            border: 1px solid #999;
+        }
+
+        /* Silver/White */
+        .enc-2 .knob-cap::after {
+            background: #333;
+        }
+
+        .enc-3 .knob-cap {
+            background: radial-gradient(circle, #444, #111);
+            border: 1px dashed #666;
+        }
+
+        /* Grip */
+
+        .enc-4 .knob-cap {
+            border-radius: 10%;
+            background: #222;
+            border: 1px solid #444;
+        }
+
+        /* Square-ish */
+
+        .enc-5 .knob-cap {
+            background: radial-gradient(circle at 30% 30%, #666, #000);
+            box-shadow: 0 2px 5px #000;
+            border: none;
+        }
+
+        /* Smooth Sphere */
+
+        .enc-6 .knob-cap {
+            background: repeating-conic-gradient(#222 0% 5%, #333 5% 10%);
+            border: 1px solid #000;
+        }
+
+        /* Knurled */
+
+        .enc-7 .knob-cap {
+            background: #b87333;
+            border: 1px solid #5c3a19;
+        }
+
+        /* Copper */
+
+        .enc-8 .knob-cap {
+            background: #000;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* Gamer */
+        .enc-8 .knob-cap::after {
+            background: var(--accent);
+            box-shadow: 0 0 5px var(--accent);
+        }
+
+        /* Screw Styles */
+        .screw-2 {
+            background: #ccc;
+            box-shadow: inset 1px 1px 1px #fff;
+        }
+
+        /* Silver */
+        .screw-2::after {
+            transform: translateY(-50%) rotate(0deg);
+            background: #888;
+            width: 90%;
+            height: 10%;
+        }
+
+        /* Flathead */
+
+        .screw-3 {
+            background: #111;
+        }
+
+        /* Black Hex */
+        .screw-3::after {
+            width: 50%;
+            height: 50%;
+            background: #000;
+            border-radius: 10%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .screw-4 {
+            background: #888;
+        }
+
+        /* Torx-ish (simplified) */
+        .screw-4::after {
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, #333, #888);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .screw-5 {
+            background: #000;
+        }
+
+        /* Black Oxide */
+        .screw-6 {
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+        }
+
+        /* Gold */
+        .screw-7 {
+            background: #8b4513;
+        }
+
+        /* Rusty */
+        .screw-8 {
+            display: none;
+        }
+
+        /* None */
+
+
+        /* LAYOUT EDITOR Styles */
+        #virtual-controller {
+            position: relative;
+        }
+
+        #layout-editor {
+            position: absolute;
+            top: 130px;
+            right: 0;
+            left: auto;
+            transform: none;
+            margin-left: 0;
+            margin-right: 20px;
+            bottom: auto;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(187, 134, 252, 0.3);
+            padding: 20px;
+            border-radius: 16px;
+            color: #fff;
+            z-index: 9999;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            width: 320px;
+            max-height: 85%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent;
+        }
+
+        #layout-editor::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #layout-editor::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #layout-editor::-webkit-scrollbar-thumb {
+            background-color: var(--accent);
+            border-radius: 3px;
+        }
+
+        #layout-editor.minimized {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border-radius: 8px 0 0 8px;
+            /* Tab shape */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: rgba(20, 20, 30, 0.95);
+            border-color: var(--accent);
+        }
+
+        #layout-editor.minimized h3 {
+            margin: 0;
+            padding: 0;
+            font-size: 24px;
+        }
+
+        #layout-editor.minimized .layout-title-text {
+            display: none;
+        }
+
+        #layout-editor.minimized .layout-content {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #layout-editor h3 {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .layout-content {
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        #layout-editor h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent);
+        }
+
+        #layout-editor h4 {
+            margin: 10px 0 5px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .editor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            gap: 10px;
+        }
+
+        .editor-row span:first-child {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            min-width: 70px;
+        }
+
+        .editor-row select {
+            flex: 1;
+            background: #1a1a20;
+            border: 1px solid rgba(187, 134, 252, 0.3);
+            border-radius: 8px;
+            padding: 6px 10px;
+            color: #fff;
+            font-size: 0.75rem;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23bb86fc' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+        }
+
+        .editor-row select:hover {
+            background: #222228;
+            border-color: rgba(187, 134, 252, 0.5);
+        }
+
+        .editor-row select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.2);
+        }
+
+        .editor-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .editor-row input[type="range"]::-webkit-slider-track {
+            background: #A78BFA;
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        .editor-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 8px rgba(187, 134, 252, 0.4);
+        }
+
+        .editor-row input[type="range"]::-moz-range-track {
+            background: #A78BFA;
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        .editor-row input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(187, 134, 252, 0.4);
+        }
+
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        #copy-msg {
+            color: #0f0;
+            display: none;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            background: var(--bg-dark);
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-logo">CHOCO<span>TONE</span></div>
+        <div class="nav-links">
+            <a href="#overview">Overview</a>
+            <a href="#controls">Controls</a>
+            <a href="#tap-tempo">Tap Tempo</a>
+            <a href="#menu">Menu</a>
+            <a href="#web">Config</a>
+        </div>
+    </nav>
+
+    <!-- HERO: CHOCOTONE FEATURE SLIDE -->
+    <section id="hero">
+        <div class="container" style="max-width: 1400px;">
+            <div
+                style="position: relative; padding: 40px; background: linear-gradient(135deg, #1a1a20 0%, #0f0f12 100%); border-radius: 24px; overflow: hidden;">
+                <!-- Background glows -->
+                <div
+                    style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0, 0, 0, 0) 70%); top: -200px; right: -200px; z-index: 0; pointer-events: none;">
+                </div>
+                <div
+                    style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(0, 0, 0, 0) 70%); bottom: -100px; left: -100px; z-index: 0; pointer-events: none;">
+                </div>
+
+                <!-- Header -->
+                <header
+                    style="z-index: 1; position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 220px; margin-bottom: 20px;">
+                    <div
+                        style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; justify-content: center; backdrop-filter: blur(10px);">
+                        <h1
+                            style="font-size: 72px; font-weight: 800; margin: 0; background: linear-gradient(to right, #fff, #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -2px; line-height: 1;">
+                            CHOCOTONE</h1>
+                        <div style="font-size: 24px; color: #9ca3af; font-weight: 400; margin-top: 8px;">Advanced BLE
+                            MIDI Controller</div>
+                        <div style="margin-top: 16px; color: #6b7280; font-size: 14px;">Made by André Solis Albuquerque
+                            - 2025</div>
+                    </div>
+                    <div
+                        style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; overflow: hidden; position: relative; backdrop-filter: blur(10px);">
+                        <img src="images/chocotone_header.png" alt="Chocotone Controller"
+                            style="width: 100%; height: 100%; object-fit: cover; object-position: center;">
+                    </div>
+                </header>
+
+                <!-- Bento Grid -->
+                <div
+                    style="display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px; z-index: 1; position: relative;">
+                    <!-- Card 1: 8 Buttons -->
+                    <div class="control-card" style="position: relative;">
+                        <div class="control-icon" style="color: #f472b6;">🎛️</div>
+                        <h3
+                            style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff; white-space: nowrap;">
+                            8 Programmable Buttons</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Fully configurable MIDI
+                            messages with RGB LED feedback for instant visual status.</p>
+                        <div
+                            style="position: absolute; top: 28px; right: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #f472b6; box-shadow: 0 0 8px #f472b6;">
+                            </div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #60a5fa; box-shadow: 0 0 8px #60a5fa;">
+                            </div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80;">
+                            </div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div
+                                style="width: 12px; height: 12px; border-radius: 50%; background: #fb923c; box-shadow: 0 0 8px #fb923c;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: BLE MIDI -->
+                    <div class="control-card">
+                        <div class="control-icon" style="color: #60a5fa;">⚡</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">BLE MIDI</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Wireless connectivity.
+                            Auto-connects to Sonicake Pocket Master & other BLE devices.</p>
+                    </div>
+
+                    <!-- Card 3: OLED Display -->
+                    <div class="control-card" style="position: relative;">
+                        <div class="control-icon" style="color: #4ade80;">📟</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">OLED Display
+                        </h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">128x64 pixel screen for
+                            real-time status, presets, and menu navigation.</p>
+                        <div
+                            style="background: #000; border: 2px solid #222; border-radius: 6px; padding: 4px 6px; font-family: 'VT323', monospace; color: #00ffff; text-shadow: 0 0 2px rgba(0, 255, 255, 0.6); font-size: 12px; line-height: 1; display: flex; flex-direction: column; justify-content: space-between; height: 80px; width: 120px; position: absolute; top: 28px; right: 28px; box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05); letter-spacing: 0.5px;">
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>EQ</span><span>FX2</span><span>DLY</span><span>RVB</span>
+                            </div>
+                            <div
+                                style="text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0;">
+                                <div
+                                    style="font-size: 20px; letter-spacing: 1px; margin-bottom: 0; transform: scaleY(0.9);">
+                                    STOMP</div>
+                                <div style="font-size: 12px; transform: scaleY(0.9);">BPM:83.6</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>SPM:Y</span><span>WiFi:N</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                                <span>NR</span><span>FX1</span><span>DRV</span><span>TAP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Rotary Encoder -->
+                    <div class="control-card">
+                        <div class="control-icon" style="color: #a78bfa;">🔄</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Rotary Encoder
+                        </h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Intuitive navigation
+                            and precise parameter adjustment with push-button.</p>
+                    </div>
+
+                    <!-- Card 5: 4 Presets -->
+                    <div class="control-card">
+                        <div class="control-icon" style="color: #f472b6;">💾</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">4 Presets</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Store different
+                            configurations for banks or stomp mode. Easy switching between setups.</p>
+                    </div>
+
+                    <!-- Card 6: Rechargeable Battery -->
+                    <div class="control-card">
+                        <div class="control-icon" style="color: #4ade80;">🔋</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Rechargeable
+                            Battery</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Built-in rechargeable
+                            battery for portable operation without external power.</p>
+                    </div>
+
+                    <!-- Card 7: Tap Tempo -->
+                    <div class="control-card" style="position: relative;">
+                        <div class="control-icon" style="color: #fb923c;">🥁</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Tap Tempo</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Built-in tap tempo with
+                            multiple rhythm patterns:
+                        <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #9ca3af;">
+                            <li>1/4 (Quarter)</li>
+                            <li>1/8 (Eighth)</li>
+                            <li>1/8d (Dotted)</li>
+                            <li>1/2 (Half)</li>
+                        </ul>
+                        </p>
+                        <div
+                            style="background: #000; border: 2px solid #222; border-radius: 6px; padding: 4px 6px; font-family: 'VT323', monospace; color: #00ffff; text-shadow: 0 0 2px rgba(0, 255, 255, 0.6); font-size: 12px; line-height: 1; display: flex; flex-direction: column; justify-content: space-between; height: 80px; width: 120px; position: absolute; top: 28px; right: 28px; box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05); letter-spacing: 0.5px;">
+                            <div style="display: flex; justify-content: space-between; width: 100%;"><span>TAP
+                                    TEMPO</span><span>500ms</span></div>
+                            <div
+                                style="text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0;">
+                                <div
+                                    style="font-size: 20px; letter-spacing: 1px; margin-bottom: 0; transform: scaleY(0.9);">
+                                    120.0</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; width: 100%;"><span>Pattern:
+                                    1/4</span><span>500ms</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Card 8: Web Config -->
+                    <div class="control-card">
+                        <div class="control-icon" style="color: #a78bfa;">🌐</div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Wireless Config
+                        </h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Host a local web server
+                            to configure mappings, name presets, and manage settings.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- VIRTUAL CONTROLLER -->
+    <section id="virtual-controller">
+        <div class="container">
+            <h2>Virtual Chocotone</h2>
+            <p style="text-align:center; margin-bottom:2rem;">
+                Try it yourself! Fully interactive simulation.<br>
+                <span style="font-size:0.9rem; color:var(--accent);">
+                    <br><strong>🖱️ Encoder Click:</strong> Change Preset |
+                    <strong>⏱️ Encoder Hold:</strong> Menu |
+                    <strong>🖱️↕️ Encoder Scroll:</strong> Navigate
+                </span>
+            </p>
+
+            <div class="controller-wrapper">
+                <div class="chassis">
+                    <div class="screw tl"></div>
+                    <div class="screw tr"></div>
+                    <div class="screw bl"></div>
+                    <div class="screw br"></div>
+
+                    <!-- Top Row -->
+                    <div class="button-unit" id="btn-5" data-tooltip="Switch 5: Snapshot A">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-5"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-6" data-tooltip="Switch 6: Snapshot B">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-6"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-7" data-tooltip="Switch 7: Snapshot C">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-7"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-8" data-tooltip="Switch 8: Tap Tempo">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-8"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Row -->
+                    <div class="button-unit" id="btn-1" data-tooltip="Switch 1: Toggle Drive">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-1"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-2" data-tooltip="Switch 2: Toggle Mod">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-2"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-3" data-tooltip="Switch 3: Toggle Delay">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-3"></div>
+                        </div>
+                    </div>
+                    <div class="button-unit" id="btn-4" data-tooltip="Switch 4: Toggle Reverb">
+                        <div class="footswitch">
+                            <div class="led-ring" id="led-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- OLED -->
+                    <div class="oled-frame">
+                        <div class="oled-glass">
+                            <div class="oled-pixel-grid" id="oled-content"></div>
+                        </div>
+                    </div>
+
+                    <!-- Encoder -->
+                    <div class="encoder-unit" id="encoder-knob" data-tooltip="Encoder: Click/Scroll/Hold">
+                        <div class="knob-cap"></div>
+                    </div>
+
+                    <!-- Tooltip -->
+                    <div id="v-tooltip" class="v-tooltip">Info</div>
+                </div>
+            </div>
+            <!-- LAYOUT EDITOR UI (Moved Outside Wrapper) -->
+            <div id="layout-editor" class="minimized">
+                <h3 onclick="toggleEditor()" title="Toggle Editor">🎨 <span class="layout-title-text">Layout
+                        Editor</span></h3>
+
+                <div class="layout-content">
+                    <h4>Components</h4>
+                    <div class="editor-row"><span>Btn Fmt:</span>
+                        <select id="sel-btn-fmt" onchange="updateStyle('btn', this.value)">
+                            <option value="">Round</option>
+                            <option value="btn-square">Square</option>
+                            <option value="btn-rect">Rectangular</option>
+                            <option value="btn-metal">Metal Footswitch</option>
+                            <option value="btn-metal-flat">Metal Flat</option>
+                            <option value="btn-soft">Soft Touch</option>
+                            <option value="btn-arcade">Arcade</option>
+                            <option value="btn-illuminated">Illuminated</option>
+                            <option value="btn-hex">Hexagonal</option>
+                            <option value="btn-transparent">Transparent</option>
+                        </select>
+                    </div>
+                    <div class="editor-row"><span>LED Fmt:</span>
+                        <select id="sel-led-fmt" onchange="updateStyle('led', this.value)">
+                            <option value="led-ring">Ring</option>
+                            <option value="led-strip">Strip</option>
+                            <option value="led-dot">Dot</option>
+                            <option value="led-rect">Rect</option>
+                            <option value="led-inside">Inside</option>
+                        </select>
+                    </div>
+                    <div class="editor-row"><span>Encoder:</span>
+                        <select id="sel-enc-model" onchange="updateStyle('enc', this.value)">
+                            <option value="">Default</option>
+                            <option value="enc-2">Silver</option>
+                            <option value="enc-3">Grip</option>
+                            <option value="enc-4">Square</option>
+                            <option value="enc-5">Sphere</option>
+                            <option value="enc-6">Knurled</option>
+                            <option value="enc-7">Copper</option>
+                            <option value="enc-8">Gamer</option>
+                        </select>
+                    </div>
+                    <div class="editor-row"><span>Screws:</span>
+                        <select id="sel-screw-model" onchange="updateStyle('screw', this.value)">
+                            <option value="">Philips</option>
+                            <option value="screw-2">Flathead</option>
+                            <option value="screw-3">Hex</option>
+                            <option value="screw-4">Torx</option>
+                            <option value="screw-5">Black</option>
+                            <option value="screw-6">Gold</option>
+                            <option value="screw-7">Rusty</option>
+                            <option value="screw-8">None</option>
+                        </select>
+                    </div>
+                    <div class="editor-row"><span>Screen:</span>
+                        <select id="sel-screen-model" onchange="updateStyle('screen', this.value)">
+                            <option value="screen-oled">OLED</option>
+                            <option value="screen-tft">TFT</option>
+                            <option value="screen-ips">IPS</option>
+                            <option value="screen-lcd">LCD</option>
+                        </select>
+                    </div>
+                    <hr style="border-color:#444;">
+
+                    <div class="editor-row"><span>Chassis H:</span> <input type="range" id="sl-ar" min="40" max="80"
+                            step="0.5"><span class="slider-value" id="val-ar"></span></div>
+                    <div class="editor-row"><span>Chassis W:</span> <input type="range" id="sl-w" min="400" max="1000"
+                            step="10"><span class="slider-value" id="val-w"></span></div>
+                    <div class="editor-row"><span>Corner R:</span> <input type="range" id="sl-rad" min="0" max="100"
+                            step="1"><span class="slider-value" id="val-rad"></span></div>
+                    <h4>OLED</h4>
+                    <div class="editor-row"><span>Width:</span> <input type="range" id="sl-oled-w" min="10" max="80"
+                            step="0.5"><span class="slider-value" id="val-oled-w"></span></div>
+                    <div class="editor-row"><span>Height:</span> <input type="range" id="sl-oled-h" min="10" max="60"
+                            step="0.5"><span class="slider-value" id="val-oled-h"></span></div>
+                    <div class="editor-row"><span>Left X:</span> <input type="range" id="sl-oled-x" min="20" max="80"
+                            step="0.5"><span class="slider-value" id="val-oled-x"></span></div>
+                    <div class="editor-row"><span>Top Y:</span> <input type="range" id="sl-oled-y" min="20" max="80"
+                            step="0.5"><span class="slider-value" id="val-oled-y"></span></div>
+                    <h4>Buttons (Y)</h4>
+                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="40"
+                            step="0.5"><span class="slider-value" id="val-btn-y1"></span></div>
+                    <div class="editor-row"><span>Btm Row:</span> <input type="range" id="sl-btn-y2" min="5" max="40"
+                            step="0.5"><span class="slider-value" id="val-btn-y2"></span></div>
+                    <h4>Buttons (X)</h4>
+                    <div class="editor-row"><span>Spacing:</span> <input type="range" id="sl-btn-spacing" min="10"
+                            max="40" step="0.5"><span class="slider-value" id="val-btn-spacing"></span></div>
+                    <h4>Encoder</h4>
+                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="30"
+                            step="0.5"><span class="slider-value" id="val-enc-x"></span></div>
+                    <div class="editor-row"><span>Center Y:</span> <input type="range" id="sl-enc-y" min="20" max="80"
+                            step="0.5"><span class="slider-value" id="val-enc-y"></span></div>
+                    <button onclick="copyConfig()" style="width:100%; margin-top:10px; cursor:pointer;">📋 Copy
+                        Config</button>
+                    <div id="copy-msg">Copied!</div>
+                </div>
+            </div>
+    </section>
+
+    <!-- LOGIC -->
+    <script>
+        // --- EDITOR LOGIC ---
+        const wrapper = document.querySelector('.controller-wrapper');
+
+        function toggleEditor() {
+            document.getElementById('layout-editor').classList.toggle('minimized');
+        }
+        const inputMap = {
+            '--chassis-ar': ['sl-ar', '%'],
+            '--chassis-w': ['sl-w', 'px'],
+            '--chassis-rad': ['sl-rad', 'px'],
+            '--oled-w': ['sl-oled-w', '%'],
+            '--oled-h': ['sl-oled-h', '%'],
+            '--oled-x': ['sl-oled-x', '%'],
+            '--oled-y': ['sl-oled-y', '%'],
+            '--btn-y-top': ['sl-btn-y1', '%'],
+            '--btn-y-btm': ['sl-btn-y2', '%'],
+            '--btn-spacing': ['sl-btn-spacing', '%'],
+            '--enc-x': ['sl-enc-x', '%'],
+            '--enc-y': ['sl-enc-y', '%']
+        };
+
+        const style = getComputedStyle(wrapper);
+        for (const [v, [id, unit]] of Object.entries(inputMap)) {
+            const el = document.getElementById(id);
+            const valEl = document.getElementById('val-' + id.replace('sl-', ''));
+            if (!el) continue;
+            let val = style.getPropertyValue(v).trim();
+            if (val.includes(unit)) val = val.replace(unit, '');
+            el.value = val;
+            if (valEl) valEl.textContent = val + unit;
+            el.addEventListener('input', (e) => {
+                wrapper.style.setProperty(v, e.target.value + unit);
+                if (valEl) valEl.textContent = e.target.value + unit;
+            });
+        }
+
+        // --- DYNAMIC COMPONENT STYLES ---
+        let currentLedStyle = '';
+        function updateStyle(type, value) {
+            const chassis = document.querySelector('.chassis');
+
+            if (type === 'btn') {
+                document.querySelectorAll('.footswitch').forEach(el => {
+                    el.classList.remove('btn-round', 'btn-square', 'btn-rect', 'btn-metal', 'btn-metal-flat', 'btn-soft', 'btn-arcade', 'btn-illuminated', 'btn-hex', 'btn-transparent');
+                    if (value) el.classList.add(value);
+                });
+            } else if (type === 'led') {
+                document.querySelectorAll('.led-ring').forEach(el => {
+                    // Hack: store original ID for logic, but change class presentation
+                    // Actually, let's keep 'led-ring' as base class in HTML but swap extra classes or styles?
+                    // Better: The HTML used 'led-ring' as the class. Let's swap that class out?
+                    // No, invalidates logic if I rely on class name for selection.
+                    // Solution: Add the new format class ON TOP of logic class, or replace visually irrelevant classes.
+                    currentLedStyle = value;
+                    el.className = 'led-ring ' + value;
+                    if (value === 'led-ring') el.className = 'led-ring'; // Clean up
+                });
+            } else if (type === 'enc') {
+                const encUnit = document.querySelector('.encoder-unit');
+                // Remove existing enc-* classes
+                encUnit.classList.forEach(c => { if (c.startsWith('enc-')) encUnit.classList.remove(c); });
+                if (value) encUnit.classList.add(value);
+            } else if (type === 'screw') {
+                document.querySelectorAll('.screw').forEach(el => {
+                    // Remove existing screw-* classes
+                    el.classList.forEach(c => { if (c.startsWith('screw-') && c !== 'screw') el.classList.remove(c); });
+                    if (value) el.classList.add(value);
+                });
+            } else if (type === 'screen') {
+                const oledFrame = document.querySelector('.oled-frame');
+                // Remove existing screen-* classes
+                oledFrame.classList.forEach(c => { if (c.startsWith('screen-')) oledFrame.classList.remove(c); });
+                if (value) oledFrame.classList.add(value);
+            }
+        }
+
+        function copyConfig() {
+            let css = '/* FINAL LAYOUT CONFIG */';
+            for (const [v, [id, unit]] of Object.entries(inputMap)) {
+                let val = document.getElementById(id).value;
+                css += `\n${v}: ${val}${unit};`;
+            }
+
+            // Add component styles comments
+            css += '\n\n/* COMPONENT SELECTIONS */';
+            css += '\n/* Button: ' + document.getElementById('sel-btn-fmt').value + ' */';
+            css += '\n/* LED: ' + document.getElementById('sel-led-fmt').value + ' */';
+            css += '\n/* Encoder: ' + document.getElementById('sel-enc-model').value + ' */';
+            css += '\n/* Screw: ' + document.getElementById('sel-screw-model').value + ' */';
+            css += '\n/* Screen: ' + document.getElementById('sel-screen-model').value + ' */';
+
+            navigator.clipboard.writeText(css).then(() => {
+                const msg = document.getElementById('copy-msg');
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 2000);
+            });
+        }
+
+        // --- VIRTUAL CONTROLLER LOGIC ---
+        const oledContent = document.getElementById('oled-content');
+        const tooltip = document.getElementById('v-tooltip');
+        const encoder = document.getElementById('encoder-knob');
+
+        const ledIds = [1, 2, 3, 4, 5, 6, 7, 8];
+        const leds = {};
+        ledIds.forEach(id => leds[id] = document.getElementById('led-' + id));
+
+        // State
+        let state = {
+            mode: 'PLAY',
+            presetIndex: 0,
+            menuIndex: 0,
+            inSubMenu: false,
+            buttonOverlay: null,
+            buttonNameFontSize: 6, // Default from firmware adjusted for presentation
+            // Tap Tempo Specifics
+            inTapTempoMode: false,
+            lastTapTime: 0,
+            tapModeTimeout: 0,
+            currentBPM: 120.0,
+            rhythmPattern: 0 // 0=1/4, 1=1/8, 2=1/8d, 3=1/2
+        };
+
+        const rhythmMultipliers = [1.0, 0.5, 0.75, 2.0];
+        const rhythmNames = ["1/4", "1/8", "1/8d", "1/2"];
+
+        // Colors
+        const C_RED = '#FF0000'; const C_GREEN = '#00FF00'; const C_BLUE = '#0000FF';
+        const C_WHITE = '#FFFFFF'; const C_CYAN = '#00FFFF'; const C_PURPLE = '#FF00FF'; const C_OFF = '#111';
+
+        const presets = [
+            { name: 'Note', buttons: [{ n: 'C2', c: C_RED }, { n: 'C#2', c: C_RED }, { n: 'D2', c: C_RED }, { n: 'D#2', c: C_RED }, { n: 'E2', c: C_RED }, { n: 'F2', c: C_RED }, { n: 'F#2', c: C_RED }, { n: 'G2', c: C_RED }] },
+            { name: 'STOMP', buttons: [{ n: 'NR', c: C_WHITE }, { n: 'FX1', c: C_BLUE }, { n: 'DRV', c: C_RED }, { n: 'TAP', c: C_WHITE, type: 'TAP' }, { n: 'EQ', c: C_GREEN }, { n: 'FX2', c: C_CYAN }, { n: 'DLY', c: C_BLUE }, { n: 'RVB', c: C_PURPLE }] },
+            { name: 'BANKS 1-8', buttons: [{ n: 'B1', c: C_WHITE }, { n: 'B2', c: C_WHITE }, { n: 'B3', c: C_WHITE }, { n: 'B4', c: C_WHITE }, { n: 'B5', c: C_GREEN }, { n: 'B6', c: C_GREEN }, { n: 'B7', c: C_GREEN }, { n: 'B8', c: C_GREEN }] },
+            { name: 'BANKS 9-16', buttons: [{ n: 'B9', c: C_CYAN }, { n: 'B10', c: C_CYAN }, { n: 'B11', c: C_CYAN }, { n: 'B12', c: C_CYAN }, { n: 'B13', c: C_PURPLE }, { n: 'B14', c: C_PURPLE }, { n: 'B15', c: C_PURPLE }, { n: 'B16', c: C_PURPLE }] }
+        ];
+
+        const menuItems = ['Save and Exit', 'Exit without Saving', 'Wi-Fi Editor (OFF)', 'LED Bright (On)', 'LED Bright (Dim)', 'Pad Debounce', 'Clear BLE Bonds', 'Reboot', 'Factory Reset', 'Name Font Size', 'Wifi OFF at Boot'];
+
+        // Main Loop for Timeouts
+        setInterval(() => {
+            const now = Date.now();
+            // Check Tap Timeout
+            if (state.inTapTempoMode && now > state.tapModeTimeout) {
+                state.inTapTempoMode = false;
+                render();
+            }
+        }, 100);
+
+        function render() {
+            if (state.buttonOverlay) {
+                // Approximate GFX size: Size 1 ~ 0.7em, Size 4 ~ 2.8em
+                let sizeEm = state.buttonNameFontSize * 0.7;
+                oledContent.innerHTML = `<div class="oled-overlay" style="font-size:${sizeEm}em">${state.buttonOverlay}</div>`; return;
+            }
+
+            // TAP TEMPO MODE
+            if (state.inTapTempoMode) {
+                let delayMs = Math.round((60000.0 / state.currentBPM) * rhythmMultipliers[state.rhythmPattern]);
+                let roundedBPM = state.currentBPM.toFixed(1);
+
+                oledContent.innerHTML = `
+                    <div class="oled-row-top"><span>TAP TEMPO</span><span>${delayMs}ms</span></div>
+                    <div class="oled-main-area" style="justify-content:center;">
+                        <div style="font-size:3em; line-height:1;">${roundedBPM}</div>
+                    </div>
+                    <div class="oled-row-btm" style="margin-top:auto; align-items:flex-end;">
+                        <span>Pattern: ${rhythmNames[state.rhythmPattern]}</span>
+                        <span>${delayMs}ms</span>
+                    </div>
+                `;
+                // Flash LEDs white briefly (simulated by just staying white or active for now)
+                Object.values(leds).forEach(l => { l.style.borderColor = '#444'; l.style.boxShadow = 'none'; });
+                return;
+            }
+
+            // MENU MODE
+            if (state.mode === 'MENU') {
+                if (state.inSubMenu) {
+                    let valToShow = "[ Value ]";
+                    if (state.menuIndex === 9) valToShow = state.buttonNameFontSize;
+
+                    oledContent.innerHTML = `<div class="oled-menu-header">-- Menu CHOCOTONE --</div><div style="margin-top:10px; text-align:center;">Editing:<br>${menuItems[state.menuIndex].split('(')[0]}<br><span style="font-size:1.5em; color:#fff;">${valToShow}</span></div>`;
+                } else {
+                    let html = '<div class="oled-menu-list">';
+                    const start = Math.max(0, Math.min(state.menuIndex - 1, menuItems.length - 4));
+                    const end = Math.min(start + 4, menuItems.length);
+                    for (let i = start; i < end; i++) {
+                        const sel = (i === state.menuIndex) ? '> ' : '  ';
+                        html += `<div class="oled-menu-item">${sel}${menuItems[i]}</div>`;
+                    }
+                    html += '</div>';
+                    oledContent.innerHTML = `<div class="oled-menu-header">-- Menu CHOCOTONE --</div>${html}`;
+                }
+                Object.values(leds).forEach(l => { l.className = 'led-ring'; l.style.borderColor = '#111'; l.style.boxShadow = 'none'; });
+                return;
+            }
+
+            // PLAY MODE
+            const p = presets[state.presetIndex];
+            let topRow = `<div class="oled-row-top"><span>${cutName(p.buttons[4].n)}</span><span>${cutName(p.buttons[5].n)}</span><span>${cutName(p.buttons[6].n)}</span><span>${cutName(p.buttons[7].n)}</span></div>`;
+            let main = `<div class="oled-main-area"><div class="oled-preset-name">${p.name}</div><div class="oled-bpm">BPM:${state.currentBPM.toFixed(1)}</div></div>`;
+            let status = `<div class="oled-status"><span>SPM:Y</span> <span>WiFi:N</span></div>`;
+            let btmRow = `<div class="oled-row-btm"><span>${cutName(p.buttons[0].n)}</span><span>${cutName(p.buttons[1].n)}</span><span>${cutName(p.buttons[2].n)}</span><span>${cutName(p.buttons[3].n)}</span></div>`;
+            oledContent.innerHTML = topRow + main + status + btmRow;
+            updateLeds(p);
+        }
+
+        function cutName(name) { return name.substring(0, 4); }
+        function updateLeds(preset) {
+            preset.buttons.forEach((btn, idx) => {
+                const l = leds[idx + 1];
+                if (l) {
+                    l.className = 'led-ring ' + currentLedStyle + ' active';
+                    if (currentLedStyle === 'led-ring') l.className = 'led-ring';
+
+                    // Set CSS variables for styling
+                    l.style.setProperty('--led-color', btn.c);
+                    // Also set on parent footswitch for illuminated buttons
+                    l.parentElement.style.setProperty('--active-led-color', btn.c);
+
+                    l.style.borderColor = btn.c;
+                    l.style.boxShadow = `0 0 10px ${btn.c}`;
+                }
+            });
+        }
+
+        function handleTap() {
+            const now = Date.now();
+
+            // First tap or timeout
+            if (!state.inTapTempoMode || (now - state.lastTapTime > 3000)) {
+                state.inTapTempoMode = true;
+                state.lastTapTime = now;
+                state.tapModeTimeout = now + 3000;
+                render();
+                return;
+            }
+
+            // Consecutive tap
+            const interval = now - state.lastTapTime;
+            state.lastTapTime = now;
+            let newBpm = 60000.0 / interval;
+            // Constrain
+            if (newBpm < 40) newBpm = 40;
+            if (newBpm > 300) newBpm = 300;
+
+            state.currentBPM = newBpm;
+            state.tapModeTimeout = now + 3000; // Reset timeout
+            render();
+        }
+
+        // Inputs
+        document.querySelectorAll('.button-unit').forEach((unit, index) => {
+            let btnLogicIndex = (index < 4) ? index + 4 : index - 4;
+            unit.addEventListener('mousedown', () => {
+                const p = presets[state.presetIndex];
+                const btnConfig = p.buttons[btnLogicIndex];
+
+                // Check for TAP function
+                if (state.mode === 'PLAY') {
+                    if (btnConfig.type === 'TAP') {
+                        handleTap();
+                    } else {
+                        // Regular button press
+                        state.buttonOverlay = btnConfig.n;
+                        render();
+                        setTimeout(() => { state.buttonOverlay = null; render(); }, 1000);
+                    }
+                }
+            });
+        });
+
+        let encTimer = null; let isLongPress = false;
+        encoder.addEventListener('mousedown', () => {
+            isLongPress = false;
+            encTimer = setTimeout(() => {
+                isLongPress = true;
+                if (state.inTapTempoMode) {
+                    state.inTapTempoMode = false; // Long press exits tap mode to menu? Or just menu
+                    state.mode = 'MENU';
+                } else {
+                    state.mode = state.mode === 'PLAY' ? 'MENU' : 'PLAY';
+                }
+                state.menuIndex = 0; state.inSubMenu = false;
+                render();
+            }, 600);
+        });
+        encoder.addEventListener('mouseup', () => {
+            clearTimeout(encTimer);
+            if (!isLongPress) {
+                if (state.inTapTempoMode) {
+                    // Tap Mode: Cycle Rhythm Pattern
+                    state.rhythmPattern = (state.rhythmPattern + 1) % 4;
+                    state.tapModeTimeout = Date.now() + 3000; // Reset timeout
+                    render();
+                } else if (state.mode === 'PLAY') {
+                    state.presetIndex = (state.presetIndex + 1) % presets.length;
+                    render();
+                } else {
+                    // Menu Mode
+                    if (state.inSubMenu) { state.inSubMenu = false; }
+                    else {
+                        if (state.menuIndex === 0 || state.menuIndex === 1) state.mode = 'PLAY';
+                        else state.inSubMenu = true;
+                    }
+                    render();
+                }
+            }
+        });
+
+        encoder.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (state.inTapTempoMode) {
+                // Adjust BPM
+                let delta = e.deltaY > 0 ? -0.5 : 0.5; // Scroll up increases
+                state.currentBPM += delta;
+                if (state.currentBPM < 40) state.currentBPM = 40;
+                if (state.currentBPM > 300) state.currentBPM = 300;
+                state.tapModeTimeout = Date.now() + 3000; // Reset timeout
+                render();
+            } else if (state.mode === 'MENU') {
+                if (state.inSubMenu) {
+                    // EDITING SUBMENU
+                    if (state.menuIndex === 9) { // Font Size
+                        let delta = e.deltaY > 0 ? -1 : 1;
+                        state.buttonNameFontSize += delta;
+                        if (state.buttonNameFontSize < 1) state.buttonNameFontSize = 1;
+                        if (state.buttonNameFontSize > 6) state.buttonNameFontSize = 6;
+                    }
+                } else {
+                    if (e.deltaY > 0 && state.menuIndex < menuItems.length - 1) state.menuIndex++;
+                    else if (e.deltaY < 0 && state.menuIndex > 0) state.menuIndex--;
+                }
+            } else {
+                if (e.deltaY > 0) state.presetIndex = (state.presetIndex + 1) % presets.length;
+                else state.presetIndex = (state.presetIndex - 1 + presets.length) % presets.length;
+            }
+            render();
+        });
+
+        document.querySelectorAll('.button-unit, .encoder-unit').forEach(el => {
+            el.addEventListener('mousemove', (e) => {
+                tooltip.style.opacity = 1; tooltip.innerText = el.dataset.tooltip;
+                tooltip.style.left = (e.pageX + 15) + 'px'; tooltip.style.top = (e.pageY + 15) + 'px';
+            });
+            el.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; });
+        });
+
+        render();
+    </script>
+
+    <!-- CONTROLS -->
+    <section id="controls">
+        <div class="container">
+            <h2>Mastering Control</h2>
+            <div class="controls-grid">
+                <!-- BUTTONS -->
+                <div class="control-card">
+                    <div class="control-icon">🎛️</div>
+                    <h3>Button Actions</h3>
+                    <p>Buttons support dual messages via toggling:</p>
+                    <div style="margin-top: 1rem;">
+                        <p><span class="badge">PRESS (1st)</span><br>Sends the <strong>Primary Message</strong> (e.g.,
+                            Effect On). The LED will light up securely.</p>
+                        <hr style="border:0; border-top:1px solid #333; margin:1rem 0;">
+                        <p><span class="badge">PRESS (2nd)</span><br>Sends the <strong>Alternate Message</strong> (e.g.,
+                            Effect Off). The LED dims or turns off.</p>
+                    </div>
+                </div>
+
+                <!-- ENCODER -->
+                <div class="control-card">
+                    <div class="control-icon">🔄</div>
+                    <h3>The Encoder</h3>
+                    <p>Navigate the system without a computer:</p>
+                    <div style="margin-top: 1rem;">
+                        <p><span class="badge">ROTATE</span><br>Adjusts parameters (like BPM) or scrolls through menu
+                            items.</p>
+                        <p><span class="badge">CLICK</span><br>Selects the current menu item or cycles options (like
+                            Rhythm Patterns in Tap Mode).</p>
+                        <p><span class="badge">LONG PRESS</span><br>Enters or Exits the Main Menu.</p>
+                    </div>
+                </div>
+
+                <!-- PRESETS -->
+                <div class="control-card">
+                    <div class="control-icon">💾</div>
+                    <h3>Switching Presets</h3>
+                    <p>Store up to 4 complete configurations.</p>
+                    <p>To switch presets:</p>
+                    <ol style="margin-left:1.5rem; color:#888;">
+                        <li>Assign a button to "Preset +" or "Preset -".</li>
+                        <li>OR use the Encoder in the main view (if configured).</li>
+                    </ol>
+                    <p style="margin-top:1rem;"><em>Pro Tip: Each preset has its own name and LED color scheme.</em></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TAP TEMPO DEEP DIVE -->
+    <section id="tap-tempo">
+        <div class="container">
+            <h2>Tap Tempo System</h2>
+            <div class="step-list">
+                <div class="step-item">
+                    <div class="step-num">1</div>
+                    <div>
+                        <h3>Enter Tap Mode</h3>
+                        <p>Press any button assigned to <strong>TAP_TEMPO</strong>. The screen will switch to the BPM
+                            view.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">2</div>
+                    <div>
+                        <h3>Tap it in</h3>
+                        <p>Tap the button rhythmically. The controller calculates the average BPM instantly.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">3</div>
+                    <div>
+                        <h3>Fine Tune</h3>
+                        <p>Rotate the encoder to adjust the BPM in <strong>0.5</strong> increments for precision.</p>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">4</div>
+                    <div>
+                        <h3>Rhythm Patterns</h3>
+                        <p>Short-press the encoder to cycle through subdivisions:</p>
+                        <div class="rhythm-patterns">
+                            <span class="pattern-tag">1/4 (Quarter)</span>
+                            <span class="pattern-tag">1/8 (Eighth)</span>
+                            <span class="pattern-tag">1/8d (Dotted)</span>
+                            <span class="pattern-tag">1/2 (Half)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- OLED MENU MAP -->
+    <section id="menu">
+        <div class="container">
+            <h2>OLED System Menu</h2>
+            <p style="text-align: center; max-width:600px; margin: 0 auto 2rem auto;">
+                Long-press the Encoder to enter the menu. Here is what you can do:
+            </p>
+
+            <div class="menu-tree">
+                <div class="menu-item">
+                    <div class="menu-title">Save and Exit</div>
+                    <p>Saves any changes made in the menu to permanent memory and returns to play mode.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Wi-Fi Config</div>
+                    <p>Toggles the WiFi Access Point on/off. <br><em>Enable this to connect via browser editor.</em></p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">LED Brightness</div>
+                    <p>Adjusts the global brightness of the NeoPixels (Low/Med/High).</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Pad Debounce</div>
+                    <p>Adjusts button sensitivity to prevent double-triggering.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Clear BLE Bonds</div>
+                    <p>Forgets all paired Bluetooth devices. Useful if you can't connect to a new pedal.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Factory Reset</div>
+                    <p>Wipes all settings and presets back to default state.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- WEB CONFIG -->
+    <section id="web" style="background: radial-gradient(circle at center, #222 0%, #111 100%);">
+        <div class="container" style="text-align: center;">
+            <h2>Web Configuration</h2>
+            <img src="images/chocotone_editor.png" alt="Web Editor"
+                style="max-width: 800px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
+            <p>For deep editing, connect to the WiFi network:</p>
+            <h3 style="color:var(--accent); font-family: monospace; font-size: 2rem;">CHOCOTONE</h3>
+            <p>Then navigate to <a href="http://192.168.4.1" style="color:white;">http://192.168.4.1</a> in your
+                browser.</p>
+            <p>Password: <code>12345678</code></p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Chocotone MIDI Controller &copy; 2025</p>
+    </footer>
+</body>
+
+</html>

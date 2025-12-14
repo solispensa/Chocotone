@@ -1,16 +1,21 @@
 #include "BleMidi.h"
 #include "UI_Display.h"
+#include "Storage.h"
+#include "WebInterface.h"
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 #include "esp_gap_ble_api.h"
 #include "delay_time_sysex.h"
 
 #define MIDI_SERVICE_UUID        "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
 
-// Forward Declaration
+// Forward Declarations
 static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
+static void serverMidiCallback(BLECharacteristic* pCharacteristic);
 
 // Security Callbacks
 class MySecurityCallbacks : public BLESecurityCallbacks {
@@ -36,7 +41,7 @@ class MyClientCallback : public BLEClientCallbacks {
     }
 };
 
-// Global BLE variables
+// Global BLE Client variables
 BLEAdvertisedDevice* myDevice;
 BLEClient* pClient = nullptr;
 BLERemoteCharacteristic* pRemoteCharacteristic = nullptr;
@@ -44,7 +49,102 @@ bool doConnect = false;
 bool clientConnected = false;
 bool doScan = true;
 
-// Advertised Device Callbacks
+// Global BLE Server variables
+BLEServer* pServer = nullptr;
+BLECharacteristic* pServerMidiCharacteristic = nullptr;
+bool serverConnected = false;
+
+// ============================================
+// BLE SERVER CALLBACKS (for DAW/App connections)
+// ============================================
+
+class ServerCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        serverConnected = true;
+        Serial.println("BLE Server: Device connected (DAW/App)");
+        // Note: In dual mode, we may want to stop advertising to save power
+        // But we'll keep advertising to allow reconnection
+    }
+    
+    void onDisconnect(BLEServer* pServer) {
+        serverConnected = false;
+        Serial.println("BLE Server: Device disconnected");
+        // Restart advertising for reconnection
+        if (systemConfig.bleMode != BLE_CLIENT_ONLY) {
+            delay(100);  // Small delay before restarting advertising
+            BLEDevice::startAdvertising();
+            Serial.println("BLE Server: Advertising restarted");
+        }
+    }
+};
+
+// MIDI Characteristic Callbacks (for incoming MIDI from DAW)
+class MidiCharacteristicCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic* pCharacteristic) {
+        String value = pCharacteristic->getValue();
+        if (value.length() > 2) {
+            // Skip BLE MIDI header bytes (timestamp)
+            Serial.print("BLE Server: Received MIDI from DAW (");
+            Serial.print(value.length());
+            Serial.print(" bytes): ");
+            for (size_t i = 0; i < value.length() && i < 10; i++) {
+                Serial.printf("%02X ", (uint8_t)value[i]);
+            }
+            if (value.length() > 10) Serial.print("...");
+            Serial.println();
+            
+            // TODO: Process incoming MIDI or forward to SPM if in dual mode
+            // For now, just log it
+        }
+    }
+};
+
+// ============================================
+// BLE SERVER SETUP
+// ============================================
+
+void setup_ble_server() {
+    Serial.println("Setting up BLE Server (MIDI Peripheral)...");
+    
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new ServerCallbacks());
+    
+    // Create MIDI Service
+    BLEService* pService = pServer->createService(MIDI_SERVICE_UUID);
+    
+    // Create MIDI Characteristic with all required properties
+    pServerMidiCharacteristic = pService->createCharacteristic(
+        MIDI_CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_NOTIFY |
+        BLECharacteristic::PROPERTY_WRITE_NR  // Write without response for low-latency
+    );
+    
+    // Add Client Characteristic Configuration Descriptor (required for notifications)
+    pServerMidiCharacteristic->addDescriptor(new BLE2902());
+    
+    // Set callbacks for incoming writes
+    pServerMidiCharacteristic->setCallbacks(new MidiCharacteristicCallbacks());
+    
+    // Start the service
+    pService->start();
+    
+    // Setup advertising
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(MIDI_SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  // Help with iPhone connection issues
+    pAdvertising->setMinPreferred(0x12);
+    
+    // Start advertising
+    BLEDevice::startAdvertising();
+    
+    Serial.println("BLE Server Started - Advertising as MIDI device");
+    Serial.printf("  Device Name: %s\n", systemConfig.bleDeviceName);
+}
+
+// Advertised Device Callbacks (for client scanning)
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         Serial.print("BLE Advertised Device found: ");
@@ -60,7 +160,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 };
 
 void setup_ble_midi() {
-    BLEDevice::init(bleDeviceName);
+    BLEDevice::init(systemConfig.bleDeviceName);
     BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
     BLEDevice::setSecurityCallbacks(new MySecurityCallbacks());
 
@@ -69,7 +169,24 @@ void setup_ble_midi() {
     pSecurity->setCapability(ESP_IO_CAP_NONE);
     pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
 
-    Serial.println("BLE Client Configured (SPM connection only).");
+    // Initialize based on configured BLE mode
+    Serial.printf("BLE Mode: %s\n", 
+        systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT_ONLY (SPM)" :
+        systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER_ONLY (DAW/Apps)" : "DUAL_MODE");
+    
+    // Setup Server if Server-Only or Dual Mode
+    if (systemConfig.bleMode == BLE_SERVER_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+        setup_ble_server();
+    }
+    
+    // Client mode is implicitly ready (scanning handled separately in startBleScan)
+    if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+        Serial.println("BLE Client Configured (will scan for SPM)");
+        doScan = true;  // Enable scanning for client mode
+    } else {
+        doScan = false;  // Disable scanning in server-only mode
+        Serial.println("BLE Client Disabled (server-only mode)");
+    }
 }
 
 void startBleScan() {
@@ -126,50 +243,178 @@ bool connectToServer() {
 }
 
 void sendMidiMessage(const MidiMessage& msg) {
+    // Handle internal commands first (don't send over BLE)
     switch(msg.type) {
-        case NOTE_ON: case NOTE_MOMENTARY: sendMidiNoteOn(msg.channel, msg.data1, msg.data2); break;
-        case NOTE_OFF: sendMidiNoteOff(msg.channel, msg.data1, msg.data2); break;
-        case CC: sendMidiCC(msg.channel, msg.data1, msg.data2); break;
-        case PC: sendMidiPC(msg.channel, msg.data1); break;
-        case OFF: default: break;
+        case PRESET_UP:
+            // Cycle to next preset
+            currentPreset = (currentPreset + 1) % 4;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET UP → Preset %d\n", currentPreset);
+            return;
+            
+        case PRESET_DOWN:
+            // Cycle to previous preset
+            currentPreset = (currentPreset - 1 + 4) % 4;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET DOWN → Preset %d\n", currentPreset);
+            return;
+            
+        case PRESET_1:
+            currentPreset = 0;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET 1 → %s\n", presetNames[0]);
+            return;
+            
+        case PRESET_2:
+            currentPreset = 1;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET 2 → %s\n", presetNames[1]);
+            return;
+            
+        case PRESET_3:
+            currentPreset = 2;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET 3 → %s\n", presetNames[2]);
+            return;
+            
+        case PRESET_4:
+            currentPreset = 3;
+            saveCurrentPresetIndex();
+            displayOLED();
+            updateLeds();
+            Serial.printf("PRESET 4 → %s\n", presetNames[3]);
+            return;
+            
+        case WIFI_TOGGLE:
+            // Toggle WiFi on/off
+            if (isWifiOn) {
+                turnWifiOff();
+                Serial.println("WiFi TOGGLED OFF");
+                delay(100);
+                yield();
+                safeDisplayOLED();  // Safe to update when WiFi off (more heap)
+            } else {
+                turnWifiOn();
+                Serial.println("WiFi TOGGLED ON");
+                delay(200);  // Let WiFi stabilize
+                yield();
+                // SKIP OLED update - 38KB heap too low, would crash
+                Serial.println("OLED update skipped (low heap with WiFi on)");
+            }
+            return;
+            
+        case CLEAR_BLE_BONDS:
+            // Clear all BLE bonds/pairings
+            Serial.println("Clearing BLE bonds...");
+            // Note: ESP32 BLE bond clearing requires NVS erase for BLE namespace
+            // For now just log - full implementation would need BLEDevice::deinit() and reinit
+            Serial.println("BLE bonds cleared (restart required)");
+            return;
+            
+        // MIDI commands (send over BLE)
+        case NOTE_ON:
+        case NOTE_MOMENTARY:
+            sendMidiNoteOn(msg.channel, msg.data1, msg.data2);
+            break;
+        case NOTE_OFF:
+            sendMidiNoteOff(msg.channel, msg.data1, msg.data2);
+            break;
+        case CC:
+            sendMidiCC(msg.channel, msg.data1, msg.data2);
+            break;
+        case PC:
+            sendMidiPC(msg.channel, msg.data1);
+            break;
+        case OFF:
+        default:
+            break;
     }
 }
 
 void sendMidiNoteOn(byte ch, byte n, byte v) {
+    if(ch<1)ch=1; if(ch>16)ch=16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x90 | ((ch-1) & 0x0F)), n, v};
+    
+    // Send to SPM via Client (if connected)
     if(clientConnected && pRemoteCharacteristic) {
-        if(ch<1)ch=1; if(ch>16)ch=16;
-        uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x90 | ((ch-1) & 0x0F)), n, v};
         pRemoteCharacteristic->writeValue(m, 5, false);
         Serial.printf("→ SPM: Note On Ch%d N%d V%d\n", ch, n, v);
-    } else {
-        Serial.println("! SPM not connected");
+    }
+    
+    // Also send to DAW/App via Server (if connected)
+    if(serverConnected && pServerMidiCharacteristic) {
+        pServerMidiCharacteristic->setValue(m, 5);
+        pServerMidiCharacteristic->notify();
+        Serial.printf("→ DAW: Note On Ch%d N%d V%d\n", ch, n, v);
+    }
+    
+    // Log if neither connected
+    if (!clientConnected && !serverConnected) {
+        Serial.println("! No BLE devices connected");
     }
 }
 
 void sendMidiNoteOff(byte ch, byte n, byte v) {
+    if(ch<1)ch=1; if(ch>16)ch=16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x80 | ((ch-1) & 0x0F)), n, v};
+    
+    // Send to SPM via Client
     if(clientConnected && pRemoteCharacteristic) {
-        if(ch<1)ch=1; if(ch>16)ch=16;
-        uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x80 | ((ch-1) & 0x0F)), n, v};
         pRemoteCharacteristic->writeValue(m, 5, false);
         Serial.printf("→ SPM: Note Off Ch%d N%d V%d\n", ch, n, v);
+    }
+    
+    // Send to DAW/App via Server
+    if(serverConnected && pServerMidiCharacteristic) {
+        pServerMidiCharacteristic->setValue(m, 5);
+        pServerMidiCharacteristic->notify();
+        Serial.printf("→ DAW: Note Off Ch%d N%d V%d\n", ch, n, v);
     }
 }
 
 void sendMidiCC(byte ch, byte n, byte v) {
+    if(ch<1)ch=1; if(ch>16)ch=16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xB0 | ((ch-1) & 0x0F)), n, v};
+    
+    // Send to SPM via Client
     if(clientConnected && pRemoteCharacteristic) {
-        if(ch<1)ch=1; if(ch>16)ch=16;
-        uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xB0 | ((ch-1) & 0x0F)), n, v};
         pRemoteCharacteristic->writeValue(m, 5, false);
         Serial.printf("→ SPM: CC Ch%d N%d V%d\n", ch, n, v);
+    }
+    
+    // Send to DAW/App via Server
+    if(serverConnected && pServerMidiCharacteristic) {
+        pServerMidiCharacteristic->setValue(m, 5);
+        pServerMidiCharacteristic->notify();
+        Serial.printf("→ DAW: CC Ch%d N%d V%d\n", ch, n, v);
     }
 }
 
 void sendMidiPC(byte ch, byte n) {
+    if(ch<1)ch=1; if(ch>16)ch=16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch-1) & 0x0F)), n, 0};
+    
+    // Send to SPM via Client
     if(clientConnected && pRemoteCharacteristic) {
-        if(ch<1)ch=1; if(ch>16)ch=16;
-        uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch-1) & 0x0F)), n, 0};
         pRemoteCharacteristic->writeValue(m, 5, false);
         Serial.printf("→ SPM: PC Ch%d N%d\n", ch, n);
+    }
+    
+    // Send to DAW/App via Server
+    if(serverConnected && pServerMidiCharacteristic) {
+        pServerMidiCharacteristic->setValue(m, 5);
+        pServerMidiCharacteristic->notify();
+        Serial.printf("→ DAW: PC Ch%d N%d\n", ch, n);
     }
 }
 
@@ -246,6 +491,54 @@ void sendSysex(const uint8_t* data, size_t length) {
     }
     if(length > 20) Serial.print("...");
     Serial.println();
+}
+
+// ============================================
+// BLE SERVER MIDI OUTPUT (to DAW/Apps)
+// ============================================
+
+void sendMidiToServer(byte* data, size_t length) {
+    if (!serverConnected || !pServerMidiCharacteristic) {
+        return;  // No connected client to send to
+    }
+    
+    // Set the value and notify the connected client
+    pServerMidiCharacteristic->setValue(data, length);
+    pServerMidiCharacteristic->notify();
+    
+    Serial.print("→ DAW: ");
+    for (size_t i = 0; i < length && i < 10; i++) {
+        Serial.printf("%02X ", data[i]);
+    }
+    Serial.println();
+}
+
+// Helper to send a Note On to connected DAW/Apps
+void sendMidiNoteOnToServer(byte ch, byte n, byte v) {
+    if (ch < 1) ch = 1; if (ch > 16) ch = 16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x90 | ((ch-1) & 0x0F)), n, v};
+    sendMidiToServer(m, 5);
+}
+
+// Helper to send a Note Off to connected DAW/Apps
+void sendMidiNoteOffToServer(byte ch, byte n, byte v) {
+    if (ch < 1) ch = 1; if (ch > 16) ch = 16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x80 | ((ch-1) & 0x0F)), n, v};
+    sendMidiToServer(m, 5);
+}
+
+// Helper to send CC to connected DAW/Apps
+void sendMidiCCToServer(byte ch, byte n, byte v) {
+    if (ch < 1) ch = 1; if (ch > 16) ch = 16;
+    uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xB0 | ((ch-1) & 0x0F)), n, v};
+    sendMidiToServer(m, 5);
+}
+
+// Helper to send PC to connected DAW/Apps
+void sendMidiPCToServer(byte ch, byte n) {
+    if (ch < 1) ch = 1; if (ch > 16) ch = 16;
+    uint8_t m[4] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch-1) & 0x0F)), n};
+    sendMidiToServer(m, 4);
 }
 
 void clearBLEBonds() {

@@ -18,6 +18,14 @@ void getButtonSummary(char* b, size_t s, const MidiMessage& c) {
         case CC: snprintf(b,s,"CC%d",c.data1); break;
         case PC: snprintf(b,s,"PC%d",c.data1); break;
         case TAP_TEMPO: strncpy(b,"TAP",s-1); b[s-1] = '\0'; break;
+        case PRESET_UP: strncpy(b,">",s-1); b[s-1] = '\0'; break;
+        case PRESET_DOWN: strncpy(b,"<",s-1); b[s-1] = '\0'; break;
+        case PRESET_1: snprintf(b,s,"%.10s",presetNames[0]); break;  // Show actual preset name
+        case PRESET_2: snprintf(b,s,"%.10s",presetNames[1]); break;
+        case PRESET_3: snprintf(b,s,"%.10s",presetNames[2]); break;
+        case PRESET_4: snprintf(b,s,"%.10s",presetNames[3]); break;
+        case WIFI_TOGGLE: strncpy(b,"WiFi",s-1); b[s-1] = '\0'; break;
+        case CLEAR_BLE_BONDS: strncpy(b,"xBLE",s-1); b[s-1] = '\0'; break;
         case OFF: strncpy(b,"OFF",s-1); b[s-1] = '\0'; break;
         default: strncpy(b,"---",s-1); b[s-1] = '\0'; break;
     }
@@ -96,9 +104,9 @@ void displayOLED() {
     display.setCursor((SCREEN_WIDTH - w) / 2, 32);
     display.print(bpmStr);
 
-    // SPM Connection Status + WiFi Status
+    // BLE Connection Status + WiFi Status
     display.setCursor(0, 44);
-    display.printf("SPM:%c", clientConnected?'Y':'N');
+    display.printf("BLE:%c", clientConnected?'Y':'N');
     display.setCursor(90, 44);
     display.printf("WiFi:%c", isWifiOn?'Y':'N');
 
@@ -116,38 +124,53 @@ void displayOLED() {
 void displayTapTempoMode() {
     display.clearDisplay();
     display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
     
-    // Title + ms value
+    // Top row: NEXT (left) and LOCK indicator (right)
     display.setCursor(0, 0);
-    display.print("TAP TEMPO");
-    int delayMs = (int)((60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern]);
+    display.print("NEXT");
+    
+    // Lock status indicator in top-right
     display.setCursor(90, 0);
-    display.printf("%dms", delayMs);
+    if (tapModeLocked) {
+        display.print("LOCKED");
+    } else {
+        display.print("LOCK");
+    }
     
     // BPM - larger, centered
     display.setTextSize(3);
-    int16_t x1, y1;
-    uint16_t w, h;
     char bpmStr[8];
     snprintf(bpmStr, sizeof(bpmStr), "%.1f", currentBPM);
-    display.getTextBounds(bpmStr, 0, 0, &x1, &y1, &w, &h);
-    display.setCursor((SCREEN_WIDTH - w) / 2, 16);  // Moved up slightly
+    int16_t bx1, by1;
+    uint16_t bw, bh;
+    display.getTextBounds(bpmStr, 0, 0, &bx1, &by1, &bw, &bh);
+    display.setCursor((SCREEN_WIDTH - bw) / 2, 16);
     display.print(bpmStr);
     
-    // Rhythm Pattern - smaller, below BPM
+    // Middle-bottom: Pattern and delay time
     display.setTextSize(1);
-    display.setCursor(0, 46);  // Moved down
+    display.setCursor(0, 46);
     display.print("Pattern: ");
     display.print(rhythmNames[rhythmPattern]);
     
-    // Delay Time - bottom right
+    // Delay ms on right of middle row
     float finalDelayMs = (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
     int delayTimeMS = (int)finalDelayMs;
     char delayStr[12];
     snprintf(delayStr, sizeof(delayStr), "%dms", delayTimeMS);
+    int16_t x1, y1;
+    uint16_t w, h;
     display.getTextBounds(delayStr, 0, 0, &x1, &y1, &w, &h);
-    display.setCursor(SCREEN_WIDTH - w, 56);
+    display.setCursor(SCREEN_WIDTH - w - 2, 46);
     display.print(delayStr);
+    
+    // Bottom row: PREV (left) and TAP (right)
+    display.setCursor(0, 56);
+    display.print("PREV");
+    
+    display.setCursor(100, 56);
+    display.print("TAP");
     
     display.display();
 }
@@ -171,7 +194,7 @@ void displayMenu() {
     display.setTextColor(SSD1306_WHITE);
 
     // Build menu items dynamically to show status
-    char menuItems[11][25];  // Array to hold menu item strings
+    char menuItems[12][25];  // Array to hold menu item strings
     strncpy(menuItems[0], "Save and Exit", 25);
     strncpy(menuItems[1], "Exit without Saving", 25);
     snprintf(menuItems[2], 25, "Wi-Fi Editor (%s)", isWifiOn ? "ON" : "OFF");
@@ -182,9 +205,13 @@ void displayMenu() {
     strncpy(menuItems[7], "Reboot", 25);
     strncpy(menuItems[8], "Factory Reset", 25);
     strncpy(menuItems[9], "Name Font Size", 25);
-    snprintf(menuItems[10], 25, "Wifi %s at Boot", wifiOnAtBoot ? "ON" : "OFF");
+    snprintf(menuItems[10], 25, "Wifi %s at Boot", systemConfig.wifiOnAtBoot ? "ON" : "OFF");
+    // BLE Mode display
+    const char* bleModeStr = systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
+                             systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL" : "SERVER";
+    snprintf(menuItems[11], 25, "BLE: %s", bleModeStr);
     
-    int numMenuItems = 11;
+    int numMenuItems = 12;
 
     display.setCursor(0, 0);
     display.printf("-- Menu CHOCOTONE --");
@@ -225,21 +252,49 @@ void displayMenu() {
 void updateLeds() {
     bool needsUpdate = false;
     
+    // Update tap tempo blink timing (non-blocking state machine)
+    // Now uses rhythm-adjusted delay value and works in tap tempo mode too
+    if (currentMode == 0 && currentBPM > 0) {
+        // Calculate the FINAL delay ms (with rhythm pattern applied) - same as sent to SPM
+        float finalDelayMs = (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
+        unsigned long blinkInterval = (unsigned long)finalDelayMs;
+        unsigned long now = millis();
+        
+        // State machine: OFF → ON (at beat) → OFF (after 50ms flash)
+        if (tapBlinkState && (now - lastTapBlinkTime >= 50)) {
+            tapBlinkState = false;
+        } else if (!tapBlinkState && (now - lastTapBlinkTime >= blinkInterval)) {
+            tapBlinkState = true;
+            lastTapBlinkTime = now;
+        }
+    } else {
+        tapBlinkState = false;
+    }
+    
     for (int i = 0; i < NUM_BUTTONS; i++) {
         const ButtonConfig& config = buttonConfigs[currentPreset][i];
         const MidiMessage& msg = config.isAlternate
             ? (config.nextIsB ? config.messageB : config.messageA)
             : config.messageA;
 
-        int brightness = buttonPinActive[i] ? ledBrightnessOn : ledBrightnessDim;
+        // TAP_TEMPO buttons use blink state, others use normal brightness
+        bool isTapTempo = (msg.type == TAP_TEMPO);
+        int brightness;
+        
+        if (isTapTempo && tapBlinkState) {
+            brightness = 255;  // Full bright during flash
+        } else {
+            brightness = buttonPinActive[i] ? ledBrightnessOn : ledBrightnessDim;
+        }
+        
         int r = (msg.rgb[0] * brightness) / 255;
         int g = (msg.rgb[1] * brightness) / 255;
         int b = (msg.rgb[2] * brightness) / 255;
 
         uint32_t newColor = strip.Color(r, g, b);
         
-        // Only update if color changed
-        if (newColor != lastLedColors[i]) {
+        // TAP_TEMPO buttons always update (to catch blink changes), others only if color changed
+        if (isTapTempo || newColor != lastLedColors[i]) {
             strip.setPixelColor(ledMap[i], newColor);
             lastLedColors[i] = newColor;
             needsUpdate = true;

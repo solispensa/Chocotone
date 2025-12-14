@@ -7,80 +7,102 @@
     <title>Chocotone MIDI Editor - OFFLINE</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --accent-color: #bb86fc;
-            --input-bg: #2c2c2c;
-            --border-color: #333;
-            --success-color: #03dac6;
-            --spacing: 15px;
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #e0e0e0;
+            --acc: #bb86fc;
+            --inp: #2c2c2c;
+            --brd: #333;
+            --sp: 15px
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 20px;
-            line-height: 1.5;
+            line-height: 1.5
         }
 
         * {
-            box-sizing: border-box;
+            box-sizing: border-box
         }
 
-        /* Header */
         header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 20px
         }
 
         h1 {
             margin: 0;
             font-weight: 300;
-            color: var(--accent-color);
+            color: var(--acc);
             letter-spacing: 1px;
-            font-size: 1.8rem;
+            font-size: 1.8rem
         }
 
-        .subline {
+        .sub {
             font-size: 0.8rem;
             color: #888;
-            margin-top: 2px;
+            margin-top: 2px
         }
 
-        /* Navigation */
         .nav {
-            background: var(--card-bg);
+            background: var(--card);
             padding: 15px;
             border-radius: 12px;
-            margin-bottom: var(--spacing);
+            margin-bottom: var(--sp);
             display: flex;
             gap: 15px;
             align-items: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px #0000004d
         }
 
-        /* Grid */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: var(--spacing);
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--sp)
         }
 
-        /* Cards */
         .card {
-            background: var(--card-bg);
+            background: var(--card);
             padding: 15px;
             border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease;
+            border: 1px solid var(--brd);
+            box-shadow: 0 2px 4px #00000033
         }
 
-        .card:hover {
-            border-color: #444;
+        .o1 {
+            order: 5
+        }
+
+        .o2 {
+            order: 6
+        }
+
+        .o3 {
+            order: 7
+        }
+
+        .o4 {
+            order: 8
+        }
+
+        .o5 {
+            order: 1
+        }
+
+        .o6 {
+            order: 2
+        }
+
+        .o7 {
+            order: 3
+        }
+
+        .o8 {
+            order: 4
         }
 
         .head {
@@ -89,61 +111,57 @@
             align-items: center;
             margin-bottom: 12px;
             border-bottom: 1px solid #333;
-            padding-bottom: 8px;
+            padding-bottom: 8px
         }
 
         h4 {
             margin: 0;
-            color: var(--accent-color);
-            font-weight: 500;
+            color: var(--acc);
+            font-weight: 500
         }
 
-        /* Form Fields */
         .f {
             display: grid;
             grid-template-columns: 60px 1fr;
             gap: 10px;
             align-items: center;
-            margin-bottom: 8px;
-            transition: opacity 0.3s;
+            margin-bottom: 8px
         }
 
         label {
             font-size: 0.9em;
-            color: #bbb;
+            color: #bbb
         }
 
         input,
         select {
             width: 100%;
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
+            background: var(--inp);
+            border: 1px solid var(--brd);
             color: #fff;
             padding: 8px 10px;
             border-radius: 6px;
             font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
+            outline: none
         }
 
         input:focus,
         select:focus {
-            border-color: var(--accent-color);
+            border-color: var(--acc)
         }
 
-        input[type="color"] {
+        input[type=color] {
             padding: 0;
             height: 36px;
-            cursor: pointer;
+            cursor: pointer
         }
 
-        input[type="checkbox"] {
+        input[type=checkbox] {
             width: auto;
-            accent-color: var(--accent-color);
+            accent-color: var(--acc)
         }
 
-        /* Section Headers */
-        .msg-header {
+        .msg-h {
             background: #252525;
             padding: 6px 10px;
             margin: 12px -15px 12px -15px;
@@ -152,10 +170,9 @@
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
-            border-left: 3px solid var(--accent-color);
+            border-left: 3px solid var(--acc)
         }
 
-        /* Buttons */
         button {
             width: 100%;
             padding: 14px;
@@ -167,384 +184,518 @@
             font-weight: 600;
             cursor: pointer;
             margin-top: 25px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: background 0.2s;
+            box-shadow: 0 4px 6px #0000004d
         }
 
         button:hover {
-            background: #4e00ff;
+            background: #4e00ff
         }
 
-        /* Footer Links */
-        .footer-links {
+        .foot {
             text-align: center;
-            margin: 30px;
+            margin: 30px
         }
 
-        .footer-links a {
-            color: var(--accent-color);
+        .foot a {
+            color: var(--acc);
             text-decoration: none;
             margin: 0 10px;
-            font-size: 0.9em;
-            cursor: pointer;
+            font-size: 0.9em
         }
 
-        .footer-links a:hover {
-            text-decoration: underline;
+        .foot a:hover {
+            text-decoration: underline
         }
 
-        /* Disabled State */
         .disabled {
             opacity: 0.3;
-            pointer-events: none;
+            pointer-events: none
         }
 
-        /* System Settings Spacing Fix */
         .card>h4 {
-            margin-bottom: 15px;
+            margin-bottom: 15px
         }
 
-        /* MOBILE OPTIMIZATIONS */
-        @media (max-width: 600px) {
+        .vtog {
+            display: flex;
+            gap: 8px;
+            margin: 15px 0
+        }
+
+        .vtog a {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #444;
+            border-radius: 8px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600
+        }
+
+        .vtog a.on {
+            background: #3700b3
+        }
+
+        .main-v,
+        .spec-v,
+        .sys-v {
+            display: none
+        }
+
+        .main-v.show,
+        .spec-v.show,
+        .sys-v.show {
+            display: block
+        }
+
+        .json-controls {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid #333
+        }
+
+        .json-controls h4 {
+            margin-bottom: 10px;
+            color: #888
+        }
+
+        .json-textarea {
+            width: 100%;
+            height: 200px;
+            background: #0d0d0d;
+            border: 1px solid #333;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 6px;
+            resize: vertical
+        }
+
+        .json-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            border: none
+        }
+
+        .json-btn.export {
+            background: #17a2b8
+        }
+
+        .json-btn.import {
+            background: #28a745
+        }
+
+        .json-btn.copy {
+            background: #6c757d
+        }
+
+        @media(max-width:600px) {
             body {
-                padding: 10px;
+                padding: 10px
             }
 
             .grid {
                 grid-template-columns: 1fr 1fr;
-                gap: 8px;
+                gap: 8px
             }
 
             .card {
                 padding: 10px;
-                border-radius: 8px;
+                border-radius: 8px
             }
 
             .f {
                 grid-template-columns: 1fr;
                 gap: 2px;
-                margin-bottom: 6px;
+                margin-bottom: 6px
             }
 
             .f label {
-                font-size: 11px;
+                font-size: 11px
             }
 
             input,
             select {
                 padding: 4px 6px;
                 font-size: 12px;
-                height: 28px;
+                height: 28px
             }
 
-            input[type="color"] {
-                height: 28px;
+            input[type=color] {
+                height: 28px
             }
 
             h4 {
-                font-size: 13px;
+                font-size: 13px
             }
 
             .head {
                 margin-bottom: 8px;
-                padding-bottom: 4px;
+                padding-bottom: 4px
             }
 
-            .msg-header {
+            .msg-h {
                 margin: 8px -10px 8px -10px;
                 padding: 4px 8px;
-                font-size: 10px;
+                font-size: 10px
             }
 
             .card>h4 {
-                margin-bottom: 15px;
+                margin-bottom: 15px
             }
         }
     </style>
     <script>
-        // --- DATA STRUCTURES ---
-        var currentPreset = 0; // Default to Preset 1 (Index 0)
-        var config = {
+        var curView = 'main';
+        var presetData = {
             presets: [
-                { name: "Note", buttons: [] },
                 { name: "STOMP", buttons: [] },
                 { name: "BANKS 1-8", buttons: [] },
-                { name: "BANKS 9-16", buttons: [] }
+                { name: "BANKS 9-16", buttons: [] },
+                { name: "Note", buttons: [] }
             ],
-            system: { ble: "ESP32 MIDI Controller", ssid: "ESP32_MIDI_Config", pass: "12345678" }
+            currentPreset: 0,
+            system: {
+                bleDeviceName: "Chocotone",
+                apSSID: "ChocotoneWiFi",
+                apPassword: "12345678",
+                buttonCount: 8,
+                buttonPins: "32,33,25,26,27,14,12,13",
+                ledPin: 15,
+                encoderA: 18,
+                encoderB: 19,
+                encoderBtn: 23
+            },
+            globalSpecialActions: []
         };
 
-        // --- POPULATE DEFAULT PRESETS (From DefaultPresets.h) ---
-
-        // Helper to create button config
-        function createBtn(name, alt, typeA, chA, d1A, d2A, rgbA, typeB, chB, d1B, d2B, rgbB) {
-            return {
-                name: name,
-                alt: alt,
-                msgA: { type: typeA, ch: chA, d1: d1A, d2: d2A, rgb: rgbA },
-                msgB: { type: typeB, ch: chB, d1: d1B, d2: d2B, rgb: rgbB }
-            };
+        // Initialize default button data
+        for (var p = 0; p < 4; p++) {
+            for (var b = 0; b < 8; b++) {
+                presetData.presets[p].buttons.push({
+                    name: "BTN" + (b + 1),
+                    isAlternate: false,
+                    messageA: { type: "CC", channel: 1, data1: 40 + b, data2: 127, rhythmTrigger: 0, rgb: "#bb86fc" },
+                    messageB: { type: "CC", channel: 1, data1: 0, data2: 0, rhythmTrigger: 0, rgb: "#555555" }
+                });
+            }
         }
 
-        // Preset 0: "Note"
-        config.presets[0].buttons = [
-            createBtn("C2", false, "NOTE_MOMENTARY", 1, 36, 127, "#fd0000", "CC", 1, 10, 127, "#ff0000"),
-            createBtn("C#2", false, "NOTE_MOMENTARY", 1, 37, 127, "#fd0000", "CC", 1, 11, 127, "#ff0000"),
-            createBtn("D2", false, "NOTE_MOMENTARY", 1, 38, 127, "#fd0000", "CC", 1, 12, 127, "#ff0000"),
-            createBtn("D#2", false, "NOTE_MOMENTARY", 1, 39, 127, "#fd0000", "CC", 1, 13, 127, "#ff0000"),
-            createBtn("E2", false, "NOTE_MOMENTARY", 1, 40, 127, "#fd0000", "CC", 1, 14, 127, "#ff0000"),
-            createBtn("F2", false, "NOTE_MOMENTARY", 1, 41, 127, "#fd0000", "CC", 1, 15, 127, "#ff0000"),
-            createBtn("F#2", false, "NOTE_MOMENTARY", 1, 42, 127, "#fd0000", "CC", 1, 16, 127, "#ff0000"),
-            createBtn("G2", false, "NOTE_MOMENTARY", 1, 43, 127, "#fd0000", "CC", 1, 17, 127, "#ff0000")
-        ];
+        // Initialize global special actions
+        for (var b = 0; b < 10; b++) {
+            presetData.globalSpecialActions.push({
+                hold: { enabled: false, thresholdMs: 500, type: "OFF", channel: 1, data1: 0, data2: 0 },
+                combo: { enabled: false, label: "", partner: 1, type: "OFF", channel: 1, data1: 0, data2: 0 }
+            });
+        }
 
-        // Preset 1: "STOMP"
-        config.presets[1].buttons = [
-            createBtn("NR", true, "CC", 1, 43, 127, "#ffffff", "CC", 1, 43, 0, "#ffffff"),
-            createBtn("FX1", true, "CC", 1, 44, 127, "#3f67ff", "CC", 1, 44, 0, "#3f67ff"),
-            createBtn("DRV", true, "CC", 1, 45, 127, "#fc2c00", "CC", 1, 45, 0, "#ff0000"),
-            createBtn("TAP", false, "TAP_TEMPO", 1, 13, 127, "#ffffff", "CC", 1, 13, 127, "#ff0000"),
-            createBtn("EQ", true, "CC", 1, 48, 127, "#0af500", "CC", 1, 48, 0, "#0af500"),
-            createBtn("FX2", true, "CC", 1, 49, 127, "#11f3ff", "CC", 1, 49, 0, "#11f3ff"),
-            createBtn("DLY", true, "CC", 1, 50, 127, "#332aff", "CC", 1, 50, 0, "#332aff"),
-            createBtn("RVB", true, "CC", 1, 51, 127, "#8400f7", "CC", 1, 51, 0, "#8400f7")
-        ];
+        function chgPreset(s) {
+            presetData.currentPreset = parseInt(s.value);
+            renderPage();
+        }
 
-        // Preset 2: "BANKS 1-8"
-        config.presets[2].buttons = [
-            createBtn("B1", false, "CC", 1, 1, 1, "#ffffff", "CC", 1, 10, 127, "#ff0000"),
-            createBtn("B2", false, "CC", 1, 1, 2, "#ffffff", "CC", 1, 11, 127, "#ff0000"),
-            createBtn("B3", false, "CC", 1, 1, 3, "#ffffff", "CC", 1, 12, 127, "#ff0000"),
-            createBtn("B4", false, "CC", 1, 1, 4, "#ffffff", "CC", 1, 13, 127, "#ff0000"),
-            createBtn("B5", false, "CC", 1, 1, 5, "#0af500", "CC", 1, 14, 127, "#ff0000"),
-            createBtn("B6", false, "CC", 1, 1, 6, "#0af500", "CC", 1, 15, 127, "#ff0000"),
-            createBtn("B7", false, "CC", 1, 1, 7, "#0af500", "CC", 1, 16, 127, "#ff0000"),
-            createBtn("B8", false, "CC", 1, 1, 8, "#0af500", "CC", 1, 17, 127, "#ff0000")
-        ];
-
-        // Preset 3: "BANKS 9-16"
-        config.presets[3].buttons = [
-            createBtn("B9", false, "CC", 1, 1, 9, "#11f3ff", "CC", 1, 10, 127, "#ff0000"),
-            createBtn("B10", false, "CC", 1, 1, 10, "#11f3ff", "CC", 1, 11, 127, "#ff0000"),
-            createBtn("B11", false, "CC", 1, 1, 11, "#11f3ff", "CC", 1, 12, 127, "#ff0000"),
-            createBtn("B12", false, "CC", 1, 1, 12, "#11f3ff", "CC", 1, 12, 127, "#ff0000"), // Note: MsgB is copy of A in source
-            createBtn("B13", false, "CC", 1, 1, 13, "#fe63ff", "CC", 1, 14, 127, "#ff0000"),
-            createBtn("B14", false, "CC", 1, 1, 14, "#fe63ff", "CC", 1, 15, 127, "#ff0000"),
-            createBtn("B15", false, "CC", 1, 1, 15, "#fe63ff", "CC", 1, 16, 127, "#ff0000"),
-            createBtn("B16", false, "CC", 1, 1, 16, "#fe63ff", "CC", 1, 17, 127, "#ff0000")
-        ];
-
-        // --- UI LOGIC ---
+        function setView(v) {
+            curView = v;
+            document.getElementById('btn_main').className = v == 'main' ? 'on' : '';
+            document.getElementById('btn_spec').className = v == 'special' ? 'on' : '';
+            document.getElementById('btn_sys').className = v == 'system' ? 'on' : '';
+            var m = document.getElementsByClassName('main-v');
+            for (var i = 0; i < m.length; i++) m[i].className = v == 'main' ? 'main-v show' : 'main-v';
+            var s = document.getElementsByClassName('spec-v');
+            for (var i = 0; i < s.length; i++) s[i].className = v == 'special' ? 'spec-v show' : 'spec-v';
+            var y = document.getElementsByClassName('sys-v');
+            for (var i = 0; i < y.length; i++) y[i].className = v == 'system' ? 'sys-v show' : 'sys-v';
+        }
 
         function toggleAlt(btn, id) {
             var alt = document.getElementById('alt_' + id);
             alt.style.display = alt.style.display == 'none' ? 'block' : 'none';
         }
 
-        function toggleFields(select) {
-            var baseName = select.name.replace('_type', '');
-            var isTap = (select.value === 'TAP_TEMPO');
-            var fields = ['ch', 'd1', 'd2'];
-            fields.forEach(function (suffix) {
-                var input = document.getElementsByName(baseName + '_' + suffix)[0];
-                if (input) {
-                    var row = input.parentElement;
-                    if (isTap) {
-                        row.classList.add('disabled');
-                        input.disabled = true;
-                    } else {
-                        row.classList.remove('disabled');
-                        input.disabled = false;
-                    }
+        function toggleFields(s) {
+            var base = s.name.replace('_type', '');
+            var internal = ['OFF', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'ALL_NOTES_OFF', 'PANIC', 'BANK_SELECT', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'].indexOf(s.value) >= 0;
+            var f = ['ch', 'd1', 'd2'];
+            f.forEach(function (x) {
+                var i = document.getElementsByName(base + '_' + x)[0];
+                if (i) {
+                    var r = i.parentElement;
+                    if (internal) { r.classList.add('disabled'); i.disabled = true; }
+                    else { r.classList.remove('disabled'); i.disabled = false; }
+                }
+            });
+            var rhythmInput = document.getElementsByName(base + '_rhythm')[0];
+            if (rhythmInput) {
+                var rhythmRow = rhythmInput.parentElement;
+                if (s.value == 'TAP_TEMPO') { rhythmRow.style.display = 'grid'; }
+                else { rhythmRow.style.display = 'none'; }
+            }
+        }
+
+        function toggleHoldCombo(cb, type) {
+            var base = cb.name.replace('_' + type + '_en', '');
+            var fields = type == 'hold' ? ['hold_ms', 'hold_type', 'hold_ch', 'hold_d1', 'hold_d2'] : ['combo_label', 'combo_partner', 'combo_type', 'combo_ch', 'combo_d1', 'combo_d2'];
+            fields.forEach(function (f) {
+                var inp = document.getElementsByName(base + '_' + f)[0];
+                if (inp) {
+                    inp.disabled = !cb.checked;
+                    inp.parentElement.style.opacity = cb.checked ? '1' : '0.5';
                 }
             });
         }
 
-        function renderUI() {
-            // Load System Settings
-            document.getElementById('sys_ble').value = config.system.ble;
-            document.getElementById('sys_ssid').value = config.system.ssid;
-            document.getElementById('sys_pass').value = config.system.pass;
-
-            // Load Preset Name
-            document.getElementById('preset_name').value = config.presets[currentPreset].name;
-            document.getElementById('preset_select').value = currentPreset;
-
-            // Load Buttons
-            var container = document.getElementById('grid_container');
-            container.innerHTML = '';
-
-            var btns = config.presets[currentPreset].buttons;
-            for (var i = 0; i < 8; i++) {
-                var b = btns[i];
-                var html = `
-        <div class='card'>
-            <div class='head'><h4>Button ${i + 1}</h4><label><input type='checkbox' name='b${i}_alt' style='width:auto' onchange='toggleAlt(this,"b${i}")' ${b.alt ? 'checked' : ''}> Alt</label></div>
-            <div class='f'><label>Label:</label><input name='b${i}_n' value='${b.name}' maxlength='20'></div>
-            <div class='msg-header'>PRIMARY MSG</div>
-            <div class='f'><label>Type:</label><select name='b${i}_a_type' onchange='toggleFields(this)'>${renderOptions(b.msgA.type)}</select></div>
-            <div class='f'><label>Ch:</label><input type='number' name='b${i}_a_ch' min='1' max='16' value='${b.msgA.ch}'></div>
-            <div class='f'><label>D1:</label><input type='number' name='b${i}_a_d1' min='0' max='127' value='${b.msgA.d1}'></div>
-            <div class='f'><label>D2:</label><input type='number' name='b${i}_a_d2' min='0' max='127' value='${b.msgA.d2}'></div>
-            <div class='f'><label>RGB:</label><input type='color' name='b${i}_a_rgb' value='${b.msgA.rgb}'></div>
-            
-            <div id='alt_b${i}' style='display:${b.alt ? 'block' : 'none'};margin-top:15px'>
-                <div class='msg-header'>ALTERNATE MSG</div>
-                <div class='f'><label>Type:</label><select name='b${i}_b_type' onchange='toggleFields(this)'>${renderOptions(b.msgB.type)}</select></div>
-                <div class='f'><label>Ch:</label><input type='number' name='b${i}_b_ch' min='1' max='16' value='${b.msgB.ch}'></div>
-                <div class='f'><label>D1:</label><input type='number' name='b${i}_b_d1' min='0' max='127' value='${b.msgB.d1}'></div>
-                <div class='f'><label>D2:</label><input type='number' name='b${i}_b_d2' min='0' max='127' value='${b.msgB.d2}'></div>
-                <div class='f'><label>RGB:</label><input type='color' name='b${i}_b_rgb' value='${b.msgB.rgb}'></div>
-            </div>
-        </div>`;
-                container.innerHTML += html;
-            }
-
-            // Re-apply toggleFields logic
-            var selects = document.querySelectorAll('select[name$="_type"]');
-            selects.forEach(function (s) { toggleFields(s); });
-
-            // Attach change listeners to update config object
-            attachListeners();
-        }
-
-        function renderOptions(selected) {
-            var opts = [
-                { v: 'NOTE_MOMENTARY', t: 'Note (Mom)' },
-                { v: 'NOTE_ON', t: 'Note On' },
-                { v: 'NOTE_OFF', t: 'Note Off' },
-                { v: 'CC', t: 'CC' },
-                { v: 'PC', t: 'PC' },
-                { v: 'TAP_TEMPO', t: 'Tap Tempo' }
-            ];
-            return opts.map(o => `<option value='${o.v}' ${o.v === selected ? 'selected' : ''}>${o.t}</option>`).join('');
-        }
-
-        function attachListeners() {
-            var inputs = document.querySelectorAll('input, select');
-            inputs.forEach(function (el) {
-                el.addEventListener('change', function () {
-                    saveState();
-                });
+        function getTypeOptions(selected) {
+            var types = ['OFF', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'ALL_NOTES_OFF', 'PANIC', 'BANK_SELECT', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
+            var html = '';
+            types.forEach(function (t) {
+                html += '<option value="' + t + '"' + (t == selected ? ' selected' : '') + '>' + t + '</option>';
             });
+            return html;
         }
 
-        function saveState() {
-            // Save System
-            config.system.ble = document.getElementById('sys_ble').value;
-            config.system.ssid = document.getElementById('sys_ssid').value;
-            config.system.pass = document.getElementById('sys_pass').value;
+        function renderPage() {
+            var p = presetData.currentPreset;
+            var preset = presetData.presets[p];
+            var html = '';
 
-            // Save Preset Name
-            config.presets[currentPreset].name = document.getElementById('preset_name').value;
-
-            // Save Buttons
-            var btns = config.presets[currentPreset].buttons;
-            for (var i = 0; i < 8; i++) {
-                btns[i].name = document.getElementsByName(`b${i}_n`)[0].value;
-                btns[i].alt = document.getElementsByName(`b${i}_alt`)[0].checked;
-
-                btns[i].msgA.type = document.getElementsByName(`b${i}_a_type`)[0].value;
-                btns[i].msgA.ch = parseInt(document.getElementsByName(`b${i}_a_ch`)[0].value);
-                btns[i].msgA.d1 = parseInt(document.getElementsByName(`b${i}_a_d1`)[0].value);
-                btns[i].msgA.d2 = parseInt(document.getElementsByName(`b${i}_a_d2`)[0].value);
-                btns[i].msgA.rgb = document.getElementsByName(`b${i}_a_rgb`)[0].value;
-
-                btns[i].msgB.type = document.getElementsByName(`b${i}_b_type`)[0].value;
-                btns[i].msgB.ch = parseInt(document.getElementsByName(`b${i}_b_ch`)[0].value);
-                btns[i].msgB.d1 = parseInt(document.getElementsByName(`b${i}_b_d1`)[0].value);
-                btns[i].msgB.d2 = parseInt(document.getElementsByName(`b${i}_b_d2`)[0].value);
-                btns[i].msgB.rgb = document.getElementsByName(`b${i}_b_rgb`)[0].value;
+            // Navigation
+            html += '<div class="nav"><label>Preset:</label><select onchange="chgPreset(this)">';
+            for (var i = 0; i < 4; i++) {
+                html += '<option value="' + i + '"' + (i == p ? ' selected' : '') + '>' + presetData.presets[i].name + '</option>';
             }
+            html += '</select></div>';
+
+            // Preset Name Card
+            html += '<div class="card" style="margin-bottom:15px"><div class="f"><label>Name:</label><input name="presetName" value="' + preset.name + '" maxlength="20" onchange="presetData.presets[' + p + '].name=this.value"></div>';
+            html += '<div class="vtog"><a href="#" id="btn_main" class="on" onclick="setView(\'main\');return false;">Main Messages</a><a href="#" id="btn_spec" onclick="setView(\'special\');return false;">Special Actions</a><a href="#" id="btn_sys" onclick="setView(\'system\');return false;">System Config</a></div></div>';
+
+            // Button Grid
+            html += '<div class="grid">';
+            for (var b = 0; b < 8; b++) {
+                var btn = preset.buttons[b];
+                var spec = presetData.globalSpecialActions[b];
+                var id = 'b' + b;
+
+                html += '<div class="card o' + (b + 1) + '"><div class="head"><h4>Button ' + (b + 1) + '</h4></div>';
+                html += '<div class="f"><label>Label:</label><input name="' + id + '_n" value="' + btn.name + '" maxlength="20"></div>';
+
+                // Main View
+                html += '<div class="main-v show">';
+                html += '<div class="f"><label>Alt:</label><input type="checkbox" name="' + id + '_alt" onchange="toggleAlt(this,\'' + id + '\')"' + (btn.isAlternate ? ' checked' : '') + '></div>';
+
+                // Message A
+                html += '<div class="msg-h">PRIMARY MSG</div>';
+                html += '<div class="f"><label>Type:</label><select name="' + id + '_a_type" onchange="toggleFields(this)">' + getTypeOptions(btn.messageA.type) + '</select></div>';
+                html += '<div class="f"><label>Ch:</label><input type="number" name="' + id + '_a_ch" min="1" max="16" value="' + btn.messageA.channel + '"></div>';
+                html += '<div class="f"><label>D1:</label><input type="number" name="' + id + '_a_d1" min="0" max="127" value="' + btn.messageA.data1 + '"></div>';
+                html += '<div class="f"><label>D2:</label><input type="number" name="' + id + '_a_d2" min="0" max="127" value="' + btn.messageA.data2 + '"></div>';
+                html += '<div class="f"><label>Rhythm:</label><input type="number" name="' + id + '_a_rhythm" min="0" max="8" value="' + btn.messageA.rhythmTrigger + '" placeholder="0=None"></div>';
+                html += '<div class="f"><label>RGB:</label><input type="color" name="' + id + '_a_rgb" value="' + btn.messageA.rgb + '"></div>';
+
+                // Message B
+                html += '<div id="alt_' + id + '" style="display:' + (btn.isAlternate ? 'block' : 'none') + ';margin-top:15px">';
+                html += '<div class="msg-h">ALTERNATE MSG</div>';
+                html += '<div class="f"><label>Type:</label><select name="' + id + '_b_type" onchange="toggleFields(this)">' + getTypeOptions(btn.messageB.type) + '</select></div>';
+                html += '<div class="f"><label>Ch:</label><input type="number" name="' + id + '_b_ch" min="1" max="16" value="' + btn.messageB.channel + '"></div>';
+                html += '<div class="f"><label>D1:</label><input type="number" name="' + id + '_b_d1" min="0" max="127" value="' + btn.messageB.data1 + '"></div>';
+                html += '<div class="f"><label>D2:</label><input type="number" name="' + id + '_b_d2" min="0" max="127" value="' + btn.messageB.data2 + '"></div>';
+                html += '<div class="f"><label>Rhythm:</label><input type="number" name="' + id + '_b_rhythm" min="0" max="8" value="' + btn.messageB.rhythmTrigger + '" placeholder="0=None"></div>';
+                html += '<div class="f"><label>RGB:</label><input type="color" name="' + id + '_b_rgb" value="' + btn.messageB.rgb + '"></div>';
+                html += '</div>';
+
+                html += '</div>'; // End main-v
+
+                // Special View
+                html += '<div class="spec-v">';
+
+                // Hold Action
+                html += '<div class="msg-h">HOLD ACTION</div>';
+                html += '<div class="f"><label>Enabled:</label><input type="checkbox" name="' + id + '_hold_en" onchange="toggleHoldCombo(this,\'hold\')"' + (spec.hold.enabled ? ' checked' : '') + '></div>';
+                html += '<div class="f"><label>Hold ms:</label><input type="number" name="' + id + '_hold_ms" min="200" max="3000" value="' + spec.hold.thresholdMs + '"></div>';
+                html += '<div class="f"><label>Type:</label><select name="' + id + '_hold_type">' + getTypeOptions(spec.hold.type) + '</select></div>';
+                html += '<div class="f"><label>Ch:</label><input type="number" name="' + id + '_hold_ch" value="' + spec.hold.channel + '"></div>';
+                html += '<div class="f"><label>D1:</label><input type="number" name="' + id + '_hold_d1" value="' + spec.hold.data1 + '"></div>';
+                html += '<div class="f"><label>D2:</label><input type="number" name="' + id + '_hold_d2" value="' + spec.hold.data2 + '"></div>';
+
+                // Combo Action
+                html += '<div class="msg-h">COMBO ACTION</div>';
+                html += '<div class="f"><label>Enabled:</label><input type="checkbox" name="' + id + '_combo_en" onchange="toggleHoldCombo(this,\'combo\')"' + (spec.combo.enabled ? ' checked' : '') + '></div>';
+                html += '<div class="f"><label>Label:</label><input type="text" name="' + id + '_combo_label" maxlength="6" value="' + spec.combo.label + '" placeholder="Auto"></div>';
+                html += '<div class="f"><label>Partner:</label><input type="number" name="' + id + '_combo_partner" min="1" max="8" value="' + spec.combo.partner + '"></div>';
+                html += '<div class="f"><label>Type:</label><select name="' + id + '_combo_type">' + getTypeOptions(spec.combo.type) + '</select></div>';
+                html += '<div class="f"><label>Ch:</label><input type="number" name="' + id + '_combo_ch" value="' + spec.combo.channel + '"></div>';
+                html += '<div class="f"><label>D1:</label><input type="number" name="' + id + '_combo_d1" value="' + spec.combo.data1 + '"></div>';
+                html += '<div class="f"><label>D2:</label><input type="number" name="' + id + '_combo_d2" value="' + spec.combo.data2 + '"></div>';
+
+                html += '</div>'; // End spec-v
+                html += '</div>'; // End card
+            }
+            html += '</div>'; // End grid
+
+            // System View
+            html += '<div class="sys-v">';
+            html += '<div class="card" style="margin-top:20px"><h4>System Settings</h4>';
+            html += '<div class="f"><label>BLE:</label><input name="ble" value="' + presetData.system.bleDeviceName + '"></div>';
+            html += '<div class="f"><label>SSID:</label><input name="ssid" value="' + presetData.system.apSSID + '"></div>';
+            html += '<div class="f"><label>Pass:</label><input name="pass" value="' + presetData.system.apPassword + '"></div>';
+            html += '<div style="border-top:1px solid #333;margin:15px 0;padding-top:15px">';
+            html += '<div class="f"><label>Buttons:</label><input type="number" name="btnCount" min="4" max="10" value="' + presetData.system.buttonCount + '"></div>';
+            html += '<div class="f"><label>Pins:</label><input name="btnPins" value="' + presetData.system.buttonPins + '" placeholder="32,33,25,..."></div>';
+            html += '<div class="f"><label>LED Pin:</label><input type="number" name="ledPin" min="0" max="39" value="' + presetData.system.ledPin + '"></div>';
+            html += '</div>';
+            html += '<div style="border-top:1px solid #333;margin:15px 0;padding-top:15px">';
+            html += '<div class="f"><label>Enc A:</label><input type="number" name="encA" min="0" max="39" value="' + presetData.system.encoderA + '"></div>';
+            html += '<div class="f"><label>Enc B:</label><input type="number" name="encB" min="0" max="39" value="' + presetData.system.encoderB + '"></div>';
+            html += '<div class="f"><label>Enc Btn:</label><input type="number" name="encBtn" min="0" max="39" value="' + presetData.system.encoderBtn + '"></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>'; // End sys-v
+
+            // JSON Controls
+            html += '<div class="json-controls">';
+            html += '<h4>Import/Export JSON</h4>';
+            html += '<textarea id="jsonArea" class="json-textarea" placeholder="Paste JSON here to import, or click Export to generate..."></textarea>';
+            html += '<div style="margin-top:10px">';
+            html += '<button class="json-btn export" onclick="exportJSON()">Export JSON</button>';
+            html += '<button class="json-btn import" onclick="importJSON()">Import JSON</button>';
+            html += '<button class="json-btn copy" onclick="copyJSON()">Copy to Clipboard</button>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div style="text-align:center;color:#666;font-size:11px;margin-top:10px">Chocotone v2.0 - OFFLINE EDITOR</div>';
+
+            document.getElementById('content').innerHTML = html;
+
+            // Initialize field states
+            setTimeout(function () {
+                setView(curView);
+                document.querySelectorAll('select[name$="_type"]').forEach(function (x) { toggleFields(x); });
+                document.querySelectorAll('input[name$="_hold_en"]').forEach(function (c) { toggleHoldCombo(c, 'hold'); });
+                document.querySelectorAll('input[name$="_combo_en"]').forEach(function (c) { toggleHoldCombo(c, 'combo'); });
+            }, 50);
         }
 
-        function chgPreset(s) {
-            saveState(); // Ensure current is saved
-            currentPreset = parseInt(s.value);
-            renderUI();
+        function collectFormData() {
+            var p = presetData.currentPreset;
+
+            // Collect preset name
+            var nameInput = document.querySelector('input[name="presetName"]');
+            if (nameInput) presetData.presets[p].name = nameInput.value;
+
+            // Collect button data
+            for (var b = 0; b < 8; b++) {
+                var id = 'b' + b;
+                var btn = presetData.presets[p].buttons[b];
+                var spec = presetData.globalSpecialActions[b];
+
+                // Button name
+                var n = document.querySelector('input[name="' + id + '_n"]');
+                if (n) btn.name = n.value;
+
+                // Alternate
+                var alt = document.querySelector('input[name="' + id + '_alt"]');
+                if (alt) btn.isAlternate = alt.checked;
+
+                // Message A
+                btn.messageA.type = getVal(id + '_a_type');
+                btn.messageA.channel = parseInt(getVal(id + '_a_ch')) || 1;
+                btn.messageA.data1 = parseInt(getVal(id + '_a_d1')) || 0;
+                btn.messageA.data2 = parseInt(getVal(id + '_a_d2')) || 0;
+                btn.messageA.rhythmTrigger = parseInt(getVal(id + '_a_rhythm')) || 0;
+                btn.messageA.rgb = getVal(id + '_a_rgb') || '#bb86fc';
+
+                // Message B
+                btn.messageB.type = getVal(id + '_b_type');
+                btn.messageB.channel = parseInt(getVal(id + '_b_ch')) || 1;
+                btn.messageB.data1 = parseInt(getVal(id + '_b_d1')) || 0;
+                btn.messageB.data2 = parseInt(getVal(id + '_b_d2')) || 0;
+                btn.messageB.rhythmTrigger = parseInt(getVal(id + '_b_rhythm')) || 0;
+                btn.messageB.rgb = getVal(id + '_b_rgb') || '#555555';
+
+                // Hold
+                spec.hold.enabled = document.querySelector('input[name="' + id + '_hold_en"]')?.checked || false;
+                spec.hold.thresholdMs = parseInt(getVal(id + '_hold_ms')) || 500;
+                spec.hold.type = getVal(id + '_hold_type') || 'OFF';
+                spec.hold.channel = parseInt(getVal(id + '_hold_ch')) || 1;
+                spec.hold.data1 = parseInt(getVal(id + '_hold_d1')) || 0;
+                spec.hold.data2 = parseInt(getVal(id + '_hold_d2')) || 0;
+
+                // Combo
+                spec.combo.enabled = document.querySelector('input[name="' + id + '_combo_en"]')?.checked || false;
+                spec.combo.label = getVal(id + '_combo_label') || '';
+                spec.combo.partner = parseInt(getVal(id + '_combo_partner')) || 1;
+                spec.combo.type = getVal(id + '_combo_type') || 'OFF';
+                spec.combo.channel = parseInt(getVal(id + '_combo_ch')) || 1;
+                spec.combo.data1 = parseInt(getVal(id + '_combo_d1')) || 0;
+                spec.combo.data2 = parseInt(getVal(id + '_combo_d2')) || 0;
+            }
+
+            // System settings
+            presetData.system.bleDeviceName = getVal('ble') || 'Chocotone';
+            presetData.system.apSSID = getVal('ssid') || 'ChocotoneWiFi';
+            presetData.system.apPassword = getVal('pass') || '12345678';
+            presetData.system.buttonCount = parseInt(getVal('btnCount')) || 8;
+            presetData.system.buttonPins = getVal('btnPins') || '32,33,25,26,27,14,12,13';
+            presetData.system.ledPin = parseInt(getVal('ledPin')) || 15;
+            presetData.system.encoderA = parseInt(getVal('encA')) || 18;
+            presetData.system.encoderB = parseInt(getVal('encB')) || 19;
+            presetData.system.encoderBtn = parseInt(getVal('encBtn')) || 23;
         }
 
-        // --- IMPORT / EXPORT ---
+        function getVal(name) {
+            var el = document.querySelector('[name="' + name + '"]');
+            return el ? el.value : '';
+        }
 
         function exportJSON() {
-            saveState();
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
-            var dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", "chocotone_config.json");
-            dlAnchorElem.click();
+            collectFormData();
+            var json = JSON.stringify(presetData, null, 2);
+            document.getElementById('jsonArea').value = json;
         }
 
         function importJSON() {
-            var input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = e => {
-                var file = e.target.files[0];
-                var reader = new FileReader();
-                reader.readAsText(file, 'UTF-8');
-                reader.onload = readerEvent => {
-                    try {
-                        var content = readerEvent.target.result;
-                        config = JSON.parse(content);
-                        currentPreset = 0; // Reset to first preset
-                        renderUI();
-                        alert("Configuration loaded successfully!");
-                    } catch (err) {
-                        alert("Error loading JSON: " + err);
-                    }
+            try {
+                var json = document.getElementById('jsonArea').value;
+                var data = JSON.parse(json);
+                if (data.presets && data.system) {
+                    presetData = data;
+                    renderPage();
+                    alert('Import successful!');
+                } else {
+                    alert('Invalid JSON structure');
                 }
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
             }
-            input.click();
+        }
+
+        function copyJSON() {
+            var textarea = document.getElementById('jsonArea');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
         }
 
         window.onload = function () {
-            renderUI();
+            renderPage();
         };
     </script>
 </head>
 
 <body>
-
     <header>
         <h1>Chocotone MIDI Editor - OFFLINE</h1>
-        <div class="subline">made by André Solis - 2025 - v1.0</div>
+        <div class="sub">made by André Solis - 2025 - v2.0</div>
     </header>
-
-    <div class='nav'><label>Preset:</label><select id='preset_select' onchange='chgPreset(this)'>
-            <option value='0'>Preset 1</option>
-            <option value='1'>Preset 2</option>
-            <option value='2'>Preset 3</option>
-            <option value='3'>Preset 4</option>
-        </select></div>
-
-    <!-- Preset Name -->
-    <div class='card' style='margin-bottom:var(--spacing)'>
-        <div class='f'><label>Name:</label><input id='preset_name' maxlength='20'></div>
-    </div>
-
-    <!-- Grid Container (Populated by JS) -->
-    <div class='grid' id='grid_container'></div>
-
-    <!-- Footer / System Settings -->
-    <div class='card' style='margin-top:20px'>
-        <h4>System Settings</h4>
-        <form onsubmit="return false;">
-            <div class='f'><label style='min-width:60px'>BLE:</label><input id='sys_ble'></div>
-            <div class='f'><label style='min-width:60px'>SSID:</label><input id='sys_ssid'></div>
-            <div class='f'><label style='min-width:60px'>Pass:</label><input id='sys_pass'></div>
-            <!-- Save button in offline mode just saves to JS state, which is auto-handled, but we keep it for visual consistency -->
-            <button style='background:#17a2b8;margin-top:10px'
-                onclick='saveState(); alert("Settings saved to memory. Export JSON to save to file.")'>Save System
-                Settings</button>
-        </form>
-    </div>
-
-    <div class='footer-links'>
-        <a onclick='exportJSON()'>Export JSON</a>
-        <a onclick='importJSON()'>Import JSON</a>
-    </div>
-
+    <div id="content"></div>
 </body>
 
 </html>

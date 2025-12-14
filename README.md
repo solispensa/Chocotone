@@ -22,7 +22,10 @@
 - **WiFi Access Point** - Wireless configuration via web browser
 
 ### MIDI Capabilities
-- **BLE MIDI Client** - Connects wirelessly to BLE MIDI devices (e.g., Sonicake Pocket Master)
+- **BLE MIDI Dual-Mode** - Connect to BLE devices AND accept connections from DAWs/Apps
+  - CLIENT mode: Connect to external BLE MIDI devices (e.g., Sonicake Pocket Master)
+  - SERVER mode: Accept connections from DAWs, mobile apps, or other BLE MIDI hosts
+  - DUAL mode: Both client and server active simultaneously
 - **Multiple Message Types** - Note On/Off, CC, Program Change, SysEx
 - **Tap Tempo** - Built-in tap tempo with rhythm patterns (1/8, 1/8d, 1/4, 1/2)
 - **4 Presets** - Store and recall different button configurations
@@ -204,15 +207,31 @@ Long-press encoder to access:
 - **Clear BLE Bonds** - Reset Bluetooth pairings
 - **Reboot** - Restart the controller
 - **Factory Reset** - Restore default settings
+- **Name Font Size** - Adjust button name display size
+- **WiFi ON/OFF at Boot** - Toggle WiFi auto-start
+- **BLE Mode** - Toggle CLIENT/DUAL/SERVER modes
 
 ## BLE Connection
 
-The controller operates as a **BLE MIDI client only** and automatically:
-1. Scans for nearby BLE MIDI devices
-2. Connects to discovered devices (e.g., "SPM" for Sonicake Pocket Master)
-3. Reconnects automatically if disconnected
+The controller supports **three BLE modes** (configurable via OLED menu or web interface):
 
-Connection status shown on OLED: `SPM:Y` (connected) or `SPM:N` (disconnected)
+### CLIENT Mode (Default)
+- Scans for and connects to external BLE MIDI devices (e.g., Sonicake Pocket Master)
+- Automatically reconnects if disconnected
+- Status shown on OLED: `SPM:Y` (connected) or `SPM:N` (disconnected)
+
+### SERVER Mode  
+- Advertises as a BLE MIDI device for DAWs and apps to connect to
+- Appears as "Chocotone" in your DAW's MIDI device list
+- Status shown on OLED: `DAW:Y` (connected) or `DAW:N` (disconnected)
+
+### DUAL Mode
+- Both CLIENT and SERVER active simultaneously
+- Send button presses to both your pedal AND your DAW
+- Perfect for live performance with backing track control
+
+> [!TIP]
+> Change BLE mode from the OLED menu: long-press encoder → scroll to "BLE: [mode]" → press to cycle modes → "Save and Exit" to apply (requires reboot)
 
 ## Troubleshooting
 
