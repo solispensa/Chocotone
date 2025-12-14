@@ -22,6 +22,11 @@ All notable changes to the ESP32 MIDI Controller project will be documented in t
   - Request throttling to prevent crashes from double-clicks or rapid requests
   - Low memory protection with graceful error pages
   - Fixed memory leak in error page generation
+- **Editable Pin Configuration** - Configure button GPIO pins directly in web editor System Config
+- **Tap Tempo LED Blink** - All LEDs blink on tap with custom color feedback
+- **Button Name Font Size** - Adjustable font size for OLED button name display (1-5)
+- **Internal Preset Commands** - Switch to specific preset via PRESET_1/2/3/4 button actions
+- **Offline Editor** - Standalone HTML file for editing configurations without device connection
 - **Gradient Header** - Web editor now features a stylish gradient "Chocotone" title matching the presentation page
 - **OLED Refresh on Preset Change** - Display updates when changing presets via web editor
 

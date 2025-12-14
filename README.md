@@ -16,10 +16,12 @@
 
 ### Hardware
 - **8 Programmable Buttons** - MIDI messages with LED feedback per button
-- **OLED Display (128x64)** - Real-time status, preset names, and menu system
+- **OLED Display (128x64)** - Real-time status, preset names, and menu system  
 - **Rotary Encoder** - Navigation and parameter adjustment
 - **NeoPixel LEDs** - Visual feedback with customizable colors and brightness
+  - Tap tempo blink feedback on all LEDs
 - **WiFi Access Point** - Wireless configuration via web browser
+- **Configurable GPIO** - Customize button pin assignments via web editor
 
 ### MIDI Capabilities
 - **BLE MIDI Dual-Mode** - Connect to BLE devices AND accept connections from DAWs/Apps
@@ -37,8 +39,12 @@
 
 ### Configuration & Management
 - **Web Interface** - Edit MIDI mappings, button names, and settings via browser
+  - Organized into Main Messages / Special Actions / System Config pages
+  - Editable GPIO pin assignments for custom hardware builds
 - **Export/Import** - Backup and restore configurations as JSON
+- **Offline Editor** - Standalone HTML file for editing without device connection
 - **NVS Storage** - All settings persist across power cycles
+- **Customizable Display** - Adjustable button name font size (1-5)
 
 ![Chocotone Editor](images/chocotone_editor.png)
 
