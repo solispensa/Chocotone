@@ -352,7 +352,7 @@ void handleRoot() {
             char n[4]; snprintf(n, sizeof(n), "%d", systemConfig.ledMap[i]);
             out += n;
         }
-        out += F("' title='Button to LED index mapping (comma-separated)'></div>");
+        out += F("' title='Button to LED mapping. Ignored if LEDs/Btn > 1 (sequential mode)'></div>");
         out += F("</div>");
         
         out += F("<button style='background:#17a2b8;margin-top:10px'>Save System & Reboot</button></form></div>");
