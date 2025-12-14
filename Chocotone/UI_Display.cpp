@@ -271,7 +271,7 @@ void updateLeds() {
         tapBlinkState = false;
     }
     
-    // LEDs per button - each button controls a segment of consecutive LEDs
+    // LEDs per button - determines single LED mode (with mapping) vs strip mode (sequential)
     uint8_t lpb = systemConfig.ledsPerButton;
     if (lpb < 1) lpb = 1;  // Safety minimum
     
@@ -297,20 +297,28 @@ void updateLeds() {
 
         uint32_t newColor = strip.Color(r, g, b);
         
-        // Set all LEDs in this button's segment
-        // Button i controls LEDs: (i * lpb) to ((i+1) * lpb - 1)
-        int startLed = i * lpb;
-        int endLed = startLed + lpb;
-        
-        for (int led = startLed; led < endLed; led++) {
-            // TAP_TEMPO buttons always update (to catch blink changes), others only if color changed
+        if (lpb == 1) {
+            // SINGLE LED MODE: Use ledMap for backward compatibility
+            // ledMap remaps button index to physical LED index
             if (isTapTempo || newColor != lastLedColors[i]) {
-                strip.setPixelColor(led, newColor);
+                strip.setPixelColor(ledMap[i], newColor);
+                lastLedColors[i] = newColor;
                 needsUpdate = true;
             }
+        } else {
+            // STRIP MODE: Each button controls a segment of consecutive LEDs
+            // Button i controls LEDs: (i * lpb) to ((i+1) * lpb - 1)
+            int startLed = i * lpb;
+            int endLed = startLed + lpb;
+            
+            for (int led = startLed; led < endLed; led++) {
+                if (isTapTempo || newColor != lastLedColors[i]) {
+                    strip.setPixelColor(led, newColor);
+                    needsUpdate = true;
+                }
+            }
+            lastLedColors[i] = newColor;  // Track by button
         }
-        
-        lastLedColors[i] = newColor;  // Track by button, not by LED
     }
     
     // Only call strip.show() if something actually changed
