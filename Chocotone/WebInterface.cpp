@@ -999,19 +999,38 @@ void turnWifiOn() {
     // Pause ALL BLE activity to avoid WiFi conflicts
     Serial.println("Pausing BLE for WiFi stability...");
     
-    // Stop BLE Client (if active)
-    if (clientConnected && pClient) {
-        pClient->disconnect();
-        Serial.println("BLE Client: disconnected");
-    }
-    BLEDevice::getScan()->stop();
+    // Stop BLE Client scanning first (always safe to call)
     doScan = false;  // Prevent auto-scanning
-    Serial.println("BLE Client: scan stopped");
     
-    // Stop BLE Server advertising (if active)
+    // Only try to stop scan if BLE was initialized
+    try {
+        BLEScan* pScan = BLEDevice::getScan();
+        if (pScan) {
+            pScan->stop();
+            Serial.println("BLE: scan stopped");
+        }
+    } catch (...) {
+        Serial.println("BLE: scan stop failed (ignored)");
+    }
+    
+    // Disconnect client if connected AND pClient exists
+    if (clientConnected && pClient != nullptr) {
+        try {
+            pClient->disconnect();
+            Serial.println("BLE Client: disconnected");
+        } catch (...) {
+            Serial.println("BLE Client: disconnect failed (ignored)");
+        }
+    }
+    
+    // Stop BLE Server advertising (if that mode is active)
     if (systemConfig.bleMode == BLE_SERVER_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
-        BLEDevice::stopAdvertising();
-        Serial.println("BLE Server: advertising stopped");
+        try {
+            BLEDevice::stopAdvertising();
+            Serial.println("BLE Server: advertising stopped");
+        } catch (...) {
+            Serial.println("BLE Server: stop advertising failed (ignored)");
+        }
     }
     
     // Give BLE time to fully release resources
