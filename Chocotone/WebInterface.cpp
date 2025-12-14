@@ -345,7 +345,7 @@ void handleRoot() {
         
         // LED Map Configuration (for single LED mode)
         out += F("<div style='border-top:1px solid #333;margin:15px 0;padding-top:15px'>");
-        out += F("<div class='f'><label>LED Map:</label><input name='ledMap' value='");
+        out += F("<div class='f'><label>LED Map (>1=seq):</label><input name='ledMap' value='");
         // Output LED map as comma-separated values
         for (int i = 0; i < 10; i++) {
             if (i > 0) out += F(",");
