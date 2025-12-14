@@ -262,13 +262,13 @@ void loop_presetMode() {
                                         
                                         if (tapModeLocked) {
                                             strncpy(buttonNameToShow, "LOCKED", 20);
+                                            buttonNameToShow[20] = '\0';
+                                            buttonNameDisplayUntil = millis() + 500;
                                         } else {
-                                            // Instant exit when unlocking
-                                            strncpy(buttonNameToShow, "UNLOCK", 20);
-                                            inTapTempoMode = false;  // Exit immediately
+                                            // Instant exit when unlocking - no text, just go to main screen
+                                            inTapTempoMode = false;
+                                            buttonNameDisplayUntil = 0;  // Clear any pending name display
                                         }
-                                        buttonNameToShow[20] = '\0';
-                                        buttonNameDisplayUntil = millis() + 500;
                                         safeDisplayOLED();
                                         Serial.printf("Tap Mode Lock: %s\n", tapModeLocked ? "ON" : "OFF");
                                         isTapControlNow = true;
