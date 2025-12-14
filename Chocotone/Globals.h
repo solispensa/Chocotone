@@ -89,7 +89,7 @@ struct ButtonConfig {
     ComboAction combo;      // 21 bytes
 };
 
-// System Config - ~82 bytes
+// System Config - ~83 bytes
 struct SystemConfig {
     char bleDeviceName[24]; // 24 bytes
     char apSSID[24];        // 24 bytes
@@ -102,6 +102,7 @@ struct SystemConfig {
     uint8_t encoderBtn;     // 1 byte
     bool wifiOnAtBoot;      // 1 byte
     BleMode bleMode;        // 1 byte - BLE_CLIENT_ONLY, BLE_SERVER_ONLY, or BLE_DUAL_MODE
+    uint8_t ledsPerButton;  // 1 byte - How many consecutive LEDs per button (for LED strips)
 };
 
 // Special Action - 42 bytes per button (hold + combo, independent of presets)

@@ -271,6 +271,10 @@ void updateLeds() {
         tapBlinkState = false;
     }
     
+    // LEDs per button - each button controls a segment of consecutive LEDs
+    uint8_t lpb = systemConfig.ledsPerButton;
+    if (lpb < 1) lpb = 1;  // Safety minimum
+    
     for (int i = 0; i < NUM_BUTTONS; i++) {
         const ButtonConfig& config = buttonConfigs[currentPreset][i];
         const MidiMessage& msg = config.isAlternate
@@ -293,12 +297,20 @@ void updateLeds() {
 
         uint32_t newColor = strip.Color(r, g, b);
         
-        // TAP_TEMPO buttons always update (to catch blink changes), others only if color changed
-        if (isTapTempo || newColor != lastLedColors[i]) {
-            strip.setPixelColor(ledMap[i], newColor);
-            lastLedColors[i] = newColor;
-            needsUpdate = true;
+        // Set all LEDs in this button's segment
+        // Button i controls LEDs: (i * lpb) to ((i+1) * lpb - 1)
+        int startLed = i * lpb;
+        int endLed = startLed + lpb;
+        
+        for (int led = startLed; led < endLed; led++) {
+            // TAP_TEMPO buttons always update (to catch blink changes), others only if color changed
+            if (isTapTempo || newColor != lastLedColors[i]) {
+                strip.setPixelColor(led, newColor);
+                needsUpdate = true;
+            }
         }
+        
+        lastLedColors[i] = newColor;  // Track by button, not by LED
     }
     
     // Only call strip.show() if something actually changed

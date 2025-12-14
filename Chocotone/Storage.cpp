@@ -42,6 +42,7 @@ void saveSystemSettings() {
     sysPrefs.putInt("encBtn", systemConfig.encoderBtn);
     sysPrefs.putBool("wifiBoot", systemConfig.wifiOnAtBoot);
     sysPrefs.putUChar("bleMode", (uint8_t)systemConfig.bleMode);
+    sysPrefs.putUChar("ledsPerBtn", systemConfig.ledsPerButton);
     
     sysPrefs.end();
     Serial.println("=== System Settings Saved (v2) ===");
@@ -90,6 +91,7 @@ void loadSystemSettings() {
         systemConfig.encoderBtn = sysPrefs.getInt("encBtn", DEFAULT_ENCODER_BTN);
         systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifiBoot", false);
         systemConfig.bleMode = (BleMode)sysPrefs.getUChar("bleMode", BLE_CLIENT_ONLY);
+        systemConfig.ledsPerButton = sysPrefs.getUChar("ledsPerBtn", 1);  // Default 1 LED per button
     } else {
         // v1 MIGRATION: Read old individual fields into SystemConfig
         Serial.println("Migrating v1 settings to v2...");
@@ -115,6 +117,7 @@ void loadSystemSettings() {
         systemConfig.encoderBtn = DEFAULT_ENCODER_BTN;
         systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifi", false);
         systemConfig.bleMode = BLE_CLIENT_ONLY;  // Default for v1 migration
+        systemConfig.ledsPerButton = 1;  // Default for v1 migration
     }
     
     sysPrefs.end();

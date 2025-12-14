@@ -329,6 +329,8 @@ void handleRoot() {
         
         snprintf(buf, sizeof(buf), "<div class='f'><label>LED Pin:</label><input type='number' name='ledPin' min='0' max='39' value='%d'></div>", systemConfig.ledPin);
         out += buf;
+        snprintf(buf, sizeof(buf), "<div class='f'><label>LEDs/Btn:</label><input type='number' name='ledsPerBtn' min='1' max='32' value='%d' title='LEDs per button (for LED strips)'></div>", systemConfig.ledsPerButton);
+        out += buf;
         out += F("</div>");
         
         // Encoder Configuration
@@ -616,6 +618,12 @@ void handleSaveSystem() {
         int pin = server.arg("ledPin").toInt();
         if(pin >= 0 && pin <= 39 && pin != systemConfig.ledPin) {
             systemConfig.ledPin = pin; changed = true;
+        }
+    }
+    if(server.hasArg("ledsPerBtn")) {
+        int lpb = server.arg("ledsPerBtn").toInt();
+        if(lpb >= 1 && lpb <= 32 && lpb != systemConfig.ledsPerButton) {
+            systemConfig.ledsPerButton = lpb; changed = true;
         }
     }
     if(server.hasArg("encA")) {

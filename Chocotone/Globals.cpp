@@ -34,7 +34,8 @@ SystemConfig systemConfig = {
     DEFAULT_ENCODER_B,          // encoderB
     DEFAULT_ENCODER_BTN,        // encoderBtn
     false,                      // wifiOnAtBoot
-    BLE_CLIENT_ONLY             // bleMode - default to client for backward compatibility
+    BLE_CLIENT_ONLY,            // bleMode - default to client for backward compatibility
+    1                           // ledsPerButton - default 1 LED per button
 };
 
 bool isWifiOn = false;  // Runtime WiFi state
