@@ -298,10 +298,10 @@ void updateLeds() {
         uint32_t newColor = strip.Color(r, g, b);
         
         if (lpb == 1) {
-            // SINGLE LED MODE: Use ledMap for backward compatibility
+            // SINGLE LED MODE: Use systemConfig.ledMap for backward compatibility
             // ledMap remaps button index to physical LED index
             if (isTapTempo || newColor != lastLedColors[i]) {
-                strip.setPixelColor(ledMap[i], newColor);
+                strip.setPixelColor(systemConfig.ledMap[i], newColor);
                 lastLedColors[i] = newColor;
                 needsUpdate = true;
             }

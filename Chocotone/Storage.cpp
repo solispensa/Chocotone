@@ -43,6 +43,7 @@ void saveSystemSettings() {
     sysPrefs.putBool("wifiBoot", systemConfig.wifiOnAtBoot);
     sysPrefs.putUChar("bleMode", (uint8_t)systemConfig.bleMode);
     sysPrefs.putUChar("ledsPerBtn", systemConfig.ledsPerButton);
+    sysPrefs.putBytes("ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
     
     sysPrefs.end();
     Serial.println("=== System Settings Saved (v2) ===");
@@ -92,6 +93,14 @@ void loadSystemSettings() {
         systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifiBoot", false);
         systemConfig.bleMode = (BleMode)sysPrefs.getUChar("bleMode", BLE_CLIENT_ONLY);
         systemConfig.ledsPerButton = sysPrefs.getUChar("ledsPerBtn", 1);  // Default 1 LED per button
+        // Load ledMap or use defaults
+        if (sysPrefs.getBytesLength("ledMap") == sizeof(systemConfig.ledMap)) {
+            sysPrefs.getBytes("ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
+        } else {
+            // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}
+            uint8_t defaultMap[] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};
+            memcpy(systemConfig.ledMap, defaultMap, sizeof(systemConfig.ledMap));
+        }
     } else {
         // v1 MIGRATION: Read old individual fields into SystemConfig
         Serial.println("Migrating v1 settings to v2...");
@@ -118,6 +127,9 @@ void loadSystemSettings() {
         systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifi", false);
         systemConfig.bleMode = BLE_CLIENT_ONLY;  // Default for v1 migration
         systemConfig.ledsPerButton = 1;  // Default for v1 migration
+        // Default ledMap for v1 migration
+        uint8_t defaultMap[] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};
+        memcpy(systemConfig.ledMap, defaultMap, sizeof(systemConfig.ledMap));
     }
     
     sysPrefs.end();

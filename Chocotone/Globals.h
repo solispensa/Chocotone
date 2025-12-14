@@ -89,7 +89,7 @@ struct ButtonConfig {
     ComboAction combo;      // 21 bytes
 };
 
-// System Config - ~83 bytes
+// System Config - ~93 bytes
 struct SystemConfig {
     char bleDeviceName[24]; // 24 bytes
     char apSSID[24];        // 24 bytes
@@ -103,6 +103,7 @@ struct SystemConfig {
     bool wifiOnAtBoot;      // 1 byte
     BleMode bleMode;        // 1 byte - BLE_CLIENT_ONLY, BLE_SERVER_ONLY, or BLE_DUAL_MODE
     uint8_t ledsPerButton;  // 1 byte - How many consecutive LEDs per button (for LED strips)
+    uint8_t ledMap[10];     // 10 bytes - Button to LED index mapping (for single LED mode)
 };
 
 // Special Action - 42 bytes per button (hold + combo, independent of presets)
@@ -227,7 +228,7 @@ extern int tapIndex;
 extern int tapCount;
 extern float currentBPM;
 extern int currentDelayType;
-extern const int ledMap[NUM_LEDS];
+// ledMap is now in systemConfig.ledMap
 
 extern int rhythmPattern; // 0=1/8, 1=1/8d, 2=1/4, 3=1/2
 extern bool inTapTempoMode;

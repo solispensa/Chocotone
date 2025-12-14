@@ -343,6 +343,18 @@ void handleRoot() {
         out += buf;
         out += F("</div>");
         
+        // LED Map Configuration (for single LED mode)
+        out += F("<div style='border-top:1px solid #333;margin:15px 0;padding-top:15px'>");
+        out += F("<div class='f'><label>LED Map:</label><input name='ledMap' value='");
+        // Output LED map as comma-separated values
+        for (int i = 0; i < 10; i++) {
+            if (i > 0) out += F(",");
+            char n[4]; snprintf(n, sizeof(n), "%d", systemConfig.ledMap[i]);
+            out += n;
+        }
+        out += F("' title='Button to LED index mapping (comma-separated)'></div>");
+        out += F("</div>");
+        
         out += F("<button style='background:#17a2b8;margin-top:10px'>Save System & Reboot</button></form></div>");
     }
     
@@ -642,6 +654,26 @@ void handleSaveSystem() {
         int pin = server.arg("encBtn").toInt();
         if(pin >= 0 && pin <= 39 && pin != systemConfig.encoderBtn) {
             systemConfig.encoderBtn = pin; changed = true;
+        }
+    }
+    if(server.hasArg("ledMap")) {
+        String mapStr = server.arg("ledMap");
+        // Parse comma-separated LED map values
+        int idx = 0;
+        int start = 0;
+        for(int i = 0; i <= mapStr.length() && idx < 10; i++) {
+            if(i == mapStr.length() || mapStr[i] == ',') {
+                String v = mapStr.substring(start, i);
+                v.trim();
+                if(v.length() > 0) {
+                    int val = v.toInt();
+                    if(val >= 0 && val <= 255) {
+                        systemConfig.ledMap[idx++] = val;
+                        changed = true;
+                    }
+                }
+                start = i + 1;
+            }
         }
     }
 

@@ -35,7 +35,8 @@ SystemConfig systemConfig = {
     DEFAULT_ENCODER_BTN,        // encoderBtn
     false,                      // wifiOnAtBoot
     BLE_CLIENT_ONLY,            // bleMode - default to client for backward compatibility
-    1                           // ledsPerButton - default 1 LED per button
+    1,                          // ledsPerButton - default 1 LED per button
+    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}  // ledMap[10] - button to LED index mapping
 };
 
 bool isWifiOn = false;  // Runtime WiFi state
@@ -120,7 +121,7 @@ int tapIndex = 0;
 int tapCount = 0;
 float currentBPM = 120.0;
 int currentDelayType = 0;
-const int ledMap[NUM_LEDS] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};  // Expanded for 10 LEDs
+// ledMap is now in systemConfig.ledMap
 
 int rhythmPattern = 0; // Default to 1/4
 bool inTapTempoMode = false;
