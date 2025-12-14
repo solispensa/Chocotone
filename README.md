@@ -28,6 +28,10 @@
   - DUAL mode: Both client and server active simultaneously
 - **Multiple Message Types** - Note On/Off, CC, Program Change, SysEx
 - **Tap Tempo** - Built-in tap tempo with rhythm patterns (1/8, 1/8d, 1/4, 1/2)
+  - Addressable buttons for rhythm navigation (prev/next)
+  - Lock mode to prevent auto-timeout
+- **Hold Commands** - Long-press any button for a secondary MIDI action
+- **Combo Commands** - Two-button simultaneous press for additional actions
 - **4 Presets** - Store and recall different button configurations
 - **Alternate Messages** - Toggle between two MIDI messages per button
 

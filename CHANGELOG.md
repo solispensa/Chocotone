@@ -9,6 +9,13 @@ All notable changes to the ESP32 MIDI Controller project will be documented in t
   - Three modes available: CLIENT (SPM only), DUAL (both), SERVER (DAW/Apps only)
   - Runtime mode selection via web interface or OLED menu
   - MIDI messages routed to both connected devices in Dual Mode
+- **Hold Commands** - Configure long-press actions for any button (separate MIDI message after hold threshold)
+- **Combo Commands** - Two-button simultaneous press actions with custom labels
+- **Tap Tempo Addressable Buttons** - Assign any button as rhythm pattern navigator or tap mode lock
+  - R.prev: Navigate to previous rhythm pattern
+  - R.next: Navigate to next rhythm pattern  
+  - Lock: Lock/unlock tap tempo mode (instant exit when unlocked)
+- **Web Editor View Separation** - Organized into Main Messages / Special Actions / System Config pages
 - **BLE Mode in OLED Menu** - Toggle between CLIENT/DUAL/SERVER modes directly from the controller
   - Changes apply on "Save and Exit" with automatic reboot
 - **Web Editor Stability Improvements**
