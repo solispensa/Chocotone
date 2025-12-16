@@ -229,8 +229,10 @@
             --btn-y-top: 23.5%;
             --btn-y-btm: 5%;
             --btn-spacing: 25%;
+            --btn-size: 9%;
             --enc-x: 7%;
             --enc-y: 50%;
+            --enc-size: 8%;
         }
 
         .chassis {
@@ -287,8 +289,8 @@
         /* Buttons */
         .button-unit {
             position: absolute;
-            width: 9%;
-            padding-bottom: 9%;
+            width: var(--btn-size);
+            padding-bottom: var(--btn-size);
             transform: translate(-50%, -50%);
             display: flex;
             justify-content: center;
@@ -370,8 +372,8 @@
             position: absolute;
             top: var(--enc-y);
             right: var(--enc-x);
-            width: 8%;
-            padding-bottom: 8%;
+            width: var(--enc-size);
+            padding-bottom: var(--enc-size);
             transform: translate(50%, -50%);
             cursor: pointer;
         }
@@ -626,7 +628,70 @@
             box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
         }
 
-        /* Aspect adjustment */
+        /* NEW METAL FOOTSWITCH STYLES */
+        .btn-3pdt {
+            /* Classic 3PDT Chrome Stomp */
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, #e8e8e8, #b8b8b8, #e8e8e8, #888, #e8e8e8);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 2px 3px rgba(255, 255, 255, 0.8);
+            border: 2px solid #666;
+        }
+
+        .btn-3pdt::after {
+            content: '';
+            position: absolute;
+            top: 25%;
+            left: 25%;
+            width: 50%;
+            height: 50%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #f0f0f0, #aaa);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-mxr {
+            /* MXR Style - Raised dome */
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 30%, #d4d4d4, #888 60%, #555);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 -2px 5px rgba(0, 0, 0, 0.3);
+            border: 1px solid #444;
+        }
+
+        .btn-boss {
+            /* Boss Style - Flat rubber top with metal ring */
+            border-radius: 50%;
+            background: #222;
+            box-shadow: 0 0 0 4px #aaa, 0 0 0 5px #666, 0 4px 10px rgba(0, 0, 0, 0.6);
+            border: none;
+        }
+
+        .btn-ehx {
+            /* EHX Style - Chicken head pointer */
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #d0d0d0, #777);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            border: 2px solid #555;
+        }
+
+        .btn-ehx::before {
+            content: '';
+            position: absolute;
+            top: 5%;
+            left: 45%;
+            width: 10%;
+            height: 25%;
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .btn-tc {
+            /* TC Electronic Style - Soft touch */
+            border-radius: 8px;
+            background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+        }
+
 
         /* LED Formats */
         .led-ring {
@@ -654,17 +719,8 @@
             height: 6px;
             width: 60%;
             margin: 0 auto;
-            background: rgba(0, 0, 0, 0.5);
-            /* Mask background */
-            box-shadow: 0 0 2px #000;
-        }
-
-        /* Active LED Strip/Dot needs to shine through */
-        .led-strip.active,
-        .led-dot.active,
-        .led-rect.active {
-            background-color: var(--led-color, #222) !important;
-            box-shadow: 0 0 10px var(--led-color, #222) !important;
+            background-color: var(--led-color, #333);
+            box-shadow: 0 0 3px var(--led-color, #333);
         }
 
         .led-dot {
@@ -677,9 +733,8 @@
             margin: 0 auto;
             width: 12px;
             height: 12px;
-            background: rgba(0, 0, 0, 0.5);
-            /* Mask */
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+            background-color: var(--led-color, #333);
+            box-shadow: 0 0 3px var(--led-color, #333);
         }
 
         .led-rect {
@@ -692,9 +747,15 @@
             margin: 0 auto;
             width: 20px;
             height: 10px;
-            background: rgba(0, 0, 0, 0.5);
-            /* Mask */
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+            background-color: var(--led-color, #333);
+            box-shadow: 0 0 3px var(--led-color, #333);
+        }
+
+        /* Active LED Strip/Dot/Rect needs stronger glow */
+        .led-strip.active,
+        .led-dot.active,
+        .led-rect.active {
+            box-shadow: 0 0 12px var(--led-color, #222) !important;
         }
 
         .led-inside {
@@ -704,10 +765,16 @@
             bottom: 0;
             border: none;
             border-radius: inherit;
-            background: transparent;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
+            background: radial-gradient(circle, var(--led-color, transparent) 0%, transparent 60%);
+            box-shadow: inset 0 0 15px var(--led-color, transparent);
             z-index: 2;
             pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .led-inside.active {
+            opacity: 1;
+            box-shadow: inset 0 0 25px var(--led-color, transparent);
         }
 
         /* Refined Button Styles */
@@ -807,7 +874,136 @@
             color: #000;
         }
 
-        /* Encoder Styles */
+        /* NEW SCREEN STYLES */
+        .screen-amoled {
+            background: #000;
+            border: 1px solid #111;
+        }
+
+        .screen-amoled .oled-pixel-grid {
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            text-shadow: 0 0 5px currentColor;
+            font-weight: 400;
+        }
+
+        .screen-amoled .oled-status {
+            color: #888;
+            border-color: #333;
+        }
+
+        .screen-amoled .oled-menu-header {
+            color: #0ff;
+            border-color: #0ff;
+        }
+
+        .screen-vfd {
+            background: linear-gradient(#001a1a, #000);
+            border: 1px solid #003333;
+        }
+
+        .screen-vfd .oled-pixel-grid {
+            color: #00ff88;
+            font-family: 'VT323', monospace;
+            text-shadow: 0 0 8px #00ff88;
+        }
+
+        .screen-vfd .oled-status {
+            color: #006644;
+            border-color: #004422;
+        }
+
+        .screen-vfd .oled-menu-header {
+            color: #00ff88;
+            border-color: #00aa55;
+        }
+
+        .screen-eink {
+            background: #e8e4dc;
+            border: 1px solid #999;
+        }
+
+        .screen-eink .oled-glass {
+            background: transparent;
+        }
+
+        .screen-eink .oled-pixel-grid {
+            color: #111;
+            font-family: Georgia, serif;
+            text-shadow: none;
+        }
+
+        .screen-eink .oled-status {
+            color: #333;
+            border-color: #999;
+        }
+
+        .screen-eink .oled-menu-header {
+            color: #000;
+            border-color: #666;
+        }
+
+        .screen-eink .oled-overlay {
+            background: #e8e4dc;
+            color: #000;
+        }
+
+        .screen-crt {
+            background: #111;
+            border: 2px solid #333;
+            border-radius: 6px;
+        }
+
+        .screen-crt .oled-pixel-grid {
+            color: #00ff00;
+            font-family: 'VT323', monospace;
+            text-shadow: 0 0 3px #00ff00, 0 0 10px rgba(0, 255, 0, 0.3);
+            animation: crt-flicker 0.1s infinite;
+        }
+
+        @keyframes crt-flicker {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.98;
+            }
+        }
+
+        .screen-crt .oled-status {
+            color: #00aa00;
+            border-color: #00aa00;
+        }
+
+        .screen-crt .oled-menu-header {
+            color: #00ff00;
+            border-color: #00aa00;
+        }
+
+        .screen-nixie {
+            background: #1a0a00;
+            border: 2px solid #3d2817;
+        }
+
+        .screen-nixie .oled-pixel-grid {
+            color: #ff6611;
+            font-family: 'VT323', monospace;
+            text-shadow: 0 0 10px #ff4400, 0 0 20px rgba(255, 68, 0, 0.5);
+        }
+
+        .screen-nixie .oled-status {
+            color: #aa4400;
+            border-color: #aa4400;
+        }
+
+        .screen-nixie .oled-menu-header {
+            color: #ff6611;
+            border-color: #ff4400;
+        }
+
         /* 1: Default */
         .enc-2 .knob-cap {
             background: #ddd;
@@ -1428,7 +1624,6 @@
                             <option value="btn-soft">Soft Touch</option>
                             <option value="btn-arcade">Arcade</option>
                             <option value="btn-illuminated">Illuminated</option>
-                            <option value="btn-hex">Hexagonal</option>
                             <option value="btn-transparent">Transparent</option>
                         </select>
                     </div>
@@ -1471,10 +1666,48 @@
                             <option value="screen-tft">TFT</option>
                             <option value="screen-ips">IPS</option>
                             <option value="screen-lcd">LCD</option>
+                            <option value="screen-amoled">AMOLED</option>
+                            <option value="screen-vfd">VFD</option>
                         </select>
                     </div>
                     <hr style="border-color:#444;">
 
+                    <h4>Colors</h4>
+                    <div class="editor-row"><span>Faceplate:</span>
+                        <input type="color" id="col-faceplate" value="#1a1a1a"
+                            onchange="updateColor('faceplate', this.value)">
+                    </div>
+                    <div class="editor-row"><span>Contour:</span>
+                        <input type="color" id="col-contour" value="#333333"
+                            onchange="updateColor('contour', this.value)">
+                    </div>
+                    <div class="editor-row"><span>Screws:</span>
+                        <input type="color" id="col-screw" value="#888888" onchange="updateColor('screw', this.value)">
+                    </div>
+                    <div class="editor-row"><span>Encoder:</span>
+                        <input type="color" id="col-encoder" value="#222222"
+                            onchange="updateColor('encoder', this.value)">
+                    </div>
+                    <div class="editor-row"><span>Screen:</span>
+                        <input type="color" id="col-screen" value="#00ffff"
+                            onchange="updateColor('screen', this.value)">
+                    </div>
+                    <div class="editor-row"><span>Contour Th:</span> <input type="range" id="sl-contour-th" min="1"
+                            max="10" step="1" value="2" onchange="updateSizeControl('contour', this.value)"><span
+                            class="slider-value" id="val-contour-th">2px</span></div>
+                    <div class="editor-row"><span>Screw Size:</span> <input type="range" id="sl-screw-size" min="0.5"
+                            max="3" step="0.1" value="1.5" onchange="updateSizeControl('screw', this.value)"><span
+                            class="slider-value" id="val-screw-size">1.5%</span></div>
+                    <div class="editor-row"><span>Chamfer:</span>
+                        <input type="checkbox" id="chk-chamfer" onchange="updateChamfer()">
+                        <input type="range" id="sl-chamfer" min="5" max="30" step="1" value="15"
+                            onchange="updateChamfer()" disabled><span class="slider-value" id="val-chamfer">15px</span>
+                    </div>
+                    <hr style="border-color:#444;">
+
+                    <div class="editor-row"><span>Buttons #:</span> <input type="range" id="sl-btn-count" min="4"
+                            max="10" step="1" value="8" onchange="updateButtonCount(this.value)"><span
+                            class="slider-value" id="val-btn-count">8</span></div>
                     <div class="editor-row"><span>Chassis H:</span> <input type="range" id="sl-ar" min="40" max="80"
                             step="0.5"><span class="slider-value" id="val-ar"></span></div>
                     <div class="editor-row"><span>Chassis W:</span> <input type="range" id="sl-w" min="400" max="1000"
@@ -1490,18 +1723,40 @@
                             step="0.5"><span class="slider-value" id="val-oled-x"></span></div>
                     <div class="editor-row"><span>Top Y:</span> <input type="range" id="sl-oled-y" min="20" max="80"
                             step="0.5"><span class="slider-value" id="val-oled-y"></span></div>
-                    <h4>Buttons (Y)</h4>
-                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="40"
+                    <h4>Text Sizes</h4>
+                    <div class="editor-row"><span>Preset:</span> <input type="range" id="sl-font-preset" min="0.8"
+                            max="3" step="0.1" value="1.6" onchange="updateFontSize('preset', this.value)"><span
+                            class="slider-value" id="val-font-preset">1.6em</span></div>
+                    <div class="editor-row"><span>Labels:</span> <input type="range" id="sl-font-labels" min="0.5"
+                            max="1.5" step="0.05" value="0.8" onchange="updateFontSize('labels', this.value)"><span
+                            class="slider-value" id="val-font-labels">0.8em</span></div>
+                    <div class="editor-row"><span>Status:</span> <input type="range" id="sl-font-status" min="0.5"
+                            max="1.2" step="0.05" value="0.7" onchange="updateFontSize('status', this.value)"><span
+                            class="slider-value" id="val-font-status">0.7em</span></div>
+                    <div class="editor-row"><span>BPM:</span> <input type="range" id="sl-font-bpm" min="0.6" max="2"
+                            step="0.1" value="1.0" onchange="updateFontSize('bpm', this.value)"><span
+                            class="slider-value" id="val-font-bpm">1.0em</span></div>
+                    <div class="editor-row"><span>H Scale:</span> <input type="range" id="sl-font-h" min="0.7" max="1.5"
+                            step="0.05" value="1" onchange="updateFontSize('h', this.value)"><span class="slider-value"
+                            id="val-font-h">1x</span></div>
+                    <div class="editor-row"><span>W Scale:</span> <input type="range" id="sl-font-w" min="0.7" max="1.5"
+                            step="0.05" value="1" onchange="updateFontSize('w', this.value)"><span class="slider-value"
+                            id="val-font-w">1x</span></div>
+                    <h4>Buttons</h4>
+                    <div class="editor-row"><span>Size:</span> <input type="range" id="sl-btn-size" min="5" max="20"
+                            step="0.5"><span class="slider-value" id="val-btn-size"></span></div>
+                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="50"
                             step="0.5"><span class="slider-value" id="val-btn-y1"></span></div>
-                    <div class="editor-row"><span>Btm Row:</span> <input type="range" id="sl-btn-y2" min="5" max="40"
+                    <div class="editor-row"><span>Btm Row:</span> <input type="range" id="sl-btn-y2" min="0" max="50"
                             step="0.5"><span class="slider-value" id="val-btn-y2"></span></div>
-                    <h4>Buttons (X)</h4>
                     <div class="editor-row"><span>Spacing:</span> <input type="range" id="sl-btn-spacing" min="10"
                             max="40" step="0.5"><span class="slider-value" id="val-btn-spacing"></span></div>
                     <h4>Encoder</h4>
-                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="30"
+                    <div class="editor-row"><span>Size:</span> <input type="range" id="sl-enc-size" min="5" max="20"
+                            step="0.5"><span class="slider-value" id="val-enc-size"></span></div>
+                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="40"
                             step="0.5"><span class="slider-value" id="val-enc-x"></span></div>
-                    <div class="editor-row"><span>Center Y:</span> <input type="range" id="sl-enc-y" min="20" max="80"
+                    <div class="editor-row"><span>Center Y:</span> <input type="range" id="sl-enc-y" min="10" max="90"
                             step="0.5"><span class="slider-value" id="val-enc-y"></span></div>
                     <button onclick="copyConfig()" style="width:100%; margin-top:10px; cursor:pointer;">📋 Copy
                         Config</button>
@@ -1526,9 +1781,11 @@
             '--oled-h': ['sl-oled-h', '%'],
             '--oled-x': ['sl-oled-x', '%'],
             '--oled-y': ['sl-oled-y', '%'],
+            '--btn-size': ['sl-btn-size', '%'],
             '--btn-y-top': ['sl-btn-y1', '%'],
             '--btn-y-btm': ['sl-btn-y2', '%'],
             '--btn-spacing': ['sl-btn-spacing', '%'],
+            '--enc-size': ['sl-enc-size', '%'],
             '--enc-x': ['sl-enc-x', '%'],
             '--enc-y': ['sl-enc-y', '%']
         };
@@ -1540,6 +1797,11 @@
             if (!el) continue;
             let val = style.getPropertyValue(v).trim();
             if (val.includes(unit)) val = val.replace(unit, '');
+            val = parseFloat(val) || 0;
+            // Clamp value to slider's min/max range
+            const slMin = parseFloat(el.min) || 0;
+            const slMax = parseFloat(el.max) || 100;
+            val = Math.max(slMin, Math.min(slMax, val));
             el.value = val;
             if (valEl) valEl.textContent = val + unit;
             el.addEventListener('input', (e) => {
@@ -1555,36 +1817,239 @@
 
             if (type === 'btn') {
                 document.querySelectorAll('.footswitch').forEach(el => {
-                    el.classList.remove('btn-round', 'btn-square', 'btn-rect', 'btn-metal', 'btn-metal-flat', 'btn-soft', 'btn-arcade', 'btn-illuminated', 'btn-hex', 'btn-transparent');
+                    el.classList.remove('btn-round', 'btn-square', 'btn-rect', 'btn-metal', 'btn-metal-flat', 'btn-soft', 'btn-arcade', 'btn-illuminated', 'btn-hex', 'btn-transparent', 'btn-3pdt', 'btn-mxr', 'btn-boss', 'btn-ehx', 'btn-tc');
                     if (value) el.classList.add(value);
                 });
             } else if (type === 'led') {
                 document.querySelectorAll('.led-ring').forEach(el => {
-                    // Hack: store original ID for logic, but change class presentation
-                    // Actually, let's keep 'led-ring' as base class in HTML but swap extra classes or styles?
-                    // Better: The HTML used 'led-ring' as the class. Let's swap that class out?
-                    // No, invalidates logic if I rely on class name for selection.
-                    // Solution: Add the new format class ON TOP of logic class, or replace visually irrelevant classes.
                     currentLedStyle = value;
                     el.className = 'led-ring ' + value;
-                    if (value === 'led-ring') el.className = 'led-ring'; // Clean up
+                    if (value === 'led-ring') el.className = 'led-ring';
                 });
             } else if (type === 'enc') {
                 const encUnit = document.querySelector('.encoder-unit');
-                // Remove existing enc-* classes
                 encUnit.classList.forEach(c => { if (c.startsWith('enc-')) encUnit.classList.remove(c); });
                 if (value) encUnit.classList.add(value);
             } else if (type === 'screw') {
                 document.querySelectorAll('.screw').forEach(el => {
-                    // Remove existing screw-* classes
                     el.classList.forEach(c => { if (c.startsWith('screw-') && c !== 'screw') el.classList.remove(c); });
                     if (value) el.classList.add(value);
                 });
             } else if (type === 'screen') {
                 const oledFrame = document.querySelector('.oled-frame');
-                // Remove existing screen-* classes
                 oledFrame.classList.forEach(c => { if (c.startsWith('screen-')) oledFrame.classList.remove(c); });
                 if (value) oledFrame.classList.add(value);
+            }
+        }
+
+        function updateColor(target, color) {
+            const chassis = document.querySelector('.chassis');
+            const screws = document.querySelectorAll('.screw');
+            const encoder = document.querySelector('.knob-cap');
+
+            if (target === 'faceplate') {
+                chassis.style.background = color;
+            } else if (target === 'contour') {
+                const thickness = document.getElementById('sl-contour-th')?.value || 2;
+                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${thickness}px ${color}`;
+            } else if (target === 'screw') {
+                screws.forEach(s => s.style.background = color);
+            } else if (target === 'encoder') {
+                encoder.style.background = `radial-gradient(circle, ${color}, #000)`;
+            } else if (target === 'screen') {
+                // Store screen color for persistence
+                state.screenColor = color;
+                applyScreenColor(color);
+            }
+        }
+
+        function applyScreenColor(color) {
+            const oledPixelGrid = document.querySelector('.oled-pixel-grid');
+            if (oledPixelGrid) {
+                oledPixelGrid.style.setProperty('color', color, 'important');
+                oledPixelGrid.style.textShadow = `0 0 3px ${color}`;
+            }
+            // Also apply to status line which may have its own color
+            document.querySelectorAll('.oled-status').forEach(el => {
+                el.style.setProperty('color', color, 'important');
+            });
+        }
+
+        function updateSizeControl(target, value) {
+            const chassis = document.querySelector('.chassis');
+            const screws = document.querySelectorAll('.screw');
+            const contourColor = document.getElementById('col-contour')?.value || '#333333';
+
+            if (target === 'contour') {
+                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${value}px ${contourColor}`;
+                document.getElementById('val-contour-th').textContent = value + 'px';
+            } else if (target === 'screw') {
+                screws.forEach(s => {
+                    s.style.width = value + '%';
+                    s.style.height = (parseFloat(value) * 1.5) + '%';
+                });
+                document.getElementById('val-screw-size').textContent = value + '%';
+            }
+        }
+
+        function updateChamfer() {
+            const checkbox = document.getElementById('chk-chamfer');
+            const slider = document.getElementById('sl-chamfer');
+            const chassis = document.querySelector('.chassis');
+
+            slider.disabled = !checkbox.checked;
+
+            if (checkbox.checked) {
+                const size = slider.value;
+                // Chamfer using clip-path with angled corners
+                chassis.style.clipPath = `polygon(
+                    ${size}px 0, calc(100% - ${size}px) 0,
+                    100% ${size}px, 100% calc(100% - ${size}px),
+                    calc(100% - ${size}px) 100%, ${size}px 100%,
+                    0 calc(100% - ${size}px), 0 ${size}px
+                )`;
+                document.getElementById('val-chamfer').textContent = size + 'px';
+            } else {
+                chassis.style.clipPath = 'none';
+            }
+        }
+
+        function updateButtonCount(count) {
+            count = parseInt(count);
+            document.getElementById('val-btn-count').textContent = count;
+
+            const chassis = document.querySelector('.chassis');
+
+            // Remove all existing button units
+            chassis.querySelectorAll('.button-unit').forEach(b => b.remove());
+
+            // Calculate layout: split between top and bottom rows
+            const topRowCount = Math.ceil(count / 2);
+            const btmRowCount = Math.floor(count / 2);
+
+            // Get current button style
+            const btnStyle = document.getElementById('sel-btn-fmt')?.value || '';
+            const ledStyle = document.getElementById('sel-led-fmt')?.value || 'led-ring';
+
+            // Create buttons
+            let btnId = count; // Start from highest for top row (reversed display)
+
+            // Top row buttons (higher numbered)
+            for (let i = 0; i < topRowCount; i++) {
+                const btnNum = btnId--;
+                const btn = createButtonElement(btnNum, 'top', i, topRowCount, btnStyle, ledStyle);
+                chassis.appendChild(btn);
+            }
+
+            // Bottom row buttons (lower numbered)
+            for (let i = 0; i < btmRowCount; i++) {
+                const btnNum = btnId--;
+                const btn = createButtonElement(btnNum, 'btm', i, btmRowCount, btnStyle, ledStyle);
+                chassis.appendChild(btn);
+            }
+
+            // Reinitialize leds object
+            initializeLeds();
+            updateLeds();
+            render();
+        }
+
+        function createButtonElement(num, row, index, rowCount, btnStyle, ledStyle) {
+            const btn = document.createElement('div');
+            btn.className = 'button-unit';
+            btn.id = `btn-${num}`;
+            btn.dataset.tooltip = `Switch ${num}`;
+
+            // Position calculation
+            const spacing = 100 / (rowCount + 1);
+            const leftPos = spacing * (index + 1);
+
+            if (row === 'top') {
+                btn.style.cssText = `position:absolute; left:${leftPos}%; top:var(--btn-y-top); transform:translate(-50%,0);`;
+            } else {
+                btn.style.cssText = `position:absolute; left:${leftPos}%; bottom:var(--btn-y-btm); transform:translate(-50%,0);`;
+            }
+
+            const footswitch = document.createElement('div');
+            footswitch.className = 'footswitch' + (btnStyle ? ' ' + btnStyle : '');
+
+            const led = document.createElement('div');
+            led.className = ledStyle === 'led-ring' ? 'led-ring' : 'led-ring ' + ledStyle;
+            led.id = `led-${num}`;
+
+            footswitch.appendChild(led);
+            btn.appendChild(footswitch);
+
+            // Add click handler (num is 1-based, convert to 0-based index)
+            const btnLogicIndex = num - 1;
+            btn.addEventListener('mousedown', () => handleButtonMouseDown(btnLogicIndex));
+            btn.addEventListener('mouseup', () => handleButtonMouseUp(btnLogicIndex));
+            btn.addEventListener('mouseleave', () => handleButtonMouseUp(btnLogicIndex));
+
+            return btn;
+        }
+
+        function initializeLeds() {
+            const ledElements = document.querySelectorAll('[id^="led-"]');
+            ledElements.forEach(el => {
+                const num = parseInt(el.id.replace('led-', ''));
+                leds[num] = el;
+            });
+        }
+
+        // Store font settings for persistence across renders
+        const fontSettings = {
+            preset: 1.6,
+            labels: 0.8,
+            status: 0.7,
+            bpm: 1.0,
+            h: 1,
+            w: 1
+        };
+
+        function updateFontSize(target, value) {
+            const oledContent = document.getElementById('oled-content');
+            fontSettings[target] = parseFloat(value);
+
+            if (target === 'preset') {
+                document.querySelectorAll('.oled-preset-name').forEach(el => el.style.fontSize = value + 'em');
+                document.getElementById('val-font-preset').textContent = value + 'em';
+            } else if (target === 'labels') {
+                document.querySelectorAll('.oled-row-top, .oled-row-btm').forEach(el => el.style.fontSize = value + 'em');
+                document.getElementById('val-font-labels').textContent = value + 'em';
+            } else if (target === 'status') {
+                document.querySelectorAll('.oled-status').forEach(el => el.style.fontSize = value + 'em');
+                document.getElementById('val-font-status').textContent = value + 'em';
+            } else if (target === 'bpm') {
+                document.querySelectorAll('.oled-bpm').forEach(el => el.style.fontSize = value + 'em');
+                document.getElementById('val-font-bpm').textContent = value + 'em';
+            } else if (target === 'h') {
+                // Character height - use scaleY on text
+                oledContent.style.transform = `scaleY(${value}) scaleX(${fontSettings.w})`;
+                document.getElementById('val-font-h').textContent = value + 'x';
+            } else if (target === 'w') {
+                // Character width and spacing
+                const wVal = parseFloat(value);
+                oledContent.style.transform = `scaleY(${fontSettings.h}) scaleX(${value})`;
+                oledContent.style.letterSpacing = ((wVal - 1) * 3) + 'px'; // Adjust spacing based on width
+                document.getElementById('val-font-w').textContent = value + 'x';
+            }
+        }
+
+        // Apply stored font settings after each render
+        function applyFontSettings() {
+            document.querySelectorAll('.oled-preset-name').forEach(el => el.style.fontSize = fontSettings.preset + 'em');
+            document.querySelectorAll('.oled-row-top, .oled-row-btm').forEach(el => el.style.fontSize = fontSettings.labels + 'em');
+            document.querySelectorAll('.oled-status').forEach(el => el.style.fontSize = fontSettings.status + 'em');
+            document.querySelectorAll('.oled-bpm').forEach(el => el.style.fontSize = fontSettings.bpm + 'em');
+            const oledContent = document.getElementById('oled-content');
+            if (oledContent) {
+                oledContent.style.transform = `scaleY(${fontSettings.h}) scaleX(${fontSettings.w})`;
+                oledContent.style.letterSpacing = ((fontSettings.w - 1) * 3) + 'px';
+            }
+            // Re-apply screen color if set
+            if (state.screenColor) {
+                applyScreenColor(state.screenColor);
             }
         }
 
@@ -1619,205 +2084,581 @@
         const leds = {};
         ledIds.forEach(id => leds[id] = document.getElementById('led-' + id));
 
-        // State
-        let state = {
-            mode: 'PLAY',
-            presetIndex: 0,
-            menuIndex: 0,
-            inSubMenu: false,
-            buttonOverlay: null,
-            buttonNameFontSize: 6, // Default from firmware adjusted for presentation
-            // Tap Tempo Specifics
-            inTapTempoMode: false,
-            lastTapTime: 0,
-            tapModeTimeout: 0,
-            currentBPM: 120.0,
-            rhythmPattern: 0 // 0=1/4, 1=1/8, 2=1/8d, 3=1/2
-        };
+        // ============================================
+        // FIRMWARE-ACCURATE PRESET DATA
+        // From DefaultPresets.h - exact RGB values
+        // ============================================
+        const presets = [
+            // Preset 0: STOMP
+            {
+                name: 'STOMP',
+                buttons: [
+                    { n: 'NR', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', isAlternate: true },  // Button 1
+                    { n: 'FX1', rgb: [0x3F, 0x67, 0xFF], type: 'CC', isAlternate: true },  // Button 2
+                    { n: 'DRV', rgb: [0xFC, 0x2C, 0x00], type: 'CC', isAlternate: true },  // Button 3
+                    { n: 'TAP', rgb: [0xFF, 0xFF, 0xFF], type: 'TAP_TEMPO' },              // Button 4
+                    { n: 'EQ', rgb: [0x0A, 0xF5, 0x00], type: 'CC', isAlternate: true },  // Button 5
+                    { n: 'FX2', rgb: [0x11, 0xF3, 0xFF], type: 'CC', isAlternate: true },  // Button 6
+                    { n: 'DLY', rgb: [0x33, 0x2A, 0xFF], type: 'CC', isAlternate: true },  // Button 7
+                    { n: 'RVB', rgb: [0x84, 0x00, 0xF7], type: 'CC', isAlternate: true }   // Button 8
+                ]
+            },
+            // Preset 1: BANKS 1-8
+            {
+                name: 'BANKS 1-8',
+                buttons: [
+                    { n: 'B1', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
+                    { n: 'B2', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
+                    { n: 'B3', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
+                    { n: 'B4', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
+                    { n: 'B5', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
+                    { n: 'B6', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
+                    { n: 'B7', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
+                    { n: 'B8', rgb: [0x0A, 0xF5, 0x00], type: 'CC' }
+                ]
+            },
+            // Preset 2: BANKS 9-16
+            {
+                name: 'BANKS 9-16',
+                buttons: [
+                    { n: 'B9', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
+                    { n: 'B10', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
+                    { n: 'B11', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
+                    { n: 'B12', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
+                    { n: 'B13', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
+                    { n: 'B14', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
+                    { n: 'B15', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
+                    { n: 'B16', rgb: [0xAA, 0x00, 0xFF], type: 'CC' }
+                ]
+            },
+            // Preset 3: Note
+            {
+                name: 'Note',
+                buttons: [
+                    { n: '1st', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '2nd', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '3rd', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '4th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '5th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '6th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '7th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
+                    { n: '8up', rgb: [0xFD, 0x00, 0x00], type: 'CC' }
+                ]
+            }
+        ];
 
+        // Rhythm patterns from Globals.h
         const rhythmMultipliers = [1.0, 0.5, 0.75, 2.0];
         const rhythmNames = ["1/4", "1/8", "1/8d", "1/2"];
 
-        // Colors
-        const C_RED = '#FF0000'; const C_GREEN = '#00FF00'; const C_BLUE = '#0000FF';
-        const C_WHITE = '#FFFFFF'; const C_CYAN = '#00FFFF'; const C_PURPLE = '#FF00FF'; const C_OFF = '#111';
+        // ============================================
+        // SYSTEM STATE (mirrors firmware globals)
+        // ============================================
+        let state = {
+            // Mode: 0=Preset, 1=Menu (matches firmware currentMode)
+            currentMode: 0,
+            presetIndex: 0,
+            menuSelection: 0,
+            inSubMenu: false,
+            editingValue: 0,
 
-        const presets = [
-            { name: 'Note', buttons: [{ n: 'C2', c: C_RED }, { n: 'C#2', c: C_RED }, { n: 'D2', c: C_RED }, { n: 'D#2', c: C_RED }, { n: 'E2', c: C_RED }, { n: 'F2', c: C_RED }, { n: 'F#2', c: C_RED }, { n: 'G2', c: C_RED }] },
-            { name: 'STOMP', buttons: [{ n: 'NR', c: C_WHITE }, { n: 'FX1', c: C_BLUE }, { n: 'DRV', c: C_RED }, { n: 'TAP', c: C_WHITE, type: 'TAP' }, { n: 'EQ', c: C_GREEN }, { n: 'FX2', c: C_CYAN }, { n: 'DLY', c: C_BLUE }, { n: 'RVB', c: C_PURPLE }] },
-            { name: 'BANKS 1-8', buttons: [{ n: 'B1', c: C_WHITE }, { n: 'B2', c: C_WHITE }, { n: 'B3', c: C_WHITE }, { n: 'B4', c: C_WHITE }, { n: 'B5', c: C_GREEN }, { n: 'B6', c: C_GREEN }, { n: 'B7', c: C_GREEN }, { n: 'B8', c: C_GREEN }] },
-            { name: 'BANKS 9-16', buttons: [{ n: 'B9', c: C_CYAN }, { n: 'B10', c: C_CYAN }, { n: 'B11', c: C_CYAN }, { n: 'B12', c: C_CYAN }, { n: 'B13', c: C_PURPLE }, { n: 'B14', c: C_PURPLE }, { n: 'B15', c: C_PURPLE }, { n: 'B16', c: C_PURPLE }] }
-        ];
+            // Button name overlay
+            buttonNameToShow: '',
+            buttonNameDisplayUntil: 0,
 
-        const menuItems = ['Save and Exit', 'Exit without Saving', 'Wi-Fi Editor (OFF)', 'LED Bright (On)', 'LED Bright (Dim)', 'Pad Debounce', 'Clear BLE Bonds', 'Reboot', 'Factory Reset', 'Name Font Size', 'Wifi OFF at Boot'];
+            // UI Settings (from firmware)
+            buttonNameFontSize: 5,
+            ledBrightnessOn: 255,
+            ledBrightnessDim: 120,
+            buttonDebounce: 20,
 
-        // Main Loop for Timeouts
+            // Connection status
+            bleConnected: true,
+            wifiOn: false,
+            wifiOnAtBoot: false,
+            bleMode: 'CLIENT', // CLIENT, SERVER, DUAL
+
+            // Button states (for LED tracking)
+            buttonActive: [false, false, false, false, false, false, false, false],
+            buttonNextIsB: [false, false, false, false, false, false, false, false],
+
+            // Tap Tempo
+            inTapTempoMode: false,
+            tapModeLocked: false,
+            lastTapTime: 0,
+            tapModeTimeout: 0,
+            currentBPM: 120.0,
+            rhythmPattern: 0,
+
+            // LED blink state
+            tapBlinkState: false,
+            lastTapBlinkTime: 0,
+
+            // Last MIDI sent
+            lastSentMidi: ''
+        };
+
+        // ============================================
+        // MENU ITEMS (from displayMenu() in UI_Display.cpp)
+        // ============================================
+        function getMenuItems() {
+            const bleModeStr = state.bleMode === 'CLIENT' ? 'CLIENT' :
+                state.bleMode === 'DUAL' ? 'DUAL' : 'SERVER';
+            return [
+                'Save and Exit',
+                'Exit without Saving',
+                `Wi-Fi Editor (${state.wifiOn ? 'ON' : 'OFF'})`,
+                'LED Bright (On)',
+                'LED Bright (Dim)',
+                'Pad Debounce',
+                'Clear BLE Bonds',
+                'Reboot',
+                'Factory Reset',
+                'Name Font Size',
+                `Wifi ${state.wifiOnAtBoot ? 'ON' : 'OFF'} at Boot`,
+                `BLE: ${bleModeStr}`
+            ];
+        }
+
+        // ============================================
+        // MAIN LOOP (runs every 100ms)
+        // ============================================
         setInterval(() => {
             const now = Date.now();
-            // Check Tap Timeout
-            if (state.inTapTempoMode && now > state.tapModeTimeout) {
+
+            // Tap mode timeout (if not locked)
+            if (state.inTapTempoMode && !state.tapModeLocked && now > state.tapModeTimeout) {
                 state.inTapTempoMode = false;
+                state.tapModeLocked = false;
                 render();
             }
-        }, 100);
 
-        function render() {
-            if (state.buttonOverlay) {
-                // Approximate GFX size: Size 1 ~ 0.7em, Size 4 ~ 2.8em
-                let sizeEm = state.buttonNameFontSize * 0.7;
-                oledContent.innerHTML = `<div class="oled-overlay" style="font-size:${sizeEm}em">${state.buttonOverlay}</div>`; return;
+            // Clear button name overlay
+            if (state.buttonNameDisplayUntil > 0 && now > state.buttonNameDisplayUntil) {
+                state.buttonNameDisplayUntil = 0;
+                state.buttonNameToShow = '';
+                render();
             }
 
-            // TAP TEMPO MODE
-            if (state.inTapTempoMode) {
-                let delayMs = Math.round((60000.0 / state.currentBPM) * rhythmMultipliers[state.rhythmPattern]);
-                let roundedBPM = state.currentBPM.toFixed(1);
+            // Tap tempo LED blink (rhythm-aligned)
+            if (state.currentMode === 0 && state.currentBPM > 0) {
+                const finalDelayMs = (60000.0 / state.currentBPM) * rhythmMultipliers[state.rhythmPattern];
 
+                if (state.tapBlinkState && (now - state.lastTapBlinkTime >= 50)) {
+                    state.tapBlinkState = false;
+                    updateLeds();
+                } else if (!state.tapBlinkState && (now - state.lastTapBlinkTime >= finalDelayMs)) {
+                    state.tapBlinkState = true;
+                    state.lastTapBlinkTime = now;
+                    updateLeds();
+                }
+            }
+        }, 50);
+
+        // ============================================
+        // RENDER FUNCTIONS (from UI_Display.cpp)
+        // ============================================
+        function render() {
+            // Button name overlay (displayButtonName)
+            if (state.buttonNameDisplayUntil > 0 && state.buttonNameToShow) {
+                const sizeEm = state.buttonNameFontSize * 0.8;
+                oledContent.innerHTML = `<div class="oled-overlay" style="font-size:${sizeEm}em">${state.buttonNameToShow}</div>`;
+                return;
+            }
+
+            // Tap Tempo Mode (displayTapTempoMode)
+            if (state.inTapTempoMode) {
+                renderTapTempoMode();
+                return;
+            }
+
+            // Menu Mode (displayMenu)
+            if (state.currentMode === 1) {
+                renderMenuMode();
+                return;
+            }
+
+            // Preset Mode (displayOLED)
+            renderPresetMode();
+        }
+
+        function renderTapTempoMode() {
+            const finalDelayMs = Math.round((60000.0 / state.currentBPM) * rhythmMultipliers[state.rhythmPattern]);
+            const bpmStr = state.currentBPM.toFixed(1);
+
+            oledContent.innerHTML = `
+                <div class="oled-row-top">
+                    <span>NEXT</span>
+                    <span>${state.tapModeLocked ? 'LOCKED' : 'LOCK'}</span>
+                </div>
+                <div class="oled-main-area" style="justify-content:center;">
+                    <div style="font-size:2.5em; line-height:1;">${bpmStr}</div>
+                </div>
+                <div class="oled-status" style="border:none;">
+                    <span>Pattern: ${rhythmNames[state.rhythmPattern]}</span>
+                    <span>${finalDelayMs}ms</span>
+                </div>
+                <div class="oled-row-btm">
+                    <span>PREV</span>
+                    <span>TAP</span>
+                </div>
+            `;
+            applyFontSettings();
+            updateLeds();
+        }
+
+        function renderMenuMode() {
+            const menuItems = getMenuItems();
+
+            if (state.inSubMenu) {
+                let valueStr = state.editingValue;
                 oledContent.innerHTML = `
-                    <div class="oled-row-top"><span>TAP TEMPO</span><span>${delayMs}ms</span></div>
-                    <div class="oled-main-area" style="justify-content:center;">
-                        <div style="font-size:3em; line-height:1;">${roundedBPM}</div>
-                    </div>
-                    <div class="oled-row-btm" style="margin-top:auto; align-items:flex-end;">
-                        <span>Pattern: ${rhythmNames[state.rhythmPattern]}</span>
-                        <span>${delayMs}ms</span>
+                    <div class="oled-menu-header">-- Menu CHOCOTONE --</div>
+                    <div style="padding:8px; text-align:center;">
+                        <div style="font-size:0.8em; color:#888;">Editing:</div>
+                        <div style="margin:5px 0;">${menuItems[state.menuSelection].split('(')[0]}</div>
+                        <div style="font-size:1.8em; color:#fff; margin-top:10px;">${valueStr}</div>
                     </div>
                 `;
-                // Flash LEDs white briefly (simulated by just staying white or active for now)
-                Object.values(leds).forEach(l => { l.style.borderColor = '#444'; l.style.boxShadow = 'none'; });
-                return;
-            }
+            } else {
+                // Show 5 lines at a time, scrolling
+                let lineOffset = state.menuSelection - 2;
+                if (lineOffset < 0) lineOffset = 0;
+                if (lineOffset > menuItems.length - 5) lineOffset = menuItems.length - 5;
 
-            // MENU MODE
-            if (state.mode === 'MENU') {
-                if (state.inSubMenu) {
-                    let valToShow = "[ Value ]";
-                    if (state.menuIndex === 9) valToShow = state.buttonNameFontSize;
-
-                    oledContent.innerHTML = `<div class="oled-menu-header">-- Menu CHOCOTONE --</div><div style="margin-top:10px; text-align:center;">Editing:<br>${menuItems[state.menuIndex].split('(')[0]}<br><span style="font-size:1.5em; color:#fff;">${valToShow}</span></div>`;
-                } else {
-                    let html = '<div class="oled-menu-list">';
-                    const start = Math.max(0, Math.min(state.menuIndex - 1, menuItems.length - 4));
-                    const end = Math.min(start + 4, menuItems.length);
-                    for (let i = start; i < end; i++) {
-                        const sel = (i === state.menuIndex) ? '> ' : '  ';
+                let html = '<div class="oled-menu-header">-- Menu CHOCOTONE --</div><div class="oled-menu-list">';
+                for (let i = 0; i < menuItems.length; i++) {
+                    const displayLine = i - lineOffset;
+                    if (displayLine >= 0 && displayLine < 5) {
+                        const sel = (i === state.menuSelection) ? '> ' : '  ';
                         html += `<div class="oled-menu-item">${sel}${menuItems[i]}</div>`;
                     }
-                    html += '</div>';
-                    oledContent.innerHTML = `<div class="oled-menu-header">-- Menu CHOCOTONE --</div>${html}`;
                 }
-                Object.values(leds).forEach(l => { l.className = 'led-ring'; l.style.borderColor = '#111'; l.style.boxShadow = 'none'; });
-                return;
+                html += '</div>';
+                oledContent.innerHTML = html;
             }
 
-            // PLAY MODE
+            // LEDs off in menu mode
+            applyFontSettings();
+            Object.values(leds).forEach(l => {
+                l.style.borderColor = '#222';
+                l.style.boxShadow = 'none';
+            });
+        }
+
+        function renderPresetMode() {
             const p = presets[state.presetIndex];
-            let topRow = `<div class="oled-row-top"><span>${cutName(p.buttons[4].n)}</span><span>${cutName(p.buttons[5].n)}</span><span>${cutName(p.buttons[6].n)}</span><span>${cutName(p.buttons[7].n)}</span></div>`;
-            let main = `<div class="oled-main-area"><div class="oled-preset-name">${p.name}</div><div class="oled-bpm">BPM:${state.currentBPM.toFixed(1)}</div></div>`;
-            let status = `<div class="oled-status"><span>SPM:Y</span> <span>WiFi:N</span></div>`;
-            let btmRow = `<div class="oled-row-btm"><span>${cutName(p.buttons[0].n)}</span><span>${cutName(p.buttons[1].n)}</span><span>${cutName(p.buttons[2].n)}</span><span>${cutName(p.buttons[3].n)}</span></div>`;
+
+            // Top Row (Buttons 5-8, indices 4-7)
+            const topRow = `<div class="oled-row-top">
+                <span>${cutName(p.buttons[4].n)}</span>
+                <span>${cutName(p.buttons[5].n)}</span>
+                <span>${cutName(p.buttons[6].n)}</span>
+                <span>${cutName(p.buttons[7].n)}</span>
+            </div>`;
+
+            // Main area - Preset name and BPM
+            const main = `<div class="oled-main-area">
+                <div class="oled-preset-name">${p.name.substring(0, 10)}</div>
+                <div class="oled-bpm">BPM:${state.currentBPM.toFixed(1)}</div>
+            </div>`;
+
+            // Status line
+            const status = `<div class="oled-status">
+                <span>BLE:${state.bleConnected ? 'Y' : 'N'}</span>
+                <span>WiFi:${state.wifiOn ? 'Y' : 'N'}</span>
+            </div>`;
+
+            // Bottom Row (Buttons 1-4, indices 0-3)
+            const btmRow = `<div class="oled-row-btm">
+                <span>${cutName(p.buttons[0].n)}</span>
+                <span>${cutName(p.buttons[1].n)}</span>
+                <span>${cutName(p.buttons[2].n)}</span>
+                <span>${cutName(p.buttons[3].n)}</span>
+            </div>`;
+
             oledContent.innerHTML = topRow + main + status + btmRow;
-            updateLeds(p);
+            applyFontSettings();
+            updateLeds();
         }
 
         function cutName(name) { return name.substring(0, 4); }
-        function updateLeds(preset) {
+
+        function rgbToHex(rgb) {
+            return '#' + rgb.map(c => c.toString(16).padStart(2, '0')).join('');
+        }
+
+        function updateLeds() {
+            const preset = presets[state.presetIndex];
+
             preset.buttons.forEach((btn, idx) => {
                 const l = leds[idx + 1];
-                if (l) {
-                    l.className = 'led-ring ' + currentLedStyle + ' active';
-                    if (currentLedStyle === 'led-ring') l.className = 'led-ring';
+                if (!l) return;
 
-                    // Set CSS variables for styling
-                    l.style.setProperty('--led-color', btn.c);
-                    // Also set on parent footswitch for illuminated buttons
-                    l.parentElement.style.setProperty('--active-led-color', btn.c);
+                const isTapTempo = btn.type === 'TAP_TEMPO';
+                const isActive = state.buttonActive[idx];
 
-                    l.style.borderColor = btn.c;
-                    l.style.boxShadow = `0 0 10px ${btn.c}`;
+                // Brightness calculation
+                let brightness;
+                if (isTapTempo && state.tapBlinkState) {
+                    brightness = 255; // Full bright during flash
+                } else {
+                    brightness = isActive ? state.ledBrightnessOn : state.ledBrightnessDim;
+                }
+
+                // Apply brightness to RGB
+                const r = Math.round((btn.rgb[0] * brightness) / 255);
+                const g = Math.round((btn.rgb[1] * brightness) / 255);
+                const b = Math.round((btn.rgb[2] * brightness) / 255);
+                const color = `rgb(${r}, ${g}, ${b})`;
+
+                l.className = 'led-ring ' + currentLedStyle + (isActive ? ' active' : '');
+                if (currentLedStyle === 'led-ring') l.className = 'led-ring' + (isActive ? ' active' : '');
+
+                l.style.setProperty('--led-color', color);
+                l.parentElement.style.setProperty('--active-led-color', color);
+                l.style.borderColor = color;
+
+                if (isActive || (isTapTempo && state.tapBlinkState)) {
+                    l.style.boxShadow = `0 0 15px ${color}`;
+                } else {
+                    l.style.boxShadow = `0 0 5px ${color}`;
                 }
             });
         }
 
-        function handleTap() {
+        // ============================================
+        // TAP TEMPO HANDLING (from handleTapTempo in Input.cpp)
+        // ============================================
+        function handleTapTempo() {
             const now = Date.now();
 
-            // First tap or timeout
+            // Reset if more than 3 seconds since last tap
             if (!state.inTapTempoMode || (now - state.lastTapTime > 3000)) {
-                state.inTapTempoMode = true;
                 state.lastTapTime = now;
+                state.inTapTempoMode = true;
                 state.tapModeTimeout = now + 3000;
                 render();
                 return;
             }
 
-            // Consecutive tap
+            // Calculate BPM from interval
             const interval = now - state.lastTapTime;
             state.lastTapTime = now;
-            let newBpm = 60000.0 / interval;
-            // Constrain
-            if (newBpm < 40) newBpm = 40;
-            if (newBpm > 300) newBpm = 300;
+            state.currentBPM = 60000.0 / interval;
+            state.currentBPM = Math.max(40, Math.min(300, state.currentBPM));
 
-            state.currentBPM = newBpm;
-            state.tapModeTimeout = now + 3000; // Reset timeout
+            state.tapModeTimeout = now + 3000;
             render();
         }
 
-        // Inputs
-        document.querySelectorAll('.button-unit').forEach((unit, index) => {
-            let btnLogicIndex = (index < 4) ? index + 4 : index - 4;
-            unit.addEventListener('mousedown', () => {
-                const p = presets[state.presetIndex];
-                const btnConfig = p.buttons[btnLogicIndex];
+        // ============================================
+        // MENU SELECTION HANDLING (from handleMenuSelection in Input.cpp)
+        // ============================================
+        function handleMenuSelection() {
+            const menuItems = getMenuItems();
 
-                // Check for TAP function
-                if (state.mode === 'PLAY') {
-                    if (btnConfig.type === 'TAP') {
-                        handleTap();
-                    } else {
-                        // Regular button press
-                        state.buttonOverlay = btnConfig.n;
+            if (!state.inSubMenu) {
+                switch (state.menuSelection) {
+                    case 0: // Save and Exit
+                        state.currentMode = 0;
                         render();
-                        setTimeout(() => { state.buttonOverlay = null; render(); }, 1000);
-                    }
+                        break;
+                    case 1: // Exit without Saving
+                        state.currentMode = 0;
+                        render();
+                        break;
+                    case 2: // Wi-Fi Toggle
+                        state.wifiOn = !state.wifiOn;
+                        render();
+                        break;
+                    case 3: // LED Bright On
+                        state.inSubMenu = true;
+                        state.editingValue = state.ledBrightnessOn;
+                        break;
+                    case 4: // LED Bright Dim
+                        state.inSubMenu = true;
+                        state.editingValue = state.ledBrightnessDim;
+                        break;
+                    case 5: // Pad Debounce
+                        state.inSubMenu = true;
+                        state.editingValue = state.buttonDebounce;
+                        break;
+                    case 6: // Clear BLE Bonds
+                        state.buttonNameToShow = 'BLE CLR';
+                        state.buttonNameDisplayUntil = Date.now() + 1000;
+                        state.currentMode = 0;
+                        break;
+                    case 7: // Reboot
+                        state.buttonNameToShow = 'REBOOT';
+                        state.buttonNameDisplayUntil = Date.now() + 1000;
+                        state.currentMode = 0;
+                        break;
+                    case 8: // Factory Reset
+                        state.buttonNameToShow = 'RESET';
+                        state.buttonNameDisplayUntil = Date.now() + 1000;
+                        state.currentMode = 0;
+                        break;
+                    case 9: // Name Font Size
+                        state.inSubMenu = true;
+                        state.editingValue = state.buttonNameFontSize;
+                        break;
+                    case 10: // WiFi On at Boot
+                        state.wifiOnAtBoot = !state.wifiOnAtBoot;
+                        render();
+                        break;
+                    case 11: // BLE Mode
+                        if (state.bleMode === 'CLIENT') state.bleMode = 'DUAL';
+                        else if (state.bleMode === 'DUAL') state.bleMode = 'SERVER';
+                        else state.bleMode = 'CLIENT';
+                        render();
+                        break;
                 }
-            });
-        });
+            } else {
+                // Exiting submenu - apply value
+                state.inSubMenu = false;
+                switch (state.menuSelection) {
+                    case 3: state.ledBrightnessOn = state.editingValue; break;
+                    case 4: state.ledBrightnessDim = state.editingValue; break;
+                    case 5: state.buttonDebounce = state.editingValue; break;
+                    case 9: state.buttonNameFontSize = state.editingValue; break;
+                }
+                updateLeds();
+            }
+            render();
+        }
 
-        let encTimer = null; let isLongPress = false;
+        // ============================================
+        // INPUT HANDLERS
+        // ============================================
+
+        function handleButtonMouseDown(btnLogicIndex) {
+            if (state.currentMode !== 0) return; // Only in preset mode
+
+            const p = presets[state.presetIndex];
+            const btnConfig = p.buttons[btnLogicIndex];
+            if (!btnConfig) return;
+
+            // Check for TAP_TEMPO
+            if (btnConfig.type === 'TAP_TEMPO') {
+                handleTapTempo();
+                return;
+            }
+
+            // Tap tempo mode special buttons
+            if (state.inTapTempoMode) {
+                // Button 1 (index 0) = PREV pattern
+                if (btnLogicIndex === 0) {
+                    state.rhythmPattern = (state.rhythmPattern - 1 + 4) % 4;
+                    state.buttonNameToShow = rhythmNames[state.rhythmPattern];
+                    state.buttonNameDisplayUntil = Date.now() + 500;
+                    if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
+                    render();
+                    return;
+                }
+                // Button 5 (index 4) = NEXT pattern
+                if (btnLogicIndex === 4) {
+                    state.rhythmPattern = (state.rhythmPattern + 1) % 4;
+                    state.buttonNameToShow = rhythmNames[state.rhythmPattern];
+                    state.buttonNameDisplayUntil = Date.now() + 500;
+                    if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
+                    render();
+                    return;
+                }
+                // Button 8 (index 7) = LOCK toggle
+                if (btnLogicIndex === 7) {
+                    state.tapModeLocked = !state.tapModeLocked;
+                    if (!state.tapModeLocked) {
+                        state.inTapTempoMode = false;
+                    } else {
+                        state.buttonNameToShow = 'LOCKED';
+                        state.buttonNameDisplayUntil = Date.now() + 500;
+                    }
+                    render();
+                    return;
+                }
+            }
+
+            // Regular button press
+            if (btnConfig.isAlternate) {
+                // Toggle buttons (like STOMP effects) - stay on/off
+                state.buttonActive[btnLogicIndex] = !state.buttonActive[btnLogicIndex];
+            } else {
+                // Momentary buttons (like BANKS) - light up briefly
+                state.buttonActive[btnLogicIndex] = true;
+            }
+            state.buttonNameToShow = btnConfig.n;
+            state.buttonNameDisplayUntil = Date.now() + 500;
+            render();
+        }
+
+        function handleButtonMouseUp(btnLogicIndex) {
+            if (state.currentMode !== 0) return;
+
+            const p = presets[state.presetIndex];
+            const btnConfig = p.buttons[btnLogicIndex];
+            if (!btnConfig) return;
+
+            // Only release non-alternate (momentary) buttons after brief delay
+            if (!btnConfig.isAlternate && btnConfig.type !== 'TAP_TEMPO') {
+                setTimeout(() => {
+                    state.buttonActive[btnLogicIndex] = false;
+                    render();
+                }, 100);
+            }
+        }
+
+        // Initialize button handlers
+        function initializeButtonHandlers() {
+            document.querySelectorAll('.button-unit').forEach((unit) => {
+                const btnId = parseInt(unit.id.replace('btn-', ''));
+                // Convert button ID to logic index (1-based to 0-based)
+                const btnLogicIndex = btnId - 1;
+
+                unit.addEventListener('mousedown', () => handleButtonMouseDown(btnLogicIndex));
+                unit.addEventListener('mouseup', () => handleButtonMouseUp(btnLogicIndex));
+                unit.addEventListener('mouseleave', () => handleButtonMouseUp(btnLogicIndex));
+            });
+        }
+        initializeButtonHandlers();
+
+        // Encoder handling
+        let encTimer = null;
+        let isLongPress = false;
+
         encoder.addEventListener('mousedown', () => {
             isLongPress = false;
             encTimer = setTimeout(() => {
                 isLongPress = true;
-                if (state.inTapTempoMode) {
-                    state.inTapTempoMode = false; // Long press exits tap mode to menu? Or just menu
-                    state.mode = 'MENU';
+                // Long press: Toggle menu mode
+                if (state.currentMode === 0) {
+                    state.currentMode = 1;
+                    state.menuSelection = 0;
+                    state.inSubMenu = false;
+                    state.inTapTempoMode = false;
                 } else {
-                    state.mode = state.mode === 'PLAY' ? 'MENU' : 'PLAY';
+                    state.currentMode = 0;
                 }
-                state.menuIndex = 0; state.inSubMenu = false;
                 render();
             }, 600);
         });
+
         encoder.addEventListener('mouseup', () => {
             clearTimeout(encTimer);
             if (!isLongPress) {
                 if (state.inTapTempoMode) {
-                    // Tap Mode: Cycle Rhythm Pattern
+                    // Cycle rhythm pattern
                     state.rhythmPattern = (state.rhythmPattern + 1) % 4;
-                    state.tapModeTimeout = Date.now() + 3000; // Reset timeout
+                    if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
                     render();
-                } else if (state.mode === 'PLAY') {
-                    state.presetIndex = (state.presetIndex + 1) % presets.length;
-                    render();
+                } else if (state.currentMode === 1) {
+                    // Menu mode: select item
+                    handleMenuSelection();
                 } else {
-                    // Menu Mode
-                    if (state.inSubMenu) { state.inSubMenu = false; }
-                    else {
-                        if (state.menuIndex === 0 || state.menuIndex === 1) state.mode = 'PLAY';
-                        else state.inSubMenu = true;
-                    }
+                    // Preset mode: cycle presets
+                    state.presetIndex = (state.presetIndex + 1) % presets.length;
+                    // Reset button states when changing presets
+                    state.buttonActive = [false, false, false, false, false, false, false, false];
                     render();
                 }
             }
@@ -1825,42 +2666,53 @@
 
         encoder.addEventListener('wheel', (e) => {
             e.preventDefault();
+            const delta = e.deltaY > 0 ? 1 : -1;
+
             if (state.inTapTempoMode) {
-                // Adjust BPM
-                let delta = e.deltaY > 0 ? -0.5 : 0.5; // Scroll up increases
-                state.currentBPM += delta;
-                if (state.currentBPM < 40) state.currentBPM = 40;
-                if (state.currentBPM > 300) state.currentBPM = 300;
-                state.tapModeTimeout = Date.now() + 3000; // Reset timeout
-                render();
-            } else if (state.mode === 'MENU') {
+                // Adjust BPM by 0.5 per tick
+                state.currentBPM += (delta * -0.5);
+                state.currentBPM = Math.max(40, Math.min(300, state.currentBPM));
+                state.currentBPM = Math.round(state.currentBPM * 2) / 2; // Snap to 0.5
+                if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
+            } else if (state.currentMode === 1) {
+                // Menu mode
                 if (state.inSubMenu) {
-                    // EDITING SUBMENU
-                    if (state.menuIndex === 9) { // Font Size
-                        let delta = e.deltaY > 0 ? -1 : 1;
-                        state.buttonNameFontSize += delta;
-                        if (state.buttonNameFontSize < 1) state.buttonNameFontSize = 1;
-                        if (state.buttonNameFontSize > 6) state.buttonNameFontSize = 6;
+                    // Adjust editing value
+                    state.editingValue += delta;
+                    if (state.menuSelection === 3 || state.menuSelection === 4) {
+                        state.editingValue = Math.max(0, Math.min(255, state.editingValue));
+                    } else if (state.menuSelection === 5) {
+                        state.editingValue = Math.max(1, Math.min(500, state.editingValue));
+                    } else if (state.menuSelection === 9) {
+                        state.editingValue = Math.max(1, Math.min(5, state.editingValue));
                     }
                 } else {
-                    if (e.deltaY > 0 && state.menuIndex < menuItems.length - 1) state.menuIndex++;
-                    else if (e.deltaY < 0 && state.menuIndex > 0) state.menuIndex--;
+                    // Navigate menu
+                    const menuItems = getMenuItems();
+                    state.menuSelection = Math.max(0, Math.min(menuItems.length - 1, state.menuSelection + delta));
                 }
             } else {
-                if (e.deltaY > 0) state.presetIndex = (state.presetIndex + 1) % presets.length;
-                else state.presetIndex = (state.presetIndex - 1 + presets.length) % presets.length;
+                // Preset mode: scroll presets (firmware doesn't do this, but nice UX)
+                state.presetIndex = (state.presetIndex + delta + presets.length) % presets.length;
+                state.buttonActive = [false, false, false, false, false, false, false, false];
             }
             render();
         });
 
+        // Tooltips
         document.querySelectorAll('.button-unit, .encoder-unit').forEach(el => {
             el.addEventListener('mousemove', (e) => {
-                tooltip.style.opacity = 1; tooltip.innerText = el.dataset.tooltip;
-                tooltip.style.left = (e.pageX + 15) + 'px'; tooltip.style.top = (e.pageY + 15) + 'px';
+                tooltip.style.opacity = 1;
+                tooltip.innerText = el.dataset.tooltip;
+                tooltip.style.left = (e.pageX + 15) + 'px';
+                tooltip.style.top = (e.pageY + 15) + 'px';
             });
-            el.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; });
+            el.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = 0;
+            });
         });
 
+        // Initial render
         render();
     </script>
 

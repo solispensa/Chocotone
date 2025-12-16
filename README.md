@@ -15,7 +15,7 @@
 ## Features
 
 ### Hardware
-- **8 Programmable Buttons** - MIDI messages with LED feedback per button
+- **4-10 Programmable Buttons** - Configurable button count with MIDI messages and LED feedback
 - **OLED Display (128x64)** - Real-time status, preset names, and menu system  
 - **Rotary Encoder** - Navigation and parameter adjustment
 - **NeoPixel LEDs** - Visual feedback with customizable colors and brightness
@@ -61,8 +61,8 @@
 | Microcontroller | ESP32 (any variant with BLE) | Tested with ESP32-DevKitC |
 | OLED Display | 128x64 I2C SSD1306 | 0.96" typical |
 | Rotary Encoder | Standard EC11 type | With push button |
-| NeoPixel LEDs | WS2812B strip/ring | 8 individual LEDs |
-| Buttons | Tactile switches | 8 required |
+| NeoPixel LEDs | WS2812B strip/ring | Match button count (4-10) |
+| Buttons | Tactile switches | 4-10 (configurable via web) |
 
 ### Pin Connections
 
@@ -194,7 +194,7 @@ ArduinoJson @ ^6.21.0
 ### Presets
 - 4 presets available (selected in code or via encoder)
 - Each preset stores:
-  - 8 button configurations
+  - 4-10 button configurations (matches system button count)
   - Custom preset name
   - MIDI mappings and colors
 

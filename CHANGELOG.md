@@ -2,6 +2,19 @@
 
 All notable changes to the ESP32 MIDI Controller project will be documented in this file.
 
+## [v1.2] - 2024-12-16
+
+### Fixed
+- **Dynamic Button Count** - LED updates and OLED display now properly support 4-10 buttons
+  - `updateLeds()` now uses `systemConfig.buttonCount` instead of hardcoded 8
+  - OLED layout adapts: 4-8 buttons = 4 per row (4-char labels), 9-10 buttons = 5 per row (3-char labels)
+  - All buttons 9-10 now properly light up and display on OLED when configured
+
+### Changed
+- OLED display dynamically adjusts column width and label length based on button count
+
+---
+
 ## [v1.1] - 2024-12-14
 
 ### Added

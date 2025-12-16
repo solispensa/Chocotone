@@ -112,10 +112,13 @@ Edit `Config.h` - update GPIO definitions:
 ```
 
 ### Change Button Layout
-Edit `Config.h` - verified button pins (8 buttons):
+Configure button count (4-10) via web interface System Config, or edit defaults in `Config.h`:
 ```cpp
-// Buttons 1-8: verified physical layout
+// Default 8 buttons, supports 4-10 dynamically via web interface
+#define MAX_BUTTONS 10              // Maximum supported
+#define DEFAULT_BUTTON_COUNT 8      // Default active buttons
 const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {14, 27, 26, 25, 33, 32, 16, 17, 0, 0};
+// Note: Set valid GPIO pins for buttons 9-10 via web editor if using more than 8
 ```
 
 ### Change LED Mapping

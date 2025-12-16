@@ -51,26 +51,33 @@ void displayOLED() {
     display.setTextSize(1);
     char summary[10];
 
-    // Top Row (Buttons 5-8)
-    for (int i = 0; i < 4; i++) {
-        int buttonIndex = i + 4;
+    // Dynamic layout based on button count
+    int btnCount = systemConfig.buttonCount;
+    int buttonsPerRow = (btnCount > 8) ? 5 : 4;  // 5 per row for 9-10 buttons
+    int colWidth = SCREEN_WIDTH / buttonsPerRow;  // 25 or 32 pixels
+    int maxChars = (btnCount > 8) ? 3 : 4;  // Fewer chars when cramped
+
+    // Top Row (upper half of buttons)
+    int topRowStart = btnCount / 2;  // 5 for 10 buttons, 4 for 8 buttons
+    for (int i = 0; i < buttonsPerRow && (topRowStart + i) < btnCount; i++) {
+        int buttonIndex = topRowStart + i;
         const ButtonConfig& config = buttonConfigs[currentPreset][buttonIndex];
         char defaultName[21];
         snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
         char toDisplay[10];
         if (strncmp(config.name, defaultName, 20) == 0 || strlen(config.name) == 0) {
             getButtonSummary(summary, sizeof(summary), config.messageA);
-            snprintf(toDisplay, sizeof(toDisplay), "%.4s", summary);
+            snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
         } else {
-            snprintf(toDisplay, sizeof(toDisplay), "%.4s", config.name);
+            snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
         }
-        display.setCursor(i * 32, 0);
+        display.setCursor(i * colWidth, 0);
         display.print(toDisplay);
     }
 
-    // Bottom Row (Buttons 1-4)
+    // Bottom Row (lower half of buttons)
     int bottomY = SCREEN_HEIGHT - 8;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < buttonsPerRow && i < topRowStart; i++) {
         int buttonIndex = i;
         const ButtonConfig& config = buttonConfigs[currentPreset][buttonIndex];
         char defaultName[21];
@@ -78,11 +85,11 @@ void displayOLED() {
         char toDisplay[10];
         if (strncmp(config.name, defaultName, 20) == 0 || strlen(config.name) == 0) {
             getButtonSummary(summary, sizeof(summary), config.messageA);
-            snprintf(toDisplay, sizeof(toDisplay), "%.4s", summary);
+            snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
         } else {
-            snprintf(toDisplay, sizeof(toDisplay), "%.4s", config.name);
+            snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
         }
-        display.setCursor(i * 32, bottomY);
+        display.setCursor(i * colWidth, bottomY);
         display.print(toDisplay);
     }
 
@@ -275,7 +282,7 @@ void updateLeds() {
     uint8_t lpb = systemConfig.ledsPerButton;
     if (lpb < 1) lpb = 1;  // Safety minimum
     
-    for (int i = 0; i < NUM_BUTTONS; i++) {
+    for (int i = 0; i < systemConfig.buttonCount; i++) {
         const ButtonConfig& config = buttonConfigs[currentPreset][i];
         const MidiMessage& msg = config.isAlternate
             ? (config.nextIsB ? config.messageB : config.messageA)
