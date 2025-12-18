@@ -724,10 +724,18 @@
 
         function renderActionCard(msg, i) {
             var html = '<div class="msg-box">';
-            html += '<div class="remove-btn" onclick="delMsg(' + i + ')">×</div>';
+            // Header with action number and buttons
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">';
+            html += '<span style="font-weight:600;color:var(--acc);font-size:0.85rem">Action ' + (i + 1) + '</span>';
+            html += '<div style="display:flex;gap:6px">';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="copyAction(' + i + ')" title="Copy">📋</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="pasteAction(' + i + ')" title="Paste">📄</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#ef4444" onclick="delMsg(' + i + ')" title="Delete">×</button>';
+            html += '</div>';
+            html += '</div>';
 
             // Action Type
-            html += '<div class="field" style="margin-bottom:8px; padding-right:30px"><label style="font-weight:600;color:var(--acc)">ACTION</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:var(--acc)">Type</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
 
             // Conditional fields
             if (msg.action === 'COMBO') {
@@ -853,6 +861,23 @@
         function delMsg(idx) {
             var p = presetData.currentPreset;
             presetData.presets[p].buttons[selectedBtn].messages.splice(idx, 1);
+            render();
+        }
+
+        // Clipboard for action copy/paste
+        var actionClipboard = null;
+
+        function copyAction(idx) {
+            var p = presetData.currentPreset;
+            var msg = presetData.presets[p].buttons[selectedBtn].messages[idx];
+            actionClipboard = JSON.parse(JSON.stringify(msg)); // Deep copy
+            alert('Action ' + (idx + 1) + ' copied!');
+        }
+
+        function pasteAction(idx) {
+            if (!actionClipboard) { alert('Nothing to paste. Copy an action first.'); return; }
+            var p = presetData.currentPreset;
+            presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
             render();
         }
         function updSys(k, v) { presetData.system[k] = v; }
