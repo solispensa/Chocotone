@@ -3,7 +3,55 @@
 #include "UI_Display.h"
 #include "BleMidi.h"
 #include <ArduinoJson.h>
-#include "WebEditorHTML.h"
+
+// Minimal WiFi page - just import/export (full editing via offline_editor_v2.html + Serial)
+const char MINIMAL_PAGE[] PROGMEM = R"rawliteral(
+<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Chocotone Config</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui;background:#121212;color:#e0e0e0;padding:20px;max-width:600px;margin:0 auto}
+h1{color:#bb86fc;text-align:center;margin-bottom:20px;font-size:1.5em}
+.info{background:#1e1e1e;padding:15px;border-radius:8px;margin-bottom:15px;font-size:0.9em;color:#888}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+button{flex:1;padding:12px;border:none;border-radius:8px;font-size:1em;cursor:pointer;min-width:120px}
+.export{background:#4CAF50;color:#fff}
+.import{background:#2196F3;color:#fff}
+.save{background:#bb86fc;color:#000;font-weight:bold}
+textarea{width:100%;height:200px;background:#1e1e1e;color:#e0e0e0;border:1px solid #333;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;resize:vertical}
+input[type=file]{display:none}
+.status{text-align:center;padding:10px;margin-top:10px;border-radius:8px}
+.ok{background:#1b5e20;color:#fff}
+.err{background:#b71c1c;color:#fff}
+</style></head><body>
+<h1>Chocotone Config</h1>
+<div class='info'>
+  <b>Quick Import/Export</b><br>
+  For full editing, use <b>offline_editor_v2.html</b> with USB Serial connection.
+</div>
+<div class='btns'>
+  <button class='export' onclick='doExport()'>Export Config</button>
+  <button class='import' onclick='document.getElementById("fileIn").click()'>Import File</button>
+  <input type='file' id='fileIn' accept='.json' onchange='loadFile(this)'>
+</div>
+<textarea id='json' placeholder='Config JSON will appear here...'></textarea>
+<div class='btns'>
+  <button class='save' onclick='doSave()'>Save to Device</button>
+</div>
+<div id='status'></div>
+<script>
+function status(msg,ok){var s=document.getElementById('status');s.textContent=msg;s.className='status '+(ok?'ok':'err');setTimeout(()=>s.textContent='',5000);}
+function doExport(){fetch('/export').then(r=>r.text()).then(d=>{document.getElementById('json').value=d;status('Exported!',true);}).catch(e=>status('Export failed: '+e,false));}
+function loadFile(inp){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=e=>{document.getElementById('json').value=e.target.result;status('File loaded. Click Save to apply.',true);};r.readAsText(f);}
+function doSave(){var json=document.getElementById('json').value;if(!json){status('No config to save',false);return;}
+try{JSON.parse(json);}catch(e){status('Invalid JSON: '+e.message,false);return;}
+var blob=new Blob([json],{type:'application/json'});var fd=new FormData();fd.append('config',blob,'config.json');
+var xhr=new XMLHttpRequest();xhr.open('POST','/import',true);xhr.timeout=30000;
+xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status('Saved! Device rebooting...',true);}else if(xhr.status===400){status('Error: '+xhr.responseText,false);}else{status('Device rebooting...',true);}}};
+xhr.onerror=function(){status('Device rebooting...',true);};xhr.send(fd);}
+window.onload=doExport;
+</script></body></html>
+)rawliteral";
 
 // Request throttling to prevent crashes from concurrent or rapid requests
 static volatile bool requestInProgress = false;
@@ -148,14 +196,14 @@ void handleRoot() {
     int freeHeap = ESP.getFreeHeap();
     Serial.printf("handleRoot: Free heap = %d bytes\n", freeHeap);
     
-    // If heap is critically low (<20KB), show a simple error page
-    if (freeHeap < 20000) {
+    // If heap is critically low (<15KB), show a simple error page
+    if (freeHeap < 15000) {
         char errorPage[256];
         snprintf(errorPage, sizeof(errorPage),
             "<html><body style='background:#121212;color:#e0e0e0;text-align:center;padding:50px'>"
             "<h2 style='color:#ff6b6b'>Low Memory</h2>"
             "<p>Free heap: %d bytes</p>"
-            "<p>Please wait a moment and refresh.</p>"
+            "<p>Turn WiFi off and on again via OLED menu.</p>"
             "<a href='/' style='color:#bb86fc'>Retry</a>"
             "</body></html>", freeHeap);
         server.send(200, "text/html", errorPage);
@@ -163,9 +211,8 @@ void handleRoot() {
         return;
     }
 
-    // Serve the V2 Editor (gzipped/static content in PROGMEM)
-    // Send it directly using send_P
-    server.send_P(200, "text/html", EDITOR_HTML);
+    // Serve minimal import/export page (full editing via offline_editor_v2.html + Serial)
+    server.send_P(200, "text/html", MINIMAL_PAGE);
     
     // Release request lock
     requestInProgress = false;
@@ -698,13 +745,32 @@ void handleImport() {
 // ============================================================================
 
 // Static buffer for upload - stored in BSS, not heap (avoids fragmentation)
-static char uploadBuffer[8192];  // 8KB static buffer (JSON is ~7KB)
+static char uploadBuffer[14336];  // 14KB static buffer
 static size_t uploadBufferLen = 0;
+static bool pendingRestart = false;  // Flag to trigger restart after response
+static char uploadError[128] = "";  // Error message for browser
 
 // Response handler - called when upload is complete
 void handleImportUploadResponse() {
     Serial.println("Upload complete, sending response");
-    server.send(200, "text/plain", "OK");
+    
+    if (strlen(uploadError) > 0) {
+        // Send error message to browser
+        Serial.printf("Sending error to browser: %s\n", uploadError);
+        server.send(400, "text/plain", uploadError);
+        uploadError[0] = '\0';  // Clear for next upload
+        return;
+    }
+    
+    server.send(200, "text/plain", "OK - Saved! Rebooting...");
+    
+    // Check if we should restart (set by upload handler after successful save)
+    if (pendingRestart) {
+        Serial.println("=== Rebooting device now... ===");
+        Serial.flush();
+        delay(500);
+        ESP.restart();
+    }
 }
 
 // Data handler - called repeatedly with data chunks
@@ -718,12 +784,15 @@ void handleImportUploadData() {
     }
     else if (upload.status == UPLOAD_FILE_WRITE) {
         if (uploadBufferLen + upload.currentSize >= sizeof(uploadBuffer)) {
-            Serial.println("Upload too large for buffer!");
+            Serial.printf("ERROR: Upload too large! Need %d bytes, buffer is %d\n", 
+                          uploadBufferLen + upload.currentSize, sizeof(uploadBuffer));
+            snprintf(uploadError, sizeof(uploadError), "Upload too large: %d bytes exceeds %d byte buffer", 
+                     (int)(uploadBufferLen + upload.currentSize), (int)sizeof(uploadBuffer));
             return;
         }
         memcpy(uploadBuffer + uploadBufferLen, upload.buf, upload.currentSize);
         uploadBufferLen += upload.currentSize;
-        Serial.printf("Upload Write: %d bytes (Total: %d)\n", upload.currentSize, uploadBufferLen);
+        Serial.printf("Upload chunk: %d bytes (Total: %d / %d)\n", upload.currentSize, uploadBufferLen, sizeof(uploadBuffer));
     }
     else if (upload.status == UPLOAD_FILE_END) {
         uploadBuffer[uploadBufferLen] = '\0';  // Null terminate
@@ -733,27 +802,22 @@ void handleImportUploadData() {
         
         yield();
         
-        // Stop server and disconnect SoftAP to free memory for JSON parsing
-        // Don't use WiFi.mode(WIFI_OFF) as it corrupts the WiFi stack
-        Serial.println("Stopping server and SoftAP for JSON parsing...");
-        server.stop();
-        delay(50);
-        WiFi.softAPdisconnect(true);  // true = turn off SoftAP but keep WiFi module on
-        delay(100);
-        yield();
+        // Parse JSON directly - server stays running so response can be sent
+        Serial.printf("Parsing JSON (%d bytes), Free heap: %d\\n", uploadBufferLen, ESP.getFreeHeap());
         
-        Serial.printf("After SoftAP disconnect - Free heap: %d\n", ESP.getFreeHeap());
-        
-        // Parse JSON - now with more free memory
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, uploadBuffer, uploadBufferLen);
         
         if (error) {
-            Serial.printf("JSON Error: %s\n", error.c_str());
-            // Restart SoftAP and server
-            WiFi.softAP(systemConfig.apSSID, systemConfig.apPassword);
-            delay(100);
-            server.begin();
+            Serial.printf("JSON Error: %s\\n", error.c_str());
+            if (strcmp(error.c_str(), "NoMemory") == 0) {
+                snprintf(uploadError, sizeof(uploadError), 
+                    "Out of memory! JSON too large (%d bytes). Turn WiFi off/on and retry.", 
+                    uploadBufferLen);
+            } else {
+                snprintf(uploadError, sizeof(uploadError), "JSON Error: %s (%d bytes)", 
+                         error.c_str(), uploadBufferLen);
+            }
             return;
         }
         
@@ -871,13 +935,9 @@ void handleImportUploadData() {
         displayOLED();  // Update OLED with new config
         updateLeds();   // Update LEDs with new config
         
-        Serial.println("=== Save Complete! Rebooting device... ===");
-        Serial.flush();  // Ensure messages are printed
-        delay(500);
-        
-        // Clean reboot to ensure WiFi stack is properly reinitialized
-        // and saved settings are loaded fresh
-        ESP.restart();
+        Serial.println("=== Save Complete! Device will reboot after response... ===");
+        Serial.flush();
+        pendingRestart = true;  // Set flag so response handler triggers restart
     }
 }
 
@@ -1029,4 +1089,273 @@ void setup_web_server() {
     });
     
     Serial.println("Web server routes configured");
+}
+
+// ============================================================================
+// SERIAL CONFIG HANDLER - For offline_editor_v2.html via USB Serial
+// ============================================================================
+static String serialBuffer = "";
+
+void handleSerialConfig() {
+    while (Serial.available()) {
+        char c = Serial.read();
+        if (c == '\n') {
+            serialBuffer.trim();
+            
+            // GET_CONFIG - Send current config as JSON
+            if (serialBuffer == "GET_CONFIG") {
+                Serial.println("CONFIG_START");
+                
+                // Send config JSON  
+                Serial.print("{\"version\":3,\"presets\":[");
+                for (int p = 0; p < 4; p++) {
+                    if (p > 0) Serial.print(",");
+                    
+                    const char* ledModeStr = (presetLedModes[p] == PRESET_LED_NORMAL) ? "NORMAL" : 
+                                              (presetLedModes[p] == PRESET_LED_SELECTION) ? "SELECTION" : "HYBRID";
+                    
+                    Serial.print("{\"name\":\"");
+                    Serial.print(presetNames[p]);
+                    Serial.print("\",\"presetLedMode\":\"");
+                    Serial.print(ledModeStr);
+                    Serial.print("\",\"buttons\":[");
+                    
+                    for (int b = 0; b < systemConfig.buttonCount; b++) {
+                        if (b > 0) Serial.print(",");
+                        const ButtonConfig& cfg = buttonConfigs[p][b];
+                        
+                        Serial.print("{\"name\":\"");
+                        Serial.print(cfg.name);
+                        Serial.print("\",\"ledMode\":\"");
+                        Serial.print(cfg.ledMode == LED_TOGGLE ? "TOGGLE" : "MOMENTARY");
+                        Serial.print("\",\"inSelectionGroup\":");
+                        Serial.print(cfg.inSelectionGroup ? "true" : "false");
+                        Serial.print(",\"messages\":[");
+                        
+                        for (int m = 0; m < cfg.messageCount && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                            if (m > 0) Serial.print(",");
+                            const ActionMessage& msg = cfg.messages[m];
+                            
+                            const char* actionName = "PRESS";
+                            switch(msg.action) {
+                                case ACTION_PRESS: actionName = "PRESS"; break;
+                                case ACTION_2ND_PRESS: actionName = "2ND_PRESS"; break;
+                                case ACTION_RELEASE: actionName = "RELEASE"; break;
+                                case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                                case ACTION_DOUBLE_TAP: actionName = "DOUBLE_TAP"; break;
+                                case ACTION_COMBO: actionName = "COMBO"; break;
+                                default: actionName = "NO_ACTION"; break;
+                            }
+                            
+                            char hexColor[8];
+                            rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+                            
+                            Serial.print("{\"action\":\"");
+                            Serial.print(actionName);
+                            Serial.print("\",\"type\":\"");
+                            Serial.print(getCommandTypeString(msg.type));
+                            Serial.print("\",\"channel\":");
+                            Serial.print(msg.channel);
+                            Serial.print(",\"data1\":");
+                            Serial.print(msg.data1);
+                            Serial.print(",\"data2\":");
+                            Serial.print(msg.data2);
+                            Serial.print(",\"rgb\":\"");
+                            Serial.print(hexColor);
+                            Serial.print("\"");
+                            
+                            // Action-specific fields
+                            if (msg.action == ACTION_LONG_PRESS) {
+                                Serial.print(",\"holdMs\":");
+                                Serial.print(msg.longPress.holdMs);
+                            }
+                            if (msg.action == ACTION_COMBO) {
+                                Serial.print(",\"partner\":");
+                                Serial.print(msg.combo.partner);
+                                if (msg.combo.label[0]) {
+                                    Serial.print(",\"label\":\"");
+                                    Serial.print(msg.combo.label);
+                                    Serial.print("\"");
+                                }
+                            }
+                            if (msg.type == TAP_TEMPO) {
+                                Serial.print(",\"rhythmPrev\":");
+                                Serial.print(msg.tapTempo.rhythmPrev);
+                                Serial.print(",\"rhythmNext\":");
+                                Serial.print(msg.tapTempo.rhythmNext);
+                                Serial.print(",\"tapLock\":");
+                                Serial.print(msg.tapTempo.tapLock);
+                            }
+                            Serial.print("}");
+                        }
+                        Serial.print("]}");
+                    }
+                    Serial.print("]}");
+                }
+                
+                // System config
+                Serial.print("],\"system\":{");
+                Serial.print("\"bleDeviceName\":\"");
+                Serial.print(systemConfig.bleDeviceName);
+                Serial.print("\",\"apSSID\":\"");
+                Serial.print(systemConfig.apSSID);
+                Serial.print("\",\"apPassword\":\"");
+                Serial.print(systemConfig.apPassword);
+                Serial.print("\",\"buttonCount\":");
+                Serial.print(systemConfig.buttonCount);
+                Serial.print(",\"ledPin\":");
+                Serial.print(systemConfig.ledPin);
+                Serial.print(",\"ledsPerButton\":");
+                Serial.print(systemConfig.ledsPerButton);
+                Serial.print(",\"brightness\":");
+                Serial.print(ledBrightnessOn);
+                Serial.print("}}");
+                
+                Serial.println();
+                Serial.println("CONFIG_END");
+            }
+            // SET_CONFIG_START - Begin receiving config
+            else if (serialBuffer == "SET_CONFIG_START") {
+                uploadBufferLen = 0;
+                memset(uploadBuffer, 0, sizeof(uploadBuffer));
+                Serial.println("READY");
+            }
+            // SET_CONFIG_CHUNK:{data} - Receive a chunk of config data
+            else if (serialBuffer.startsWith("SET_CONFIG_CHUNK:")) {
+                String chunk = serialBuffer.substring(17);
+                size_t chunkLen = chunk.length();
+                if (uploadBufferLen + chunkLen < sizeof(uploadBuffer)) {
+                    memcpy(uploadBuffer + uploadBufferLen, chunk.c_str(), chunkLen);
+                    uploadBufferLen += chunkLen;
+                    Serial.print("CHUNK_OK:");
+                    Serial.println(uploadBufferLen);
+                } else {
+                    Serial.println("CHUNK_ERROR:Buffer full");
+                }
+            }
+            // SET_CONFIG_END - Parse and save the received config
+            else if (serialBuffer == "SET_CONFIG_END") {
+                uploadBuffer[uploadBufferLen] = '\0';
+                Serial.printf("Parsing %d bytes of config...\n", uploadBufferLen);
+                
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, uploadBuffer, uploadBufferLen);
+                
+                if (error) {
+                    Serial.print("JSON_ERROR:");
+                    Serial.println(error.c_str());
+                } else {
+                    // Parse presets (reuse logic from web import)
+                    JsonArray presets = doc["presets"];
+                    if (!presets.isNull()) {
+                        Serial.println("Parsing presets...");
+                        for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
+                            JsonObject pObj = presets[p];
+                            strncpy(presetNames[p], pObj["name"] | "Preset", 20);
+                            presetNames[p][20] = '\0';
+                            
+                            const char* pmStr = pObj["presetLedMode"] | "NORMAL";
+                            if (strcmp(pmStr, "SELECTION") == 0) presetLedModes[p] = PRESET_LED_SELECTION;
+                            else if (strcmp(pmStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
+                            else presetLedModes[p] = PRESET_LED_NORMAL;
+                            
+                            JsonArray buttons = pObj["buttons"];
+                            if (buttons.isNull()) continue;
+                            
+                            int btnCount = min((int)buttons.size(), (int)systemConfig.buttonCount);
+                            for (int b = 0; b < btnCount; b++) {
+                                JsonObject bObj = buttons[b];
+                                ButtonConfig& cfg = buttonConfigs[p][b];
+                                
+                                strncpy(cfg.name, bObj["name"] | "BTN", 20);
+                                cfg.name[20] = '\0';
+                                
+                                const char* lmStr = bObj["ledMode"] | "MOMENTARY";
+                                cfg.ledMode = (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
+                                cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
+                                cfg.messageCount = 0;
+                                
+                                JsonArray msgs = bObj["messages"];
+                                if (!msgs.isNull()) {
+                                    for (int m = 0; m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                                        JsonObject mObj = msgs[m];
+                                        ActionMessage& msg = cfg.messages[m];
+                                        memset(&msg, 0, sizeof(ActionMessage));
+                                        
+                                        const char* actStr = mObj["action"] | "PRESS";
+                                        if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
+                                        else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
+                                        else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                                        else if (strcmp(actStr, "LONG_PRESS") == 0) msg.action = ACTION_LONG_PRESS;
+                                        else if (strcmp(actStr, "DOUBLE_TAP") == 0) msg.action = ACTION_DOUBLE_TAP;
+                                        else if (strcmp(actStr, "COMBO") == 0) msg.action = ACTION_COMBO;
+                                        else msg.action = ACTION_NO_ACTION;
+                                        
+                                        msg.type = parseCommandType(mObj["type"] | "OFF");
+                                        msg.channel = mObj["channel"] | 1;
+                                        msg.data1 = mObj["data1"] | 0;
+                                        msg.data2 = mObj["data2"] | 0;
+                                        hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
+                                        
+                                        if (msg.action == ACTION_LONG_PRESS) {
+                                            msg.longPress.holdMs = mObj["holdMs"] | 500;
+                                        }
+                                        if (msg.action == ACTION_COMBO) {
+                                            msg.combo.partner = mObj["partner"] | 0;
+                                            const char* label = mObj["label"] | "";
+                                            strncpy(msg.combo.label, label, 5);
+                                            msg.combo.label[5] = '\0';
+                                        }
+                                        if (msg.type == TAP_TEMPO) {
+                                            msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
+                                            msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
+                                            msg.tapTempo.tapLock = mObj["tapLock"] | 7;
+                                        }
+                                        cfg.messageCount++;
+                                    }
+                                }
+                            }
+                        }
+                        savePresets();
+                        Serial.println("Presets saved!");
+                    }
+                    
+                    // Parse system config
+                    JsonObject sys = doc["system"];
+                    if (!sys.isNull()) {
+                        if (sys.containsKey("bleDeviceName")) strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"], 23);
+                        if (sys.containsKey("apSSID")) strncpy(systemConfig.apSSID, sys["apSSID"], 23);
+                        if (sys.containsKey("apPassword")) strncpy(systemConfig.apPassword, sys["apPassword"], 15);
+                        if (sys.containsKey("buttonCount")) systemConfig.buttonCount = sys["buttonCount"];
+                        if (sys.containsKey("ledPin")) systemConfig.ledPin = sys["ledPin"];
+                        if (sys.containsKey("ledsPerButton")) systemConfig.ledsPerButton = sys["ledsPerButton"];
+                        if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+                        saveSystemSettings();
+                        Serial.println("System config saved!");
+                    }
+                    
+                    currentPreset = 0;
+                    displayOLED();
+                    updateLeds();
+                    Serial.println("SAVE_OK");
+                }
+            }
+            // SET_PRESET:N - Change current preset and update display
+            else if (serialBuffer.startsWith("SET_PRESET:")) {
+                int preset = serialBuffer.substring(11).toInt();
+                if (preset >= 0 && preset < 4) {
+                    currentPreset = preset;
+                    displayOLED();
+                    updateLeds();
+                    Serial.print("PRESET_OK:");
+                    Serial.println(preset);
+                } else {
+                    Serial.println("PRESET_ERROR:Invalid preset");
+                }
+            }            
+            serialBuffer = "";
+        } else {
+            serialBuffer += c;
+        }
+    }
 }

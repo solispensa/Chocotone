@@ -210,5 +210,8 @@ void loop() {
         checkForSysex();
     }
     
+    // Handle serial commands for offline editor config transfer
+    handleSerialConfig();
+    
     yield();  // Feed watchdog
 }

@@ -833,7 +833,7 @@
         function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
         function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
 
-        function chgPreset(v) { presetData.currentPreset = parseInt(v); selectedBtn = 0; showSystem = false; render(); fetch('/preset?p=' + v).catch(e => { }); }
+        function chgPreset(v) { presetData.currentPreset = parseInt(v); selectedBtn = 0; showSystem = false; render(); fetch('/preset?p=' + v).catch(e => { }); if (serialWriter) { serialWriter.write(new TextEncoder().encode('SET_PRESET:' + v + '\n')).catch(e => { }); } }
         function chgPresetLedMode(v) { presetData.presets[presetData.currentPreset].presetLedMode = v; render(); }
         function selBtn(b) { selectedBtn = b; showSystem = false; render(); }
         function toggleSystem() { showSystem = !showSystem; render(); }
@@ -884,6 +884,165 @@
         function importJSON() { try { var data = JSON.parse(document.getElementById('jsonArea').value); if (data.presets) { presetData = data; selectedBtn = 0; showSystem = false; render(); alert('Imported!'); } else alert('Invalid format'); } catch (e) { alert('Error: ' + e.message); } }
         function copyJSON() { exportJSON(); navigator.clipboard.writeText(document.getElementById('jsonArea').value); alert('Copied!'); }
         function downloadJSON() { exportJSON(); var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chocotone_config.json'; a.click(); }
+
+        // ===============================================================
+        // WEB SERIAL API - USB Connection to Chocotone
+        // ===============================================================
+        var serialPort = null;
+        var serialReader = null;
+        var serialWriter = null;
+        var serialBuffer = '';
+
+        async function connectUSB() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial not supported. Use Chrome or Edge.');
+                return;
+            }
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+                serialWriter = serialPort.writable.getWriter();
+                serialReader = serialPort.readable.getReader();
+                document.getElementById('usbStatus').textContent = 'Connected';
+                document.getElementById('usbStatus').style.color = '#22c55e';
+                document.getElementById('btnConnect').textContent = 'Disconnect';
+                // Start reading
+                readSerial();
+            } catch (e) {
+                console.error('Serial error:', e);
+                alert('Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectUSB() {
+            if (serialReader) { await serialReader.cancel(); serialReader = null; }
+            if (serialWriter) { await serialWriter.close(); serialWriter = null; }
+            if (serialPort) { await serialPort.close(); serialPort = null; }
+            document.getElementById('usbStatus').textContent = 'Not connected';
+            document.getElementById('usbStatus').style.color = '#71717a';
+            document.getElementById('btnConnect').textContent = 'Connect USB';
+        }
+
+        function toggleUSB() {
+            if (serialPort) disconnectUSB();
+            else connectUSB();
+        }
+
+        async function readSerial() {
+            while (serialPort && serialReader) {
+                try {
+                    const { value, done } = await serialReader.read();
+                    if (done) break;
+                    serialBuffer += new TextDecoder().decode(value);
+                    processSerialData();
+                } catch (e) { break; }
+            }
+        }
+
+        var expectingConfig = false;
+        var configJson = '';
+
+        function processSerialData() {
+            var lines = serialBuffer.split('\n');
+            serialBuffer = lines.pop(); // Keep incomplete line
+            for (var line of lines) {
+                line = line.trim();
+                if (line === 'CONFIG_START') {
+                    expectingConfig = true;
+                    configJson = '';
+                } else if (line === 'CONFIG_END') {
+                    expectingConfig = false;
+                    try {
+                        var data = JSON.parse(configJson);
+                        console.log('Received config:', data);
+                        if (data.presets) {
+                            // Merge with existing structure to preserve required fields
+                            presetData.presets = data.presets;
+                            if (data.system) {
+                                // Merge system properties
+                                if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                                if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                                if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                                if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                                if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                                if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                                if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                            }
+                            presetData.currentPreset = data.currentPreset || 0;
+                            selectedBtn = 0;
+                            showSystem = false;
+                            render();
+                            alert('Config loaded from device!');
+                        } else {
+                            alert('Invalid config: no presets found');
+                        }
+                    } catch (e) {
+                        console.error('Parse error:', e, 'JSON:', configJson);
+                        alert('Parse error: ' + e.message);
+                    }
+                } else if (expectingConfig) {
+                    configJson += line;
+                }
+            }
+        }
+
+        async function readFromDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            await serialWriter.write(new TextEncoder().encode('GET_CONFIG\n'));
+        }
+
+        async function sendToDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 500; // Send in 500-byte chunks
+
+            try {
+                // Start upload
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(100);
+
+                // Send chunks
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+                    await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
+                    await sleep(50); // Small delay between chunks
+                }
+
+                // End upload
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+                alert('Config sent to device! Check serial monitor for status.');
+            } catch (e) {
+                alert('Send error: ' + e.message);
+            }
+        }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        // Add USB section to render
+        var origRender = render;
+        render = function () {
+            origRender();
+            // Add USB section after header - use actual connection state
+            var app = document.getElementById('app');
+            var isConnected = serialPort !== null;
+            var statusText = isConnected ? 'Connected' : 'Not connected';
+            var statusColor = isConnected ? '#22c55e' : '#71717a';
+            var btnText = isConnected ? 'Disconnect' : 'Connect USB';
+
+            var usbHtml = '<div class="section" style="background:#1a1a2e;border:1px solid #7c3aed">';
+            usbHtml += '<div class="section-title" style="color:#a78bfa">USB Serial Connection</div>';
+            usbHtml += '<div class="row" style="align-items:center">';
+            usbHtml += '<button id="btnConnect" class="btn" onclick="toggleUSB()" style="background:#7c3aed">' + btnText + '</button>';
+            usbHtml += '<span style="color:#71717a">Status: <span id="usbStatus" style="color:' + statusColor + '">' + statusText + '</span></span>';
+            usbHtml += '</div>';
+            usbHtml += '<div class="actions" style="margin-top:10px">';
+            usbHtml += '<button class="btn success" onclick="readFromDevice()">Read from Device</button>';
+            usbHtml += '<button class="btn warning" onclick="sendToDevice()">Send to Device</button>';
+            usbHtml += '</div>';
+            usbHtml += '<div style="margin-top:8px;font-size:0.75rem;color:#71717a">Requires Chrome/Edge. Read and Send work via USB serial.</div>';
+            usbHtml += '</div>';
+            app.insertAdjacentHTML('afterbegin', usbHtml);
+        };
 
         render();
     </script>

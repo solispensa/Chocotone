@@ -19,5 +19,6 @@ void rgbToHex(char* buffer, size_t size, const byte rgb[3]);
 void hexToRgb(const String& hex, byte rgb[3]);
 void sendOptions(String& out, MidiCommandType currentType);
 void sendActionFields(String& out, const char* id, const ActionMessage* msg);
+void handleSerialConfig();  // Handle serial commands (GET_CONFIG, SET_CONFIG)
 
 #endif
