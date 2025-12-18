@@ -3,7 +3,7 @@
 
 #define PRESETS_NAMESPACE "midi_presets"
 #define CONFIG_VERSION_KEY "cfg_ver"
-#define CURRENT_CONFIG_VERSION 2
+#define CURRENT_CONFIG_VERSION 3  // v3: Action-based ButtonConfig with messages[] array
 
 // ============================================
 // SYSTEM SETTINGS (v2)
@@ -12,127 +12,103 @@
 void saveSystemSettings() {
     Serial.println("=== Saving System Settings (v2) ===");
     
-    Preferences sysPrefs;
-    if (!sysPrefs.begin("sys_cfg", false)) {
-        Serial.println("ERROR: Cannot open sys_cfg namespace!");
+    // Use a FRESH LOCAL Preferences object to avoid global state issues
+    Preferences prefs;
+    if (!prefs.begin(PRESETS_NAMESPACE, false)) {
+        Serial.println("ERROR: Cannot open presets namespace for system settings!");
         return;
     }
     
-    // Write version marker
-    sysPrefs.putInt(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
+    // Write version marker (prefixed to avoid collision with preset version)
+    prefs.putInt("sys_ver", CURRENT_CONFIG_VERSION);
     
-    // UI Settings
-    sysPrefs.putInt("font", buttonNameFontSize);
-    sysPrefs.putInt("ledOn", ledBrightnessOn);
-    sysPrefs.putInt("ledDim", ledBrightnessDim);
-    sysPrefs.putInt("debounce", buttonDebounce);
-    sysPrefs.putInt("rhythm", rhythmPattern);
-    sysPrefs.putInt("delay", currentDelayType);
-    sysPrefs.putInt("preset", currentPreset);
+    // UI Settings (prefixed with "s_" to distinguish from preset data)
+    prefs.putInt("s_font", buttonNameFontSize);
+    prefs.putInt("s_ledOn", ledBrightnessOn);
+    prefs.putInt("s_ledDim", ledBrightnessDim);
+    prefs.putInt("s_debounce", buttonDebounce);
+    prefs.putInt("s_rhythm", rhythmPattern);
+    prefs.putInt("s_delay", currentDelayType);
+    prefs.putInt("s_preset", currentPreset);
     
     // SystemConfig struct fields
-    sysPrefs.putString("bleName", systemConfig.bleDeviceName);
-    sysPrefs.putString("apSSID", systemConfig.apSSID);
-    sysPrefs.putString("apPass", systemConfig.apPassword);
-    sysPrefs.putInt("btnCount", systemConfig.buttonCount);
-    sysPrefs.putBytes("btnPins", systemConfig.buttonPins, sizeof(systemConfig.buttonPins));
-    sysPrefs.putInt("ledPin", systemConfig.ledPin);
-    sysPrefs.putInt("encA", systemConfig.encoderA);
-    sysPrefs.putInt("encB", systemConfig.encoderB);
-    sysPrefs.putInt("encBtn", systemConfig.encoderBtn);
-    sysPrefs.putBool("wifiBoot", systemConfig.wifiOnAtBoot);
-    sysPrefs.putUChar("bleMode", (uint8_t)systemConfig.bleMode);
-    sysPrefs.putUChar("ledsPerBtn", systemConfig.ledsPerButton);
-    sysPrefs.putBytes("ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
+    prefs.putString("s_bleName", systemConfig.bleDeviceName);
+    prefs.putString("s_apSSID", systemConfig.apSSID);
+    prefs.putString("s_apPass", systemConfig.apPassword);
+    prefs.putInt("s_btnCount", systemConfig.buttonCount);
+    prefs.putBytes("s_btnPins", systemConfig.buttonPins, sizeof(systemConfig.buttonPins));
+    prefs.putInt("s_ledPin", systemConfig.ledPin);
+    prefs.putInt("s_encA", systemConfig.encoderA);
+    prefs.putInt("s_encB", systemConfig.encoderB);
+    prefs.putInt("s_encBtn", systemConfig.encoderBtn);
+    prefs.putBool("s_wifiBoot", systemConfig.wifiOnAtBoot);
+    prefs.putUChar("s_bleMode", (uint8_t)systemConfig.bleMode);
+    prefs.putUChar("s_ledsPerBtn", systemConfig.ledsPerButton);
+    prefs.putBytes("s_ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
     
-    sysPrefs.end();
+    prefs.end();
     Serial.println("=== System Settings Saved (v2) ===");
 }
 
 void loadSystemSettings() {
-    Preferences sysPrefs;
-    sysPrefs.begin("sys_cfg", true);
+    // Use SAME namespace as presets to avoid namespace switch issues
+    systemPrefs.begin(PRESETS_NAMESPACE, true);
     
-    int version = sysPrefs.getInt(CONFIG_VERSION_KEY, 1);
+    // Check for new format (sys_ver key) or old format
+    int version = systemPrefs.getInt("sys_ver", 0);  // New unified format
+    if (version == 0) {
+        // Try old format - might not exist yet
+        version = 1;
+    }
     Serial.printf("Loading System Settings (v%d)...\n", version);
     
-    // UI Settings (same in v1 and v2)
-    buttonNameFontSize = sysPrefs.getInt("font", 5);
-    ledBrightnessOn = sysPrefs.getInt("ledOn", 220);
-    ledBrightnessDim = sysPrefs.getInt("ledDim", 120);
-    buttonDebounce = sysPrefs.getInt("debounce", 120);
-    rhythmPattern = sysPrefs.getInt("rhythm", 0);
+    // UI Settings (prefixed keys in new format)
+    buttonNameFontSize = systemPrefs.getInt("s_font", 5);
+    ledBrightnessOn = systemPrefs.getInt("s_ledOn", 220);
+    ledBrightnessDim = systemPrefs.getInt("s_ledDim", 120);
+    buttonDebounce = systemPrefs.getInt("s_debounce", 120);
+    rhythmPattern = systemPrefs.getInt("s_rhythm", 0);
     if (rhythmPattern < 0 || rhythmPattern > 3) rhythmPattern = 0;
-    currentDelayType = sysPrefs.getInt("delay", 0);
-    currentPreset = sysPrefs.getInt("preset", 0);
+    currentDelayType = systemPrefs.getInt("s_delay", 0);
+    currentPreset = systemPrefs.getInt("s_preset", 0);
     if (currentPreset < 0 || currentPreset > 3) currentPreset = 0;
     
-    if (version >= 2) {
-        // v2 SystemConfig fields
-        String s_bleName = sysPrefs.getString("bleName", DEFAULT_BLE_NAME);
-        strncpy(systemConfig.bleDeviceName, s_bleName.c_str(), 23);
-        systemConfig.bleDeviceName[23] = '\0';
-        
-        String s_ssid = sysPrefs.getString("apSSID", DEFAULT_AP_SSID);
-        strncpy(systemConfig.apSSID, s_ssid.c_str(), 23);
-        systemConfig.apSSID[23] = '\0';
-        
-        String s_pass = sysPrefs.getString("apPass", DEFAULT_AP_PASS);
-        strncpy(systemConfig.apPassword, s_pass.c_str(), 15);
-        systemConfig.apPassword[15] = '\0';
-        
-        systemConfig.buttonCount = sysPrefs.getInt("btnCount", DEFAULT_BUTTON_COUNT);
-        if (systemConfig.buttonCount < 4) systemConfig.buttonCount = 4;
-        if (systemConfig.buttonCount > 10) systemConfig.buttonCount = 10;
-        
-        sysPrefs.getBytes("btnPins", systemConfig.buttonPins, sizeof(systemConfig.buttonPins));
-        systemConfig.ledPin = sysPrefs.getInt("ledPin", NEOPIXEL_PIN);
-        systemConfig.encoderA = sysPrefs.getInt("encA", DEFAULT_ENCODER_A);
-        systemConfig.encoderB = sysPrefs.getInt("encB", DEFAULT_ENCODER_B);
-        systemConfig.encoderBtn = sysPrefs.getInt("encBtn", DEFAULT_ENCODER_BTN);
-        systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifiBoot", false);
-        systemConfig.bleMode = (BleMode)sysPrefs.getUChar("bleMode", BLE_CLIENT_ONLY);
-        systemConfig.ledsPerButton = sysPrefs.getUChar("ledsPerBtn", 1);  // Default 1 LED per button
-        // Load ledMap or use defaults
-        if (sysPrefs.getBytesLength("ledMap") == sizeof(systemConfig.ledMap)) {
-            sysPrefs.getBytes("ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
-        } else {
-            // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}
-            uint8_t defaultMap[] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};
-            memcpy(systemConfig.ledMap, defaultMap, sizeof(systemConfig.ledMap));
-        }
+    // SystemConfig fields (prefixed keys)
+    String s_bleName = systemPrefs.getString("s_bleName", DEFAULT_BLE_NAME);
+    strncpy(systemConfig.bleDeviceName, s_bleName.c_str(), 23);
+    systemConfig.bleDeviceName[23] = '\0';
+    
+    String s_ssid = systemPrefs.getString("s_apSSID", DEFAULT_AP_SSID);
+    strncpy(systemConfig.apSSID, s_ssid.c_str(), 23);
+    systemConfig.apSSID[23] = '\0';
+    
+    String s_pass = systemPrefs.getString("s_apPass", DEFAULT_AP_PASS);
+    strncpy(systemConfig.apPassword, s_pass.c_str(), 15);
+    systemConfig.apPassword[15] = '\0';
+    
+    systemConfig.buttonCount = systemPrefs.getInt("s_btnCount", DEFAULT_BUTTON_COUNT);
+    if (systemConfig.buttonCount < 4) systemConfig.buttonCount = 4;
+    if (systemConfig.buttonCount > 10) systemConfig.buttonCount = 10;
+    
+    systemPrefs.getBytes("s_btnPins", systemConfig.buttonPins, sizeof(systemConfig.buttonPins));
+    systemConfig.ledPin = systemPrefs.getInt("s_ledPin", NEOPIXEL_PIN);
+    systemConfig.encoderA = systemPrefs.getInt("s_encA", DEFAULT_ENCODER_A);
+    systemConfig.encoderB = systemPrefs.getInt("s_encB", DEFAULT_ENCODER_B);
+    systemConfig.encoderBtn = systemPrefs.getInt("s_encBtn", DEFAULT_ENCODER_BTN);
+    systemConfig.wifiOnAtBoot = systemPrefs.getBool("s_wifiBoot", false);
+    systemConfig.bleMode = (BleMode)systemPrefs.getUChar("s_bleMode", BLE_CLIENT_ONLY);
+    systemConfig.ledsPerButton = systemPrefs.getUChar("s_ledsPerBtn", 1);
+    
+    // Load ledMap or use defaults
+    if (systemPrefs.getBytesLength("s_ledMap") == sizeof(systemConfig.ledMap)) {
+        systemPrefs.getBytes("s_ledMap", systemConfig.ledMap, sizeof(systemConfig.ledMap));
     } else {
-        // v1 MIGRATION: Read old individual fields into SystemConfig
-        Serial.println("Migrating v1 settings to v2...");
-        
-        String s_bleName = sysPrefs.getString("bleName", DEFAULT_BLE_NAME);
-        strncpy(systemConfig.bleDeviceName, s_bleName.c_str(), 23);
-        systemConfig.bleDeviceName[23] = '\0';
-        
-        String s_ssid = sysPrefs.getString("apSSID", DEFAULT_AP_SSID);
-        strncpy(systemConfig.apSSID, s_ssid.c_str(), 23);
-        systemConfig.apSSID[23] = '\0';
-        
-        String s_pass = sysPrefs.getString("apPass", DEFAULT_AP_PASS);
-        strncpy(systemConfig.apPassword, s_pass.c_str(), 15);
-        systemConfig.apPassword[15] = '\0';
-        
-        // v1 didn't have these - use defaults
-        systemConfig.buttonCount = DEFAULT_BUTTON_COUNT;
-        memcpy(systemConfig.buttonPins, DEFAULT_BUTTON_PINS, sizeof(systemConfig.buttonPins));
-        systemConfig.ledPin = NEOPIXEL_PIN;
-        systemConfig.encoderA = DEFAULT_ENCODER_A;
-        systemConfig.encoderB = DEFAULT_ENCODER_B;
-        systemConfig.encoderBtn = DEFAULT_ENCODER_BTN;
-        systemConfig.wifiOnAtBoot = sysPrefs.getBool("wifi", false);
-        systemConfig.bleMode = BLE_CLIENT_ONLY;  // Default for v1 migration
-        systemConfig.ledsPerButton = 1;  // Default for v1 migration
-        // Default ledMap for v1 migration
+        // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}
         uint8_t defaultMap[] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};
         memcpy(systemConfig.ledMap, defaultMap, sizeof(systemConfig.ledMap));
     }
     
-    sysPrefs.end();
+    systemPrefs.end();
     Serial.println("=== System Settings Loaded ===");
 }
 
@@ -141,52 +117,64 @@ void loadSystemSettings() {
 // ============================================
 
 void savePresets() {
-    Serial.println("Saving Presets (v2)...");
+    Serial.println("Saving Presets (v3 action-based)...");
     
     yield();  // Let WDT breathe before starting
-    systemPrefs.begin(PRESETS_NAMESPACE, false);
+    
+    // Use a FRESH LOCAL Preferences object to avoid global state issues
+    Preferences prefs;
+    if (!prefs.begin(PRESETS_NAMESPACE, false)) {
+        Serial.println("ERROR: Failed to open presets namespace for saving!");
+        return;
+    }
+    
+    // CRITICAL: Remove old blob first to ensure fresh write
+    // This fixes the issue where putBytes returns 0 when overwriting same-size data
+    prefs.remove("presets");
+    yield();
     
     // Save config version
-    systemPrefs.putInt(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
+    prefs.putInt(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
     
     // Save button count to help with migration
-    systemPrefs.putInt("btnCount", systemConfig.buttonCount);
+    prefs.putInt("btnCount", systemConfig.buttonCount);
     
     yield();  // Yield before large blob write
     
     // Save presets as blob WITH ERROR CHECKING
     Serial.printf("Saving presets blob (%d bytes)...\n", sizeof(buttonConfigs));
-    size_t written = systemPrefs.putBytes("presets", buttonConfigs, sizeof(buttonConfigs));
+    size_t written = prefs.putBytes("presets", buttonConfigs, sizeof(buttonConfigs));
     if (written != sizeof(buttonConfigs)) {
         Serial.printf("ERROR: Only wrote %d of %d bytes!\n", written, sizeof(buttonConfigs));
+    } else {
+        Serial.printf("OK: Wrote %d bytes\n", written);
     }
     
     yield();  // Yield between writes
     
-    systemPrefs.putBytes("presetNames", presetNames, sizeof(presetNames));
+    prefs.putBytes("presetNames", presetNames, sizeof(presetNames));
+    prefs.putBytes("ledModes", presetLedModes, sizeof(presetLedModes));
     
     yield();
     
     // Save global special actions (hold/combo)
-    systemPrefs.putBytes("specials", globalSpecialActions, sizeof(globalSpecialActions));
+    prefs.putBytes("specials", globalSpecialActions, sizeof(globalSpecialActions));
+    
+    // CRITICAL: Close to commit
+    prefs.end();
     
     yield();
+    delay(100);  // Let NVS commit
     
-    // CRITICAL: Verify data before closing
-    size_t verify = systemPrefs.getBytesLength("presets");
-    Serial.printf("Verification: NVS reports %d bytes stored\n", verify);
-    
-    systemPrefs.end();
-    
-    // Re-open to force commit and verify persistence
-    delay(100);
-    systemPrefs.begin(PRESETS_NAMESPACE, true);  // Read-only
-    size_t finalCheck = systemPrefs.getBytesLength("presets");
-    systemPrefs.end();
+    // Verify with a fresh read-only session
+    Preferences verifyPrefs;
+    verifyPrefs.begin(PRESETS_NAMESPACE, true);
+    size_t finalCheck = verifyPrefs.getBytesLength("presets");
+    verifyPrefs.end();
     
     Serial.printf("Final check: %d bytes in NVS\n", finalCheck);
     if (finalCheck == sizeof(buttonConfigs)) {
-        Serial.println("Presets Saved (v2) - SUCCESS");
+        Serial.println("Presets Saved - SUCCESS");
     } else {
         Serial.printf("ERROR: NVS persistence failed! Expected %d, got %d\n", sizeof(buttonConfigs), finalCheck);
     }
@@ -211,6 +199,10 @@ void loadPresets() {
             systemPrefs.getBytes("presetNames", presetNames, lenNames);
         }
         
+        size_t lenModes = systemPrefs.getBytesLength("ledModes");
+        if (lenModes == sizeof(presetLedModes)) {
+            systemPrefs.getBytes("ledModes", presetLedModes, lenModes);
+        }
 
         
         // Load global special actions
@@ -219,18 +211,18 @@ void loadPresets() {
         if (lenSpecials == sizeof(globalSpecialActions)) {
             systemPrefs.getBytes("specials", globalSpecialActions, lenSpecials);
             Serial.println("✓ Special actions loaded");
-            // Debug: print first button's hold enabled status
-            Serial.printf("  Button 0 hold enabled: %s\n", globalSpecialActions[0].hold.enabled ? "YES" : "NO");
+            // Debug: print first button's combo status
+            Serial.printf("  Button 0 hasCombo: %s\n", globalSpecialActions[0].hasCombo ? "YES" : "NO");
         } else {
-            // Size mismatch (struct changed) - initialize combo labels to empty for safety
+            // Size mismatch (struct changed) - initialize hasCombo to false for safety
             Serial.printf("Special actions size mismatch (%d vs %d) - using defaults\n", lenSpecials, sizeof(globalSpecialActions));
             for (int i = 0; i < MAX_BUTTONS; i++) {
-                globalSpecialActions[i].combo.label[0] = '\0';
+                globalSpecialActions[i].hasCombo = false;
             }
         }
         
         systemPrefs.end();
-        Serial.println("✓ Presets Loaded (v2 Blob Format).");
+        Serial.println("✓ Presets Loaded (v3 Action-Based Format).");
         return;
     }
     

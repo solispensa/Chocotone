@@ -1,0 +1,223 @@
+# Sonicake Pocket Master (SPM) - Multi-Effects Guitar Processor
+# OpenMIDI format - Ready for contribution to Morningstar-Engineering/openmidi
+# Documentation source: Official SPM User Manual
+
+midi_in: USB
+midi_thru: No
+phantom_power: No
+midi_clock: No
+
+midi_channel:
+  instructions: |+
+    The MIDI channel can be configured in the device settings menu.
+    Default channel is 1.
+
+pc:
+  description: |+
+    PC messages can be used to recall presets.
+    CC#1 with values 1-50 recalls P01-P50 (Preset banks)
+    CC#1 with values 51-100 recalls F01-F50 (Factory banks)
+
+cc:
+  # Preset Selection
+  - name: Preset Select
+    value: 1
+    description: "1-50: User Presets P01-P50, 51-100: Factory Presets F01-F50"
+    type: System
+    min: 1
+    max: 100
+
+  # Volume Controls
+  - name: Master Volume
+    value: 6
+    description: Controls the global master volume output
+    type: Parameter
+    min: 0
+    max: 100
+
+  - name: Preset Volume
+    value: 7
+    description: Controls the volume level for the current preset
+    type: Parameter
+    min: 0
+    max: 100
+
+  # Bank/Preset Navigation
+  - name: Bank Down
+    value: 22
+    description: Decrease preset bank (tens digit decreases by 1)
+    type: System
+    min: 0
+    max: 127
+
+  - name: Bank Up
+    value: 23
+    description: Increase preset bank (tens digit increases by 1)
+    type: System
+    min: 0
+    max: 127
+
+  - name: Preset Down
+    value: 24
+    description: Decrease preset number by 1
+    type: System
+    min: 0
+    max: 127
+
+  - name: Preset Up
+    value: 25
+    description: Increase preset number by 1
+    type: System
+    min: 0
+    max: 127
+
+  # Effect Module Toggles (0-63: OFF, 64-127: ON)
+  - name: NR (Noise Reducer) On/Off
+    value: 43
+    description: "Toggle Noise Reducer module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: FX1 On/Off
+    value: 44
+    description: "Toggle FX1 module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: DRV (Drive) On/Off
+    value: 45
+    description: "Toggle Drive module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: AMP On/Off
+    value: 46
+    description: "Toggle Amp simulation module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: IR (Cab Sim) On/Off
+    value: 47
+    description: "Toggle IR/Cabinet simulation module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: EQ On/Off
+    value: 48
+    description: "Toggle EQ module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: FX2 On/Off
+    value: 49
+    description: "Toggle FX2 module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: DLY (Delay) On/Off
+    value: 50
+    description: "Toggle Delay module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: RVB (Reverb) On/Off
+    value: 51
+    description: "Toggle Reverb module. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  # Tuner
+  - name: Tuner On/Off
+    value: 58
+    description: "Toggle Tuner mode. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  # Looper Controls
+  - name: Looper On/Off
+    value: 59
+    description: "Toggle Looper mode. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: Looper Record
+    value: 60
+    description: Start/stop looper recording
+    type: System
+    min: 0
+    max: 127
+
+  - name: Looper Play/Stop
+    value: 62
+    description: "Control looper playback. 0-63: Stop, 64-127: Play"
+    type: System
+    min: 0
+    max: 127
+
+  - name: Looper Delete
+    value: 64
+    description: Delete the current loop recording
+    type: System
+    min: 0
+    max: 127
+
+  - name: Looper Recording Volume
+    value: 65
+    description: Set the input recording volume for the looper
+    type: Parameter
+    min: 0
+    max: 100
+
+  - name: Looper Playback Volume
+    value: 66
+    description: Set the playback volume for the looper
+    type: Parameter
+    min: 0
+    max: 100
+
+  - name: Looper Placement
+    value: 67
+    description: "Set looper position in signal chain. 0-63: Post (after effects), 64-127: Pre (before effects)"
+    type: System
+    min: 0
+    max: 127
+
+  # Drum Machine Controls
+  - name: Drum Menu On/Off
+    value: 92
+    description: "Toggle Drum Machine menu. 0-63: OFF, 64-127: ON"
+    type: System
+    min: 0
+    max: 127
+
+  - name: Drum Play/Stop
+    value: 93
+    description: "Control drum playback. 0-63: Stop, 64-127: Play"
+    type: System
+    min: 0
+    max: 127
+
+  - name: Drum Rhythm Select
+    value: 94
+    description: Select drum rhythm pattern (0-9 for different patterns)
+    type: Parameter
+    min: 0
+    max: 9
+
+  - name: Drum Volume
+    value: 95
+    description: Set the drum machine volume level
+    type: Parameter
+    min: 0
+    max: 100

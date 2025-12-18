@@ -10,7 +10,6 @@ void startBleScan();
 void handleBleConnection();
 
 // MIDI Sending (via BLE Client to SPM)
-void sendMidiMessage(const MidiMessage& msg);
 void sendMidiNoteOn(byte ch, byte n, byte v);
 void sendMidiNoteOff(byte ch, byte n, byte v);
 void sendMidiCC(byte ch, byte n, byte v);

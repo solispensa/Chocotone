@@ -9,29 +9,36 @@ void midiNoteNumberToString(char* b, size_t s, int n){
     snprintf(b,s,"%s%d",MIDI_NOTE_NAMES[n%12],(n/12-1));
 }
 
-void getButtonSummary(char* b, size_t s, const MidiMessage& c) {
+// Get button summary from command type and data
+void getButtonSummary(char* b, size_t s, MidiCommandType type, int data1) {
     char n[8]; b[0] = '\0';
-    switch(c.type){
-        case NOTE_MOMENTARY: midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"%.4s", n); break;
-        case NOTE_ON:  midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"^%.3s",n); break;
-        case NOTE_OFF: midiNoteNumberToString(n,8,c.data1); snprintf(b,s,"v%.3s",n); break;
-        case CC: snprintf(b,s,"CC%d",c.data1); break;
-        case PC: snprintf(b,s,"PC%d",c.data1); break;
+    switch(type){
+        case NOTE_MOMENTARY: midiNoteNumberToString(n,8,data1); snprintf(b,s,"%.4s", n); break;
+        case NOTE_ON:  midiNoteNumberToString(n,8,data1); snprintf(b,s,"^%.3s",n); break;
+        case NOTE_OFF: midiNoteNumberToString(n,8,data1); snprintf(b,s,"v%.3s",n); break;
+        case CC: snprintf(b,s,"CC%d",data1); break;
+        case PC: snprintf(b,s,"PC%d",data1); break;
         case TAP_TEMPO: strncpy(b,"TAP",s-1); b[s-1] = '\0'; break;
         case PRESET_UP: strncpy(b,">",s-1); b[s-1] = '\0'; break;
         case PRESET_DOWN: strncpy(b,"<",s-1); b[s-1] = '\0'; break;
-        case PRESET_1: snprintf(b,s,"%.10s",presetNames[0]); break;  // Show actual preset name
+        case PRESET_1: snprintf(b,s,"%.10s",presetNames[0]); break;
         case PRESET_2: snprintf(b,s,"%.10s",presetNames[1]); break;
         case PRESET_3: snprintf(b,s,"%.10s",presetNames[2]); break;
         case PRESET_4: snprintf(b,s,"%.10s",presetNames[3]); break;
         case WIFI_TOGGLE: strncpy(b,"WiFi",s-1); b[s-1] = '\0'; break;
         case CLEAR_BLE_BONDS: strncpy(b,"xBLE",s-1); b[s-1] = '\0'; break;
-        case OFF: strncpy(b,"OFF",s-1); b[s-1] = '\0'; break;
+        case SYSEX: strncpy(b,"SYS",s-1); b[s-1] = '\0'; break;
+        case MIDI_OFF: strncpy(b,"OFF",s-1); b[s-1] = '\0'; break;
         default: strncpy(b,"---",s-1); b[s-1] = '\0'; break;
     }
 }
 
 void displayOLED() {
+    // Skip display updates when heap is critically low (WiFi uses lots of memory)
+    if (ESP.getFreeHeap() < 20000) {
+        return;  
+    }
+    
     // Check if in tap tempo mode
     if (inTapTempoMode) {
         displayTapTempoMode();
@@ -66,7 +73,13 @@ void displayOLED() {
         snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
         char toDisplay[10];
         if (strncmp(config.name, defaultName, 20) == 0 || strlen(config.name) == 0) {
-            getButtonSummary(summary, sizeof(summary), config.messageA);
+            // Get first PRESS action for summary
+            ActionMessage* firstAction = (config.messageCount > 0) ? (ActionMessage*)&config.messages[0] : nullptr;
+            if (firstAction) {
+                getButtonSummary(summary, sizeof(summary), firstAction->type, firstAction->data1);
+            } else {
+                strncpy(summary, "---", sizeof(summary));
+            }
             snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
         } else {
             snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
@@ -84,7 +97,13 @@ void displayOLED() {
         snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
         char toDisplay[10];
         if (strncmp(config.name, defaultName, 20) == 0 || strlen(config.name) == 0) {
-            getButtonSummary(summary, sizeof(summary), config.messageA);
+            // Get first PRESS action for summary
+            ActionMessage* firstAction = (config.messageCount > 0) ? (ActionMessage*)&config.messages[0] : nullptr;
+            if (firstAction) {
+                getButtonSummary(summary, sizeof(summary), firstAction->type, firstAction->data1);
+            } else {
+                strncpy(summary, "---", sizeof(summary));
+            }
             snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
         } else {
             snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
@@ -257,6 +276,25 @@ void displayMenu() {
 }
 
 void updateLeds() {
+    // WiFi-safe LED updates: use increased heap threshold and rate limiting
+    // ESP32 RMT peripheral handles NeoPixel timing, but WiFi can still interfere
+    
+    // Skip LED updates when heap is critically low
+    // Threshold lowered to allow updates even with WiFi on (heap ~13KB)
+    int heapThreshold = isWifiOn ? 10000 : 15000;
+    if (ESP.getFreeHeap() < heapThreshold) {
+        Serial.printf("LED update skipped: heap %d < %d\n", ESP.getFreeHeap(), heapThreshold);
+        return;  // Safety: prevent crash from memory pressure
+    }
+    
+    // Rate limit: don't update LEDs more than every 50ms when WiFi is on
+    // This gives WiFi stack time to process packets between LED updates
+    static unsigned long lastLedUpdate = 0;
+    if (isWifiOn && (millis() - lastLedUpdate < 50)) {
+        return;  // Throttle to prevent WiFi interference
+    }
+    lastLedUpdate = millis();
+    
     bool needsUpdate = false;
     
     // Update tap tempo blink timing (non-blocking state machine)
@@ -284,23 +322,58 @@ void updateLeds() {
     
     for (int i = 0; i < systemConfig.buttonCount; i++) {
         const ButtonConfig& config = buttonConfigs[currentPreset][i];
-        const MidiMessage& msg = config.isAlternate
-            ? (config.nextIsB ? config.messageB : config.messageA)
-            : config.messageA;
+        
+        // Safety: bounds check messageCount to prevent garbage data crashes
+        uint8_t safeMessageCount = config.messageCount;
+        if (safeMessageCount > MAX_ACTIONS_PER_BUTTON) safeMessageCount = 0;
+        
+        // Find the active message (PRESS or 2ND_PRESS based on toggle state)
+        const ActionMessage* msg = nullptr;
+        ActionType targetAction = config.isAlternate ? ACTION_2ND_PRESS : ACTION_PRESS;
+        for (int m = 0; m < safeMessageCount; m++) {
+            if (config.messages[m].action == targetAction) {
+                msg = &config.messages[m];
+                break;
+            }
+        }
+        // Fallback to first message if target action not found
+        if (!msg && safeMessageCount > 0) {
+            msg = &config.messages[0];
+        }
 
         // TAP_TEMPO buttons use blink state, others use normal brightness
-        bool isTapTempo = (msg.type == TAP_TEMPO);
+        bool isTapTempo = (msg && msg->type == TAP_TEMPO);
         int brightness;
         
         if (isTapTempo && tapBlinkState) {
             brightness = 255;  // Full bright during flash
         } else {
-            brightness = buttonPinActive[i] ? ledBrightnessOn : ledBrightnessDim;
+            // Determine LED active state based on preset LED mode
+            bool ledActive;
+            PresetLedMode presetMode = presetLedModes[currentPreset];
+            int8_t selectedBtn = presetSelectionState[currentPreset];
+            
+            if (presetMode == PRESET_LED_SELECTION) {
+                // All buttons in selection mode - selected button is ON
+                ledActive = (i == selectedBtn);
+            } else if (presetMode == PRESET_LED_HYBRID && config.inSelectionGroup) {
+                // This button is in selection group - check if it's the selected one
+                ledActive = (i == selectedBtn);
+            } else {
+                // Normal mode or Hybrid non-selection button - use existing Toggle/Momentary logic
+                if (config.ledMode == LED_TOGGLE) {
+                    ledActive = ledToggleState[i];  // Use toggle state (persistent)
+                } else {
+                    ledActive = buttonPinActive[i];  // Use physical press state (momentary)
+                }
+            }
+            brightness = ledActive ? ledBrightnessOn : ledBrightnessDim;
         }
         
-        int r = (msg.rgb[0] * brightness) / 255;
-        int g = (msg.rgb[1] * brightness) / 255;
-        int b = (msg.rgb[2] * brightness) / 255;
+        // Get RGB from message (default to dim purple if no message)
+        int r = msg ? (msg->rgb[0] * brightness) / 255 : 0;
+        int g = msg ? (msg->rgb[1] * brightness) / 255 : 0;
+        int b = msg ? (msg->rgb[2] * brightness) / 255 : 0;
 
         uint32_t newColor = strip.Color(r, g, b);
         
@@ -330,7 +403,9 @@ void updateLeds() {
     
     // Only call strip.show() if something actually changed
     if (needsUpdate) {
+        yield();  // Give WiFi stack time before LED update
         strip.show();
+        yield();  // Give WiFi stack time after LED update
     }
 }
 

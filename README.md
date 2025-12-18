@@ -32,18 +32,26 @@
 - **Tap Tempo** - Built-in tap tempo with rhythm patterns (1/8, 1/8d, 1/4, 1/2)
   - Addressable buttons for rhythm navigation (prev/next)
   - Lock mode to prevent auto-timeout
-- **Hold Commands** - Long-press any button for a secondary MIDI action
-- **Combo Commands** - Two-button simultaneous press for additional actions
+- **Action-Based Message System** - Flexible message triggering:
+  - Press / 2nd Press (toggle) / Release
+  - Long Press with configurable hold time
+  - Double Tap detection
+  - Combo (two-button simultaneous press)
 - **4 Presets** - Store and recall different button configurations
+  - Per-preset LED modes (Normal, Selection, Hybrid)
+  - Selection groups for bank switching
 - **Alternate Messages** - Toggle between two MIDI messages per button
 
 ### Configuration & Management
-- **Web Interface** - Edit MIDI mappings, button names, and settings via browser
-  - Organized into Main Messages / Special Actions / System Config pages
-  - Editable GPIO pin assignments for custom hardware builds
-- **Export/Import** - Backup and restore configurations as JSON
-- **Offline Editor** - Standalone HTML file for editing without device connection
-- **NVS Storage** - All settings persist across power cycles
+- **Hybrid V2 Web Interface** - Advanced editor with unified action system
+  - **Action-Based Logic** - Assign Press, Release, Long Press, Double Tap, and Combo actions to any button
+  - **Dynamic Layouts** - Real-time updates for 4-10 button configurations
+  - **Smart Templates** - Integrated device database for Sonicake Pocket Master, Hotone Ampero, and more
+  - **CC Picker** - Quick selection of common Control Change numbers by name
+  - **SysEx Editor** - Direct hex entry for custom SysEx messages
+- **Export/Import** - Full configuration backup/restore with JSON format
+- **Offline Editor v2** - Fully functional standalone HTML editor with device database
+- **NVS Storage** - All settings persist across power cycles (reliable save with auto-reboot)
 - **Customizable Display** - Adjustable button name font size (1-5)
 
 ![Chocotone Editor](images/chocotone_editor_1v1.png)
@@ -78,7 +86,7 @@ OLED SCL           | GPIO 22   | I2C Clock
 Encoder A          | GPIO 18   | 
 Encoder B          | GPIO 19   | 
 Encoder Button     | GPIO 23   | INPUT_PULLUP
-NeoPixel Data      | GPIO 5    | 
+NeoPixel Data      | GPIO 15   | Configurable via web
 Button 1           | GPIO 14   | INPUT_PULLUP
 Button 2           | GPIO 27   | INPUT_PULLUP
 Button 3           | GPIO 26   | INPUT_PULLUP
@@ -158,7 +166,7 @@ ArduinoJson @ ^6.21.0
    - Navigate to "Wi-Fi Config"
    - Short-press to enable WiFi
 3. **Connect to WiFi**:
-   - Look for network: `ESP32_MIDI_Config`
+   - Look for network: `CHOCOTONE`
    - Password: `12345678` (change via web interface)
 4. **Open web interface**:
    - Navigate to: `http://192.168.4.1`
@@ -174,9 +182,12 @@ ArduinoJson @ ^6.21.0
 ## Usage Guide
 
 ### Button Operation
-- **Short Press** - Send primary MIDI message
-- **Long Press** - Toggle alternate message (if configured)
-- **LED Feedback** - Bright when active, dim when inactive
+- **Short Press** - Send primary MIDI message (configurable action types)
+- **2nd Press** - Send alternate message (toggle mode)
+- **Long Press** - Send secondary action with configurable hold time (200-3000ms)
+- **Double Tap** - Send tertiary action when button is tapped twice quickly
+- **Combo** - Press two buttons simultaneously for special actions
+- **LED Feedback** - Bright when active, dim when inactive (customizable colors)
 
 ### Encoder Operation
 - **Rotate** - Navigate menu, adjust parameters
@@ -262,7 +273,7 @@ The controller supports **three BLE modes** (configurable via OLED menu or web i
 - Check button configuration in web interface
 
 ### LEDs not working
-- Verify NeoPixel data pin connection (GPIO 5)
+- Verify NeoPixel data pin connection (GPIO 15 default, configurable)
 - Ensure adequate 5V power supply
 - Check LED brightness settings in menu
 

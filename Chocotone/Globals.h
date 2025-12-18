@@ -12,7 +12,7 @@
 #include "Config.h"
 
 // ============================================
-// v2.0 MEMORY-OPTIMIZED ENUMS AND STRUCTS
+// v3.0 ACTION-BASED DATA STRUCTURES
 // ============================================
 
 // BLE Mode Configuration
@@ -23,13 +23,14 @@ enum BleMode {
 };
 
 // Extended MIDI Command Types
-enum MidiCommandType { 
-    OFF, 
+enum MidiCommandType : uint8_t { 
+    MIDI_OFF = 0, 
     NOTE_MOMENTARY, 
     NOTE_ON, 
     NOTE_OFF, 
     CC, 
     PC, 
+    SYSEX,            // Raw SysEx message (hex string stored in sysexData)
     TAP_TEMPO,
     PRESET_UP,
     PRESET_DOWN,
@@ -41,59 +42,95 @@ enum MidiCommandType {
     WIFI_TOGGLE
 };
 
-
-// Primary MIDI Message - 23 bytes (same as before, sysex reduced to fit new fields)
-struct MidiMessage {
-    MidiCommandType type;   // 1 byte
-    byte channel;           // 1 byte
-    byte data1;             // 1 byte
-    byte data2;             // 1 byte
-    int8_t rhythmPrevButton;   // 1 byte (-1 = none, 0-7 = button index) - default: 0 (btn 1)
-    int8_t rhythmNextButton;   // 1 byte (-1 = none, 0-7 = button index) - default: 4 (btn 5)
-    int8_t tapModeLockButton;  // 1 byte (-1 = none, 0-7 = button index) - default: 7 (btn 8)
-    char sysex[12];         // 12 bytes (reduced from 16 to keep struct size same)
-    byte rgb[3];            // 3 bytes
+// Action Type - when this message triggers
+enum ActionType : uint8_t {
+    ACTION_NONE = 0,
+    ACTION_PRESS,       // On button press (primary action)
+    ACTION_2ND_PRESS,   // Alternate press (toggle behavior)
+    ACTION_RELEASE,     // On button release
+    ACTION_LONG_PRESS,  // After holding for threshold
+    ACTION_DOUBLE_TAP,  // Quick double press
+    ACTION_COMBO,       // When pressed with partner button
+    ACTION_NO_ACTION    // Disabled/empty slot
 };
 
-// Hold Action - 21 bytes (no RGB - removed from UI)
-struct HoldAction {
-    bool enabled;           // 1 byte
-    uint16_t thresholdMs;   // 2 bytes (0-65535ms)
-    MidiCommandType type;   // 1 byte
-    byte channel;           // 1 byte
-    byte data1;             // 1 byte
-    byte data2;             // 1 byte
-    char sysex[14];         // 14 bytes
+// LED Mode - how LED responds to button press (per-button setting)
+enum LedMode : uint8_t {
+    LED_MOMENTARY = 0,  // LED on while pressed, off when released
+    LED_TOGGLE = 1      // LED toggles on/off with each press
 };
 
-// Combo Action - 21 bytes (no RGB)
-struct ComboAction {
-    bool enabled;           // 1 byte
-    int8_t partner;         // 1 byte (-1 = none, 0-9 = button)
-    MidiCommandType type;   // 1 byte
-    byte channel;           // 1 byte
-    byte data1;             // 1 byte
-    byte data2;             // 1 byte
-    char label[7];          // 7 bytes (6 chars + null) for custom display text
-    char sysex[8];          // 8 bytes (reduced from 14)
+// Preset LED Mode - how LEDs behave at the preset level
+enum PresetLedMode : uint8_t {
+    PRESET_LED_NORMAL = 0,    // Each button uses its own LED mode (Momentary/Toggle)
+    PRESET_LED_SELECTION = 1, // Radio-button style - one selected, others dim
+    PRESET_LED_HYBRID = 2     // Mix of selection buttons and normal buttons
 };
 
-// Button Config - ~109 bytes total
+// ============================================
+// ACTION MESSAGE STRUCTURE (~16 bytes each)
+// ============================================
+struct ActionMessage {
+    ActionType action;      // 1 byte - When this action triggers
+    MidiCommandType type;   // 1 byte - What MIDI to send
+    uint8_t channel;        // 1 byte - MIDI channel (1-16)
+    uint8_t data1;          // 1 byte - Note/CC number
+    uint8_t data2;          // 1 byte - Velocity/Value
+    uint8_t rgb[3];         // 3 bytes - LED color
+    
+    // Action-specific data (union to save memory)
+    union {
+        // For ACTION_COMBO
+        struct {
+            int8_t partner;     // Partner button index (-1 = none)
+            char label[6];      // Custom OLED label (5 chars + null)
+        } combo;
+        
+        // For ACTION_LONG_PRESS
+        struct {
+            uint16_t holdMs;    // Hold threshold in ms
+        } longPress;
+        
+        // For TAP_TEMPO type
+        struct {
+            int8_t rhythmPrev;  // Button for rhythm--
+            int8_t rhythmNext;  // Button for rhythm++
+            int8_t tapLock;     // Button for tap lock toggle
+        } tapTempo;
+        
+        // For SYSEX type - reduced buffer (most effect toggles are <16 bytes)
+        struct {
+            uint8_t data[16];   // Raw SysEx bytes (including F0 and F7)
+            uint8_t length;     // Number of valid bytes
+        } sysex;
+        
+        uint8_t _padding[17];   // Ensure union is 17 bytes (sysex is largest now)
+    };
+};
+
+#define MAX_ACTIONS_PER_BUTTON 6
+
+// ============================================
+// BUTTON CONFIG (~85 bytes per button)
+// ============================================
 struct ButtonConfig {
-    char name[21];          // 21 bytes
-    bool isAlternate;       // 1 byte
-    bool nextIsB;           // 1 byte
-    MidiMessage messageA;   // 23 bytes
-    MidiMessage messageB;   // 23 bytes
-    HoldAction hold;        // 21 bytes
-    ComboAction combo;      // 21 bytes
+    char name[21];              // 21 bytes - Button display name
+    LedMode ledMode;            // 1 byte - LED behavior (momentary/toggle)
+    bool inSelectionGroup;      // 1 byte - Part of selection group in Hybrid mode
+    uint8_t messageCount;       // 1 byte - Number of active messages
+    ActionMessage messages[MAX_ACTIONS_PER_BUTTON];  // ~96 bytes (6 x 16)
+    
+    // Runtime state (not saved)
+    bool isAlternate;           // 1 byte - Current toggle state
 };
 
-// System Config - ~93 bytes
+// ============================================
+// SYSTEM CONFIG (~93 bytes)
+// ============================================
 struct SystemConfig {
     char bleDeviceName[24]; // 24 bytes
     char apSSID[24];        // 24 bytes
-    char apPassword[16];    // 16 bytes (reduced for memory)
+    char apPassword[16];    // 16 bytes
     uint8_t buttonCount;    // 1 byte
     uint8_t buttonPins[10]; // 10 bytes
     uint8_t ledPin;         // 1 byte
@@ -101,22 +138,17 @@ struct SystemConfig {
     uint8_t encoderB;       // 1 byte
     uint8_t encoderBtn;     // 1 byte
     bool wifiOnAtBoot;      // 1 byte
-    BleMode bleMode;        // 1 byte - BLE_CLIENT_ONLY, BLE_SERVER_ONLY, or BLE_DUAL_MODE
-    uint8_t ledsPerButton;  // 1 byte - How many consecutive LEDs per button (for LED strips)
-    uint8_t ledMap[10];     // 10 bytes - Button to LED index mapping (for single LED mode)
+    BleMode bleMode;        // 1 byte
+    uint8_t ledsPerButton;  // 1 byte
+    uint8_t ledMap[10];     // 10 bytes
 };
 
-// Special Action - 42 bytes per button (hold + combo, independent of presets)
-struct SpecialAction {
-    HoldAction hold;        // 21 bytes
-    ComboAction combo;      // 21 bytes
-};
-
-// Global Override - 43 bytes per button
-struct GlobalOverride {
-    HoldAction hold;        // 21 bytes
-    ComboAction combo;      // 21 bytes
-    bool overridesPreset;   // 1 byte
+// ============================================
+// GLOBAL SPECIAL ACTIONS (per-button, across presets)
+// ============================================
+struct GlobalSpecialAction {
+    ActionMessage comboAction;  // Global combo override
+    bool hasCombo;              // Whether global combo is active
 };
 
 // ============================================
@@ -147,11 +179,11 @@ extern BLEServer* pServer;
 extern BLECharacteristic* pServerMidiCharacteristic;
 
 // ============================================
-// v2.0 SYSTEM CONFIGURATION
+// SYSTEM CONFIGURATION
 // ============================================
 
 extern SystemConfig systemConfig;
-extern bool isWifiOn;  // Runtime state (separate from wifiOnAtBoot)
+extern bool isWifiOn;
 
 // ============================================
 // PRESET DATA
@@ -159,9 +191,8 @@ extern bool isWifiOn;  // Runtime state (separate from wifiOnAtBoot)
 
 extern int currentPreset;
 extern char presetNames[4][21];
-extern ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // Expanded to MAX_BUTTONS
-extern GlobalOverride globalOverrides[MAX_BUTTONS]; // Keep for memory layout
-extern SpecialAction globalSpecialActions[MAX_BUTTONS]; // Global special actions (hold/combo)
+extern ButtonConfig buttonConfigs[4][MAX_BUTTONS];
+extern GlobalSpecialAction globalSpecialActions[MAX_BUTTONS];
 
 // ============================================
 // UI SETTINGS
@@ -179,20 +210,20 @@ extern int buttonNameFontSize;
 extern long oldEncoderPosition;
 extern bool encoderButtonPressed;
 extern unsigned long encoderButtonPressStartTime;
-extern int currentMode; // 0: Preset, 1: Menu
+extern int currentMode;
 extern int menuSelection;
 extern bool inSubMenu;
 extern int editingValue;
 
-// Button state tracking (dynamic size)
+// Button state tracking
 extern bool buttonPinActive[MAX_BUTTONS];
 extern unsigned long lastButtonPressTime_pads[MAX_BUTTONS];
 extern int activeNotesOnButtonPins[MAX_BUTTONS];
 
 // Hold/Combo action tracking
-extern unsigned long buttonHoldStartTime[MAX_BUTTONS];  // When button was first pressed
-extern bool buttonHoldFired[MAX_BUTTONS];                // If hold action already fired
-extern bool buttonComboChecked[MAX_BUTTONS];             // If combo already checked this press
+extern unsigned long buttonHoldStartTime[MAX_BUTTONS];
+extern bool buttonHoldFired[MAX_BUTTONS];
+extern bool buttonComboChecked[MAX_BUTTONS];
 
 // Display state
 extern char buttonNameToShow[21];
@@ -203,6 +234,9 @@ extern char lastSentMidiString[20];
 // LED STATE TRACKING
 // ============================================
 
+extern bool ledToggleState[MAX_BUTTONS];
+extern PresetLedMode presetLedModes[4];
+extern int8_t presetSelectionState[4];
 extern uint32_t lastLedColors[NUM_LEDS];
 
 // ============================================
@@ -228,17 +262,40 @@ extern int tapIndex;
 extern int tapCount;
 extern float currentBPM;
 extern int currentDelayType;
-// ledMap is now in systemConfig.ledMap
 
-extern int rhythmPattern; // 0=1/8, 1=1/8d, 2=1/4, 3=1/2
+extern int rhythmPattern;
 extern bool inTapTempoMode;
-extern bool tapModeLocked;  // When true, tap tempo mode stays active until unlocked
+extern bool tapModeLocked;
 extern unsigned long tapModeTimeout;
 extern const float rhythmMultipliers[4];
 extern const char* rhythmNames[4];
 
-// Tap tempo LED blinking
 extern unsigned long lastTapBlinkTime;
 extern bool tapBlinkState;
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Find action by type in a button's message array
+inline ActionMessage* findAction(ButtonConfig& btn, ActionType actionType) {
+    for (int i = 0; i < btn.messageCount; i++) {
+        if (btn.messages[i].action == actionType) {
+            return &btn.messages[i];
+        }
+    }
+    return nullptr;
+}
+
+// Check if button has a specific action type
+inline bool hasAction(ButtonConfig& btn, ActionType actionType) {
+    return findAction(btn, actionType) != nullptr;
+}
+
+// Get partner button index for combo action
+inline int8_t getComboPartner(ButtonConfig& btn) {
+    ActionMessage* combo = findAction(btn, ACTION_COMBO);
+    return combo ? combo->combo.partner : -1;
+}
 
 #endif

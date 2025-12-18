@@ -10,7 +10,7 @@ void blinkAllLeds();
 void displayTapTempoMode();
 void displayButtonName();
 void midiNoteNumberToString(char* buffer, size_t bufferSize, int note);
-void getButtonSummary(char* b, size_t s, const MidiMessage& c);
+void getButtonSummary(char* b, size_t s, MidiCommandType type, int data1);
 
 // OLED Health Monitoring & Recovery
 bool checkOledHealth();

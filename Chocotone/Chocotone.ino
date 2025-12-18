@@ -138,8 +138,14 @@ void setup() {
     }
 
     // Display and LEDs
-    displayOLED();
-    updateLeds();
+    if (!isWifiOn) {
+        displayOLED();
+        updateLeds();
+    } else {
+        Serial.println("Skipping OLED/LED/BleScan update due to WiFi On");
+        // Optional: Draw simple text on OLED if safe? 
+        // For now, safety first.
+    }
 
     Serial.println("=== Setup Complete ===");
     Serial.printf("BLE Name: %s\n", systemConfig.bleDeviceName);
@@ -149,22 +155,21 @@ void setup() {
     Serial.printf("WiFi: %s\n", isWifiOn ? "ON" : "OFF");
     Serial.printf("WiFi On at Boot: %s\n", systemConfig.wifiOnAtBoot ? "ENABLED" : "DISABLED");
     
-    // Debug: Print hold/combo settings for button 4 (has factory combo)
-    Serial.println("\n=== Button 4 (User Button 5) Hold/Combo Settings ===");
-    Serial.printf("Hold Enabled: %s, Threshold: %d ms\n", 
-        buttonConfigs[currentPreset][4].hold.enabled ? "YES" : "NO",
-        buttonConfigs[currentPreset][4].hold.thresholdMs);
-    Serial.printf("Combo Enabled: %s, Partner: %d (User Button %d)\n",
-        buttonConfigs[currentPreset][4].combo.enabled ? "YES" : "NO",
-        buttonConfigs[currentPreset][4].combo.partner,
-        buttonConfigs[currentPreset][4].combo.partner + 1);
-    Serial.printf("Combo Type: PRESET_DOWN\n");
+    // Debug: Print button 4 action settings
+    Serial.println("\n=== Button 4 (User Button 5) Action Settings ===");
+    const ButtonConfig& debugBtn = buttonConfigs[currentPreset][4];
+    Serial.printf("Button Name: %s, Message Count: %d\n", debugBtn.name, debugBtn.messageCount);
+    for (int i = 0; i < debugBtn.messageCount; i++) {
+        const ActionMessage& m = debugBtn.messages[i];
+        Serial.printf("  Action %d: type=%d, channel=%d, data1=%d\n", m.action, m.type, m.channel, m.data1);
+    }
 }
 
 void loop() {
     // Handle WiFi
     if(isWifiOn) {
         server.handleClient();
+        yield();  // Extra yield after handling client
     }
 
     handleEncoderButtonPress();
@@ -176,30 +181,26 @@ void loop() {
         loop_presetMode();
         
         // Update display to handle button name timeout
-        if (buttonNameDisplayUntil > 0 && millis() >= buttonNameDisplayUntil) {
+        // SKIP when WiFi is on to prevent crash
+        if (!isWifiOn && buttonNameDisplayUntil > 0 && millis() >= buttonNameDisplayUntil) {
             buttonNameDisplayUntil = 0;
-            safeDisplayOLED();  // Use safe wrapper with auto-recovery
+            safeDisplayOLED();
         }
     }
     
     // Update LEDs continuously (needed for tap tempo blink)
-    // Skip when heap is critically low (WiFi on uses ~56KB)
-    if (ESP.getFreeHeap() > 50000 || !isWifiOn) {
+    // Skip when WiFi is on (heap too low)
+    if (!isWifiOn) {
         updateLeds();
     }
     
     // Handle deferred display updates from web interface
     if (pendingDisplayUpdate) {
         pendingDisplayUpdate = false;
-        // Lower threshold to 25KB - OLED update is safe even with WiFi
-        if (ESP.getFreeHeap() > 25000) {
-            safeDisplayOLED();
-            updateLeds();  // Also update LEDs!
-            Serial.println("Deferred display update completed");
-        } else {
-            // Critical low heap - just update LEDs (safer than OLED)
+        safeDisplayOLED();
+        // Skip LED update if WiFi is on (NeoPixel disables interrupts, crashes WiFi)
+        if (!isWifiOn) {
             updateLeds();
-            Serial.println("Low heap - skipped OLED, updated LEDs only");
         }
     }
     

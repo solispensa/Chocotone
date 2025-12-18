@@ -2,6 +2,7 @@
 #define WEBINTERFACE_H
 
 #include "Globals.h"
+#include "UI_Display.h"
 #include <WiFi.h>
 
 void handleRoot();
@@ -17,6 +18,6 @@ void turnWifiOff();
 void rgbToHex(char* buffer, size_t size, const byte rgb[3]);
 void hexToRgb(const String& hex, byte rgb[3]);
 void sendOptions(String& out, MidiCommandType currentType);
-void sendMessageFields(String& out, const char* id, const MidiMessage& msg);
+void sendActionFields(String& out, const char* id, const ActionMessage* msg);
 
 #endif

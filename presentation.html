@@ -1400,9 +1400,9 @@
                         <div class="control-icon" style="color: #f472b6;">🎛️</div>
                         <h3
                             style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff; white-space: nowrap;">
-                            8 Programmable Buttons</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Fully configurable MIDI
-                            messages with RGB LED feedback for instant visual status.</p>
+                            4-10 Programmable Buttons</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Configurable button
+                            count with action-based messages: Press, Release, Long Press, Double Tap, and Combo.</p>
                         <div
                             style="position: absolute; top: 28px; right: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
                             <div
@@ -1427,9 +1427,11 @@
                     <!-- Card 2: BLE MIDI -->
                     <div class="control-card">
                         <div class="control-icon" style="color: #60a5fa;">⚡</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">BLE MIDI</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Wireless connectivity.
-                            Auto-connects to Sonicake Pocket Master & other BLE devices.</p>
+                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">BLE MIDI Dual
+                            Mode</h3>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">CLIENT, SERVER, or DUAL
+                            mode.
+                            Connect to pedals AND accept DAW/app connections simultaneously.</p>
                     </div>
 
                     <!-- Card 3: OLED Display -->
@@ -1519,8 +1521,9 @@
                         <div class="control-icon" style="color: #a78bfa;">🌐</div>
                         <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Wireless Config
                         </h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Host a local web server
-                            to configure mappings, name presets, and manage settings.</p>
+                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Web editor at
+                            <strong>chocotone.local</strong> with device templates, CC picker, and SysEx editor.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1706,7 +1709,7 @@
                     <hr style="border-color:#444;">
 
                     <div class="editor-row"><span>Buttons #:</span> <input type="range" id="sl-btn-count" min="4"
-                            max="10" step="1" value="8" onchange="updateButtonCount(this.value)"><span
+                            max="10" step="2" value="8" onchange="updateButtonCount(this.value)"><span
                             class="slider-value" id="val-btn-count">8</span></div>
                     <div class="editor-row"><span>Chassis H:</span> <input type="range" id="sl-ar" min="40" max="80"
                             step="0.5"><span class="slider-value" id="val-ar"></span></div>
@@ -1896,21 +1899,25 @@
             const checkbox = document.getElementById('chk-chamfer');
             const slider = document.getElementById('sl-chamfer');
             const chassis = document.querySelector('.chassis');
+            const contourColor = document.getElementById('col-contour')?.value || '#333333';
+            const contourThickness = document.getElementById('sl-contour-th')?.value || 2;
 
             slider.disabled = !checkbox.checked;
 
             if (checkbox.checked) {
-                const size = slider.value;
-                // Chamfer using clip-path with angled corners
-                chassis.style.clipPath = `polygon(
-                    ${size}px 0, calc(100% - ${size}px) 0,
-                    100% ${size}px, 100% calc(100% - ${size}px),
-                    calc(100% - ${size}px) 100%, ${size}px 100%,
-                    0 calc(100% - ${size}px), 0 ${size}px
-                )`;
+                const size = parseInt(slider.value);
+                // Bevel effect using inset shadows to simulate chamfered/beveled edges
+                chassis.style.boxShadow = `
+                    inset 0 0 50px rgba(0,0,0,0.8),
+                    inset ${size}px ${size}px ${size * 2}px rgba(80,80,80,0.4),
+                    inset -${size}px -${size}px ${size * 2}px rgba(0,0,0,0.6),
+                    0 20px 50px rgba(0,0,0,0.5),
+                    0 0 0 ${contourThickness}px ${contourColor}
+                `;
                 document.getElementById('val-chamfer').textContent = size + 'px';
             } else {
-                chassis.style.clipPath = 'none';
+                // Reset to default shadow
+                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${contourThickness}px ${contourColor}`;
             }
         }
 
@@ -1919,55 +1926,72 @@
             document.getElementById('val-btn-count').textContent = count;
 
             const chassis = document.querySelector('.chassis');
+            const wrapper = document.querySelector('.controller-wrapper');
 
             // Remove all existing button units
             chassis.querySelectorAll('.button-unit').forEach(b => b.remove());
 
-            // Calculate layout: split between top and bottom rows
-            const topRowCount = Math.ceil(count / 2);
-            const btmRowCount = Math.floor(count / 2);
+            // Symmetric layout: equal buttons top and bottom
+            const btmRowCount = count / 2;  // step=2 ensures even numbers
+            const topRowCount = count / 2;
 
-            // Get current button style
+            // Get current styles
             const btnStyle = document.getElementById('sel-btn-fmt')?.value || '';
             const ledStyle = document.getElementById('sel-led-fmt')?.value || 'led-ring';
 
-            // Create buttons
-            let btnId = count; // Start from highest for top row (reversed display)
+            // Calculate multipliers for positioning: for N buttons, use -(N-1)/2, -(N-3)/2, ..., (N-1)/2
+            // For 4 buttons: -1.5, -0.5, 0.5, 1.5
+            // For 3 buttons: -1, 0, 1
+            // For 5 buttons: -2, -1, 0, 1, 2
+            function getMultipliers(n) {
+                const mults = [];
+                const halfSpan = (n - 1) / 2;
+                for (let i = 0; i < n; i++) {
+                    mults.push(-halfSpan + i);
+                }
+                return mults;
+            }
 
-            // Top row buttons (higher numbered)
+            // Top row buttons (higher numbered: topRowCount+1 to count)
+            const topMults = getMultipliers(topRowCount);
             for (let i = 0; i < topRowCount; i++) {
-                const btnNum = btnId--;
-                const btn = createButtonElement(btnNum, 'top', i, topRowCount, btnStyle, ledStyle);
+                const btnNum = btmRowCount + i + 1;  // Sequential: btm+1, btm+2, ...
+                const mult = topMults[i];
+                const btn = createButtonElement(btnNum, 'top', mult, btnStyle, ledStyle);
                 chassis.appendChild(btn);
             }
 
-            // Bottom row buttons (lower numbered)
+            // Bottom row buttons (lower numbered: 1 to btmRowCount)
+            const btmMults = getMultipliers(btmRowCount);
             for (let i = 0; i < btmRowCount; i++) {
-                const btnNum = btnId--;
-                const btn = createButtonElement(btnNum, 'btm', i, btmRowCount, btnStyle, ledStyle);
+                const btnNum = i + 1;  // Sequential: 1, 2, 3, ...
+                const mult = btmMults[i];
+                const btn = createButtonElement(btnNum, 'btm', mult, btnStyle, ledStyle);
                 chassis.appendChild(btn);
             }
 
-            // Reinitialize leds object
+            // Update presets with correct button count
+            updatePresetsForButtonCount(count);
+
+            // Reinitialize leds and handlers
             initializeLeds();
+            initializeButtonHandlers();
             updateLeds();
             render();
         }
 
-        function createButtonElement(num, row, index, rowCount, btnStyle, ledStyle) {
+        function createButtonElement(num, row, multiplier, btnStyle, ledStyle) {
             const btn = document.createElement('div');
             btn.className = 'button-unit';
             btn.id = `btn-${num}`;
             btn.dataset.tooltip = `Switch ${num}`;
 
-            // Position calculation
-            const spacing = 100 / (rowCount + 1);
-            const leftPos = spacing * (index + 1);
-
+            // Use same formula as CSS: left: calc(50% + multiplier * var(--btn-spacing))
+            // The multiplier positions: -1.5, -0.5, 0.5, 1.5 for 4 buttons
             if (row === 'top') {
-                btn.style.cssText = `position:absolute; left:${leftPos}%; top:var(--btn-y-top); transform:translate(-50%,0);`;
+                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,0);`;
             } else {
-                btn.style.cssText = `position:absolute; left:${leftPos}%; bottom:var(--btn-y-btm); transform:translate(-50%,0);`;
+                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,0);`;
             }
 
             const footswitch = document.createElement('div');
@@ -1980,13 +2004,41 @@
             footswitch.appendChild(led);
             btn.appendChild(footswitch);
 
-            // Add click handler (num is 1-based, convert to 0-based index)
-            const btnLogicIndex = num - 1;
-            btn.addEventListener('mousedown', () => handleButtonMouseDown(btnLogicIndex));
-            btn.addEventListener('mouseup', () => handleButtonMouseUp(btnLogicIndex));
-            btn.addEventListener('mouseleave', () => handleButtonMouseUp(btnLogicIndex));
-
             return btn;
+        }
+
+        function updatePresetsForButtonCount(count) {
+            // Update each preset's buttons array to match count
+            // For STOMP with count > 8, add IR (yellow) and AMP (orange) buttons
+            const extraButtons = [
+                { n: 'IR', rgb: [0xFF, 0xD7, 0x00], type: 'CC', isAlternate: true },   // Yellow
+                { n: 'AMP', rgb: [0xFF, 0x8C, 0x00], type: 'CC', isAlternate: true }    // Orange
+            ];
+
+            presets.forEach((preset, presetIdx) => {
+                // Ensure preset has enough buttons
+                while (preset.buttons.length < count) {
+                    if (presetIdx === 0) {
+                        // STOMP: add IR and AMP
+                        const extraIdx = preset.buttons.length - 8;
+                        if (extraIdx < extraButtons.length) {
+                            preset.buttons.push({ ...extraButtons[extraIdx] });
+                        } else {
+                            preset.buttons.push({ n: `B${preset.buttons.length + 1}`, rgb: [0x80, 0x80, 0x80], type: 'CC', isAlternate: true });
+                        }
+                    } else {
+                        // Other presets: add generic buttons
+                        preset.buttons.push({ n: `B${preset.buttons.length + 1}`, rgb: [0xFF, 0xFF, 0xFF], type: 'CC' });
+                    }
+                }
+                // Trim if too many
+                if (preset.buttons.length > count) {
+                    preset.buttons.length = count;
+                }
+            });
+
+            // Reset button active states
+            state.buttonActive = new Array(count).fill(false);
         }
 
         function initializeLeds() {
@@ -2348,14 +2400,16 @@
 
         function renderPresetMode() {
             const p = presets[state.presetIndex];
+            const btnCount = p.buttons.length;
+            const btmRowCount = Math.floor(btnCount / 2);
+            const topRowCount = Math.ceil(btnCount / 2);
 
-            // Top Row (Buttons 5-8, indices 4-7)
-            const topRow = `<div class="oled-row-top">
-                <span>${cutName(p.buttons[4].n)}</span>
-                <span>${cutName(p.buttons[5].n)}</span>
-                <span>${cutName(p.buttons[6].n)}</span>
-                <span>${cutName(p.buttons[7].n)}</span>
-            </div>`;
+            // Top Row - higher numbered buttons (btmRowCount+1 to btnCount)
+            let topLabels = '';
+            for (let i = btmRowCount; i < btnCount; i++) {
+                topLabels += `<span>${cutName(p.buttons[i].n)}</span>`;
+            }
+            const topRow = `<div class="oled-row-top">${topLabels}</div>`;
 
             // Main area - Preset name and BPM
             const main = `<div class="oled-main-area">
@@ -2369,13 +2423,12 @@
                 <span>WiFi:${state.wifiOn ? 'Y' : 'N'}</span>
             </div>`;
 
-            // Bottom Row (Buttons 1-4, indices 0-3)
-            const btmRow = `<div class="oled-row-btm">
-                <span>${cutName(p.buttons[0].n)}</span>
-                <span>${cutName(p.buttons[1].n)}</span>
-                <span>${cutName(p.buttons[2].n)}</span>
-                <span>${cutName(p.buttons[3].n)}</span>
-            </div>`;
+            // Bottom Row - lower numbered buttons (0 to btmRowCount-1)
+            let btmLabels = '';
+            for (let i = 0; i < btmRowCount; i++) {
+                btmLabels += `<span>${cutName(p.buttons[i].n)}</span>`;
+            }
+            const btmRow = `<div class="oled-row-btm">${btmLabels}</div>`;
 
             oledContent.innerHTML = topRow + main + status + btmRow;
             applyFontSettings();

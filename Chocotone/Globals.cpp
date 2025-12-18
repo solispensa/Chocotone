@@ -20,7 +20,7 @@ WebServer server(80);
 
 
 // ============================================
-// v2.0 SYSTEM CONFIGURATION
+// v3.0 SYSTEM CONFIGURATION
 // ============================================
 
 SystemConfig systemConfig = {
@@ -28,25 +28,24 @@ SystemConfig systemConfig = {
     DEFAULT_AP_SSID,            // apSSID[24]
     DEFAULT_AP_PASS,            // apPassword[16]
     DEFAULT_BUTTON_COUNT,       // buttonCount
-    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0},  // buttonPins[10] - VERIFIED CORRECT
+    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0},  // buttonPins[10]
     NEOPIXEL_PIN,               // ledPin
     DEFAULT_ENCODER_A,          // encoderA
     DEFAULT_ENCODER_B,          // encoderB
     DEFAULT_ENCODER_BTN,        // encoderBtn
     false,                      // wifiOnAtBoot
-    BLE_CLIENT_ONLY,            // bleMode - default to client for backward compatibility
-    1,                          // ledsPerButton - default 1 LED per button
-    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}  // ledMap[10] - button to LED index mapping
+    BLE_CLIENT_ONLY,            // bleMode
+    1,                          // ledsPerButton
+    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}  // ledMap[10]
 };
 
-bool isWifiOn = false;  // Runtime WiFi state
+bool isWifiOn = false;
 
 // ============================================
-// GLOBAL OVERRIDES
+// GLOBAL SPECIAL ACTIONS
 // ============================================
 
-GlobalOverride globalOverrides[MAX_BUTTONS] = {0};  // Keep for memory layout stability
-SpecialAction globalSpecialActions[MAX_BUTTONS]; // Independent of presets
+GlobalSpecialAction globalSpecialActions[MAX_BUTTONS] = {};
 
 // ============================================
 // PRESET DATA
@@ -54,14 +53,14 @@ SpecialAction globalSpecialActions[MAX_BUTTONS]; // Independent of presets
 
 int currentPreset = 0;
 char presetNames[4][21] = {"Preset 1", "Preset 2", "Preset 3", "Preset 4"};
-ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // All zeros by default
+ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // Zero-initialized
 
 // ============================================
 // UI SETTINGS
 // ============================================
 
-int ledBrightnessOn = 220;   // Default brightness when active
-int ledBrightnessDim = 120;  // Default brightness when dimmed
+int ledBrightnessOn = 220;
+int ledBrightnessDim = 120;
 int buttonDebounce = 120;
 int buttonNameFontSize = 5;
 
@@ -77,7 +76,7 @@ int menuSelection = 0;
 bool inSubMenu = false;
 int editingValue = 0;
 
-// Button state tracking (expanded to MAX_BUTTONS)
+// Button state tracking
 bool buttonPinActive[MAX_BUTTONS] = {false};
 unsigned long lastButtonPressTime_pads[MAX_BUTTONS] = {0};
 int activeNotesOnButtonPins[MAX_BUTTONS] = {0};
@@ -95,6 +94,12 @@ char lastSentMidiString[20] = "";
 // ============================================
 // LED STATE TRACKING
 // ============================================
+
+bool ledToggleState[MAX_BUTTONS] = {false};
+
+// Preset-level LED mode configuration
+PresetLedMode presetLedModes[4] = {PRESET_LED_NORMAL, PRESET_LED_SELECTION, PRESET_LED_SELECTION, PRESET_LED_SELECTION};
+int8_t presetSelectionState[4] = {-1, -1, -1, -1};
 
 uint32_t lastLedColors[NUM_LEDS] = {0};
 
@@ -121,15 +126,13 @@ int tapIndex = 0;
 int tapCount = 0;
 float currentBPM = 120.0;
 int currentDelayType = 0;
-// ledMap is now in systemConfig.ledMap
 
-int rhythmPattern = 0; // Default to 1/4
+int rhythmPattern = 0;
 bool inTapTempoMode = false;
-bool tapModeLocked = false;  // When true, tap tempo mode won't auto-exit
+bool tapModeLocked = false;
 unsigned long tapModeTimeout = 0;
-const float rhythmMultipliers[4] = {1.0, 0.5, 0.75, 2.0};  // 1/4, 1/8, 1/8d, 1/2
+const float rhythmMultipliers[4] = {1.0, 0.5, 0.75, 2.0};
 const char* rhythmNames[4] = {"1/4", "1/8", "1/8d", "1/2"};
 
-// Tap tempo LED blinking
 unsigned long lastTapBlinkTime = 0;
 bool tapBlinkState = false;
