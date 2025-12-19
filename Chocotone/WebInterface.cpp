@@ -1420,9 +1420,9 @@ void handleSerialConfig() {
                         if (sys.containsKey("encoderBtn")) systemConfig.encoderBtn = sys["encoderBtn"];
                         if (sys.containsKey("bleMode")) {
                             String mode = sys["bleMode"].as<String>();
-                            if (mode == "CLIENT") systemConfig.bleMode = 0;
-                            else if (mode == "SERVER") systemConfig.bleMode = 1;
-                            else if (mode == "DUAL") systemConfig.bleMode = 2;
+                            if (mode == "CLIENT") systemConfig.bleMode = static_cast<BleMode>(0);
+                            else if (mode == "SERVER") systemConfig.bleMode = static_cast<BleMode>(1);
+                            else if (mode == "DUAL") systemConfig.bleMode = static_cast<BleMode>(2);
                         }
                         if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
                         saveSystemSettings();
