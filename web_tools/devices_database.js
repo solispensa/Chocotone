@@ -113,43 +113,97 @@ const DEVICE_DATABASE = {
         }
     },
 
-    // ===================================================================
-    // VALETON GP-5
-    // ===================================================================
+    // ===================================================================
+    // VALETON GP-5 (Corrected CC mappings from TonexOneController)
+    // ===================================================================
     "Valeton GP-5": {
         brand: "Valeton",
         model: "GP-5",
-        midi_in: "USB-C",
+        midi_in: "USB-C / Bluetooth",
         midi_channel_default: 1,
         categories: {
-            "Effect Modules": [
-                { name: "PRE On/Off", value: 49, description: "Pre-effect toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "Distortion On/Off", value: 50, description: "Distortion toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "Amp On/Off", value: 51, description: "Amp sim toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "IR On/Off", value: 52, description: "IR/Cab toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "NS On/Off", value: 53, description: "Noise Suppressor toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "EQ On/Off", value: 54, description: "EQ toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "Modulation On/Off", value: 55, description: "Modulation toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "Delay On/Off", value: 56, description: "Delay toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "Reverb On/Off", value: 57, description: "Reverb toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
-                { name: "FX Loop On/Off", value: 58, description: "FX Loop toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 }
+            "Effect Modules (Enable/Disable)": [
+                { name: "NR On/Off", value: 0, description: "Noise Reduction / Gate toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "PRE On/Off", value: 1, description: "Pre-effect (Comp/Boost/Wah/Pitch) toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "DST On/Off", value: 2, description: "Distortion toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "AMP On/Off", value: 3, description: "Amp model toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "CAB On/Off", value: 4, description: "Cabinet/IR toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "EQ On/Off", value: 5, description: "EQ toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "MOD On/Off", value: 6, description: "Modulation toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "DLY On/Off", value: 7, description: "Delay toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "RVB On/Off", value: 8, description: "Reverb toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "Snaptone On/Off", value: 9, description: "NAM/Snaptone toggle", type: "Toggle", min: 0, max: 127, on: 127, off: 0 }
+            ],
+            "Effect Type Selection": [
+                { name: "NR Type", value: 10, description: "Noise Reduction type (0=Gate, 1=NR, 2=NRG)", type: "Parameter", min: 0, max: 2 },
+                { name: "PRE Type", value: 11, description: "Pre-effect type (0-23)", type: "Parameter", min: 0, max: 23 },
+                { name: "DST Type", value: 12, description: "Distortion type (0-23)", type: "Parameter", min: 0, max: 23 },
+                { name: "AMP Type", value: 13, description: "Amp model (0-31)", type: "Parameter", min: 0, max: 31 },
+                { name: "CAB Type", value: 14, description: "Cabinet/IR (0-19)", type: "Parameter", min: 0, max: 19 },
+                { name: "EQ Type", value: 15, description: "EQ type (0-4)", type: "Parameter", min: 0, max: 4 },
+                { name: "MOD Type", value: 16, description: "Modulation type (0-14)", type: "Parameter", min: 0, max: 14 },
+                { name: "DLY Type", value: 17, description: "Delay type (0-9)", type: "Parameter", min: 0, max: 9 },
+                { name: "RVB Type", value: 18, description: "Reverb type (0-9)", type: "Parameter", min: 0, max: 9 },
+                { name: "Snaptone Type", value: 19, description: "NAM model (0-79)", type: "Parameter", min: 0, max: 79 }
             ],
             "Navigation": [
-                { name: "Patch Select", value: 0, description: "Select patch 0-99", type: "Parameter", min: 0, max: 99 },
-                { name: "Bank Down", value: 23, description: "Scroll bank down (-10 patches)", type: "System", min: 0, max: 127 },
-                { name: "Bank Up", value: 24, description: "Scroll bank up (+10 patches)", type: "System", min: 0, max: 127 },
-                { name: "Patch Down", value: 25, description: "Previous patch", type: "System", min: 0, max: 127 },
-                { name: "Patch Up", value: 26, description: "Next patch", type: "System", min: 0, max: 127 }
+                { name: "Preset Select", value: 127, description: "Direct patch select 0-99", type: "Parameter", min: 0, max: 99 },
+                { name: "Preset Down", value: 116, description: "Previous patch", type: "Trigger", min: 0, max: 127 },
+                { name: "Preset Up", value: 117, description: "Next patch", type: "Trigger", min: 0, max: 127 },
+                { name: "BPM", value: 118, description: "Set tempo BPM (0=40 to 127=300)", type: "Parameter", min: 0, max: 127 }
             ],
             "Volume Controls": [
-                { name: "Patch Volume", value: 7, description: "Current patch volume", type: "Parameter", min: 0, max: 100 }
+                { name: "Patch Volume", value: 20, description: "Current patch volume", type: "Parameter", min: 0, max: 127 },
+                { name: "Input Level", value: 120, description: "Input gain", type: "Parameter", min: 0, max: 127 },
+                { name: "CAB Bypass", value: 121, description: "Global CAB bypass", type: "Toggle", min: 0, max: 127, on: 127, off: 0 },
+                { name: "Master Volume", value: 122, description: "Global master volume", type: "Parameter", min: 0, max: 127 },
+                { name: "Record Level", value: 123, description: "USB record level", type: "Parameter", min: 0, max: 127 },
+                { name: "Monitor Level", value: 124, description: "Monitor output level", type: "Parameter", min: 0, max: 127 },
+                { name: "Bluetooth Level", value: 125, description: "Bluetooth audio level", type: "Parameter", min: 0, max: 127 }
             ],
-            "Expression": [
-                { name: "Wah Position", value: 29, description: "Wah pedal position", type: "Parameter", min: 0, max: 127 },
-                { name: "Volume Pedal", value: 30, description: "Volume pedal position", type: "Parameter", min: 0, max: 127 }
+            "NR Parameters": [
+                { name: "NR Param 0", value: 21, description: "NR parameter 0", type: "Parameter", min: 0, max: 127 },
+                { name: "NR Param 1", value: 23, description: "NR parameter 1", type: "Parameter", min: 0, max: 127 },
+                { name: "NR Param 2", value: 24, description: "NR parameter 2", type: "Parameter", min: 0, max: 127 }
+            ],
+            "PRE Parameters": [
+                { name: "PRE Param 0", value: 30, description: "Pre-effect parameter 0", type: "Parameter", min: 0, max: 127 },
+                { name: "PRE Param 1", value: 31, description: "Pre-effect parameter 1", type: "Parameter", min: 0, max: 127 },
+                { name: "PRE Param 2", value: 32, description: "Pre-effect parameter 2", type: "Parameter", min: 0, max: 127 }
+            ],
+            "DST Parameters": [
+                { name: "DST Param 0 (Gain)", value: 38, description: "Distortion gain", type: "Parameter", min: 0, max: 127 },
+                { name: "DST Param 1 (Bass)", value: 39, description: "Distortion bass", type: "Parameter", min: 0, max: 127 },
+                { name: "DST Param 2 (Mid)", value: 40, description: "Distortion mid", type: "Parameter", min: 0, max: 127 },
+                { name: "DST Param 3 (Treble)", value: 41, description: "Distortion treble", type: "Parameter", min: 0, max: 127 },
+                { name: "DST Param 4 (Level)", value: 42, description: "Distortion level", type: "Parameter", min: 0, max: 127 }
+            ],
+            "AMP Parameters": [
+                { name: "AMP Param 0 (Gain)", value: 46, description: "Amp gain", type: "Parameter", min: 0, max: 127 },
+                { name: "AMP Param 1 (Bass)", value: 47, description: "Amp bass", type: "Parameter", min: 0, max: 127 },
+                { name: "AMP Param 2 (Mid)", value: 48, description: "Amp mid", type: "Parameter", min: 0, max: 127 },
+                { name: "AMP Param 3 (Treble)", value: 49, description: "Amp treble", type: "Parameter", min: 0, max: 127 },
+                { name: "AMP Param 4 (Presence)", value: 50, description: "Amp presence", type: "Parameter", min: 0, max: 127 },
+                { name: "AMP Param 5 (Master)", value: 51, description: "Amp master volume", type: "Parameter", min: 0, max: 127 }
+            ],
+            "MOD Parameters": [
+                { name: "MOD Param 0 (Rate)", value: 70, description: "Modulation rate", type: "Parameter", min: 0, max: 127 },
+                { name: "MOD Param 1 (Depth)", value: 71, description: "Modulation depth", type: "Parameter", min: 0, max: 127 },
+                { name: "MOD Param 2", value: 72, description: "Modulation parameter 2", type: "Parameter", min: 0, max: 127 },
+                { name: "MOD Param 3 (Mix)", value: 73, description: "Modulation mix", type: "Parameter", min: 0, max: 127 }
+            ],
+            "DLY Parameters": [
+                { name: "DLY Param 0 (Time)", value: 78, description: "Delay time", type: "Parameter", min: 0, max: 127 },
+                { name: "DLY Param 1 (Feedback)", value: 79, description: "Delay feedback", type: "Parameter", min: 0, max: 127 },
+                { name: "DLY Param 2 (Mix)", value: 80, description: "Delay mix", type: "Parameter", min: 0, max: 127 }
+            ],
+            "RVB Parameters": [
+                { name: "RVB Param 0 (Decay)", value: 86, description: "Reverb decay", type: "Parameter", min: 0, max: 127 },
+                { name: "RVB Param 1 (Damping)", value: 87, description: "Reverb damping", type: "Parameter", min: 0, max: 127 },
+                { name: "RVB Param 2 (Mix)", value: 88, description: "Reverb mix", type: "Parameter", min: 0, max: 127 }
             ],
             "Utilities": [
-                { name: "Tuner On/Off", value: 69, description: "Toggle tuner", type: "Toggle", min: 0, max: 127, on: 127, off: 0 }
+                { name: "Tuner On/Off", value: 69, description: "Toggle tuner mode", type: "Toggle", min: 0, max: 127, on: 127, off: 0 }
             ]
         },
         get cc() {
@@ -160,40 +214,40 @@ const DEVICE_DATABASE = {
             return all;
         },
         templates: {
-            "STOMP Mode": [
-                { name: "PRE", cc: 49, color: "#888888" },
-                { name: "DIST", cc: 50, color: "#fc2c00" },
-                { name: "AMP", cc: 51, color: "#ff8800" },
+            "STOMP Mode (CC)": [
+                { name: "NR", cc: 0, color: "#888888" },
+                { name: "PRE", cc: 1, color: "#3f67ff" },
+                { name: "DST", cc: 2, color: "#fc2c00" },
                 { name: "TAP", cc: null, special: "TAP_TEMPO", color: "#ffffff" },
-                { name: "EQ", cc: 54, color: "#0af500" },
-                { name: "MOD", cc: 55, color: "#ff00ff" },
-                { name: "DLY", cc: 56, color: "#332aff" },
-                { name: "RVB", cc: 57, color: "#8400f7" }
+                { name: "EQ", cc: 5, color: "#0af500" },
+                { name: "MOD", cc: 6, color: "#ff00ff" },
+                { name: "DLY", cc: 7, color: "#332aff" },
+                { name: "RVB", cc: 8, color: "#8400f7" }
             ],
-            "Full Chain": [
-                { name: "PRE", cc: 49, color: "#888888" },
-                { name: "DIST", cc: 50, color: "#fc2c00" },
-                { name: "AMP", cc: 51, color: "#ff8800" },
-                { name: "IR", cc: 52, color: "#ffcc00" },
-                { name: "NS", cc: 53, color: "#666666" },
-                { name: "EQ", cc: 54, color: "#0af500" },
-                { name: "MOD", cc: 55, color: "#ff00ff" },
-                { name: "DLY", cc: 56, color: "#332aff" },
-                { name: "RVB", cc: 57, color: "#8400f7" },
-                { name: "LOOP", cc: 58, color: "#11f3ff" }
+            "Full Chain (CC)": [
+                { name: "NR", cc: 0, color: "#888888" },
+                { name: "PRE", cc: 1, color: "#3f67ff" },
+                { name: "DST", cc: 2, color: "#fc2c00" },
+                { name: "AMP", cc: 3, color: "#ff8800" },
+                { name: "CAB", cc: 4, color: "#ffcc00" },
+                { name: "EQ", cc: 5, color: "#0af500" },
+                { name: "MOD", cc: 6, color: "#ff00ff" },
+                { name: "DLY", cc: 7, color: "#332aff" },
+                { name: "RVB", cc: 8, color: "#8400f7" },
+                { name: "NAM", cc: 9, color: "#11f3ff" }
             ],
             "Bank Selector": [
-                { name: "P1", cc: 0, d2: 1, color: "#ffffff" },
-                { name: "P2", cc: 0, d2: 2, color: "#ffffff" },
-                { name: "P3", cc: 0, d2: 3, color: "#ffffff" },
-                { name: "P4", cc: 0, d2: 4, color: "#ffffff" },
-                { name: "P5", cc: 0, d2: 5, color: "#0af500" },
-                { name: "P6", cc: 0, d2: 6, color: "#0af500" },
-                { name: "P7", cc: 0, d2: 7, color: "#0af500" },
-                { name: "P8", cc: 0, d2: 8, color: "#0af500" }
+                { name: "P1", cc: 127, d2: 0, color: "#ffffff" },
+                { name: "P2", cc: 127, d2: 1, color: "#ffffff" },
+                { name: "P3", cc: 127, d2: 2, color: "#ffffff" },
+                { name: "P4", cc: 127, d2: 3, color: "#ffffff" },
+                { name: "P5", cc: 127, d2: 4, color: "#0af500" },
+                { name: "P6", cc: 127, d2: 5, color: "#0af500" },
+                { name: "P7", cc: 127, d2: 6, color: "#0af500" },
+                { name: "P8", cc: 127, d2: 7, color: "#0af500" }
             ],
-            // GP-5 SysEx toggle template - uses raw SysEx for effect control
-            "GP5 Sysex": [
+            // GP-5 SysEx toggle template - uses raw SysEx for effect control (legacy)
+            "GP5 SysEx (Legacy)": [
                 { name: "PRE", sysexOn: "f0000f00010000000a0101040900010000000000000001000000000000f7", sysexOff: "f0010900010000000a0101040900010000000000000000000000000000f7", color: "#888888" },
                 { name: "DST", sysexOn: "f0030a00010000000a0101040900020000000000000001000000000000f7", sysexOff: "f0020c00010000000a0101040900020000000000000000000000000000f7", color: "#fc2c00" },
                 { name: "AMP", sysexOn: "f0020900010000000a0101040900030000000000000001000000000000f7", sysexOff: "f0030f00010000000a0101040900030000000000000000000000000000f7", color: "#ff8800" },
@@ -387,26 +441,42 @@ function getDeviceTemplates(deviceName) {
     return device.templates || {};
 }
 
-// Build CC select options HTML
+// Build CC select options HTML - shows ALL devices organized by device name
 function buildCCSelectOptions(selectedValue, deviceName) {
-    const device = getDevice(deviceName || currentDevice);
     let html = '<option value="">-- Select CC --</option>';
 
-    // Group by category
-    for (const [category, ccs] of Object.entries(device.categories)) {
-        html += `<optgroup label="${category}">`;
-        for (const cc of ccs) {
-            const selected = cc.value === selectedValue ? ' selected' : '';
-            html += `<option value="${cc.value}"${selected}>${cc.name} (${cc.value})</option>`;
+    // Show CCs from ALL devices, organized by device
+    for (const [devName, device] of Object.entries(DEVICE_DATABASE)) {
+        // Skip Generic MIDI Device as it's just a fallback
+        if (devName === 'Generic MIDI Device') continue;
+
+        // Device-level optgroup
+        html += `<optgroup label="── ${devName} ──">`;
+        for (const [category, ccs] of Object.entries(device.categories)) {
+            for (const cc of ccs) {
+                const selected = cc.value === selectedValue ? ' selected' : '';
+                const shortName = devName === 'Sonicake Pocket Master' ? 'SPM' :
+                    devName === 'Valeton GP-5' ? 'GP5' : devName;
+                html += `<option value="${cc.value}"${selected}>[${shortName}] ${cc.name} (CC${cc.value})</option>`;
+            }
         }
         html += '</optgroup>';
     }
 
     // Allow custom CC values
-    html += '<optgroup label="Custom">';
+    html += '<optgroup label="── Custom CC ──">';
     for (let i = 0; i <= 127; i++) {
-        const existingCC = getCCByValue(i, deviceName);
-        if (!existingCC) {
+        // Only show if not already defined in any device
+        let exists = false;
+        for (const device of Object.values(DEVICE_DATABASE)) {
+            if (device.categories) {
+                for (const ccs of Object.values(device.categories)) {
+                    if (ccs.some(cc => cc.value === i)) { exists = true; break; }
+                }
+            }
+            if (exists) break;
+        }
+        if (!exists) {
             const selected = i === selectedValue ? ' selected' : '';
             html += `<option value="${i}"${selected}>CC ${i}</option>`;
         }

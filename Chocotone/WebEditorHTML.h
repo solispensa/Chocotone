@@ -1021,7 +1021,7 @@ if (typeof window !== 'undefined') {
         var selectedBtn = 0;
         var showSystem = false;
 
-        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', 'LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
+        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
         var midiTypes = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
 
         // ===============================================================
@@ -1266,6 +1266,13 @@ if (typeof window !== 'undefined') {
             html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
             html += '<option value="HYBRID"' + (presetMode === 'HYBRID' ? ' selected' : '') + '>Hybrid</option>';
             html += '</select></div>';
+            // Sync Mode dropdown
+            var syncMode = preset.syncMode || 'NONE';
+            html += '<div class="field"><label>Sync</label><select onchange="chgSyncMode(this.value)">';
+            html += '<option value="NONE"' + (syncMode === 'NONE' ? ' selected' : '') + '>None</option>';
+            html += '<option value="SPM"' + (syncMode === 'SPM' ? ' selected' : '') + '>SPM</option>';
+            html += '<option value="GP5"' + (syncMode === 'GP5' ? ' selected' : '') + '>GP-5</option>';
+            html += '</select></div>';
             html += '</div></div>';
 
             // --- BUTTONS (2 ROWS) ----------------------------------------
@@ -1375,7 +1382,7 @@ if (typeof window !== 'undefined') {
                 html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="Auto" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
                 html += '</div>';
             }
-            else if (msg.action === 'LONG_PRESS') {
+            else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
                 html += '<div class="row">';
                 html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="updMsg(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
                 html += '</div>';
@@ -1469,6 +1476,7 @@ if (typeof window !== 'undefined') {
 
         function chgPreset(v) { presetData.currentPreset = parseInt(v); selectedBtn = 0; showSystem = false; render(); fetch('/preset?p=' + v).catch(e => { }); }
         function chgPresetLedMode(v) { presetData.presets[presetData.currentPreset].presetLedMode = v; render(); }
+        function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
         function selBtn(b) { selectedBtn = b; showSystem = false; render(); }
         function toggleSystem() { showSystem = !showSystem; render(); }
 

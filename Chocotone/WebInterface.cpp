@@ -604,9 +604,10 @@ void handleExport() {
         chunkBuffer += String(presetNames[p]);
         chunkBuffer += "\",\"presetLedMode\":\"";
         chunkBuffer += ledModeStr;
-        chunkBuffer += "\",\"syncSpm\":";
-        chunkBuffer += presetSyncSpm[p] ? "true" : "false";
-        chunkBuffer += ",\"buttons\":[";
+        chunkBuffer += "\",\"syncMode\":\"";
+        chunkBuffer += (presetSyncMode[p] == SYNC_SPM) ? "SPM" : 
+                       (presetSyncMode[p] == SYNC_GP5) ? "GP5" : "NONE";
+        chunkBuffer += "\",\"buttons\":[";
         server.sendContent(chunkBuffer);
         chunkBuffer = ""; // Reset buffer
 
@@ -660,7 +661,7 @@ void handleExport() {
                         msgObj["label"] = labelCopy;
                     }
                 }
-                if (msg.action == ACTION_LONG_PRESS) {
+                if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
                     msgObj["holdMs"] = msg.longPress.holdMs;
                 }
                 if (msg.type == TAP_TEMPO) {
@@ -840,8 +841,16 @@ void handleImportUploadData() {
                 else if (strcmp(pmStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
                 else presetLedModes[p] = PRESET_LED_NORMAL;
                 
-                // SPM Sync setting
-                presetSyncSpm[p] = pObj["syncSpm"] | false;
+                // Sync Mode setting (supports legacy syncSpm boolean + new syncMode string)
+                if (pObj.containsKey("syncMode")) {
+                    const char* syncStr = pObj["syncMode"] | "NONE";
+                    if (strcmp(syncStr, "SPM") == 0) presetSyncMode[p] = SYNC_SPM;
+                    else if (strcmp(syncStr, "GP5") == 0) presetSyncMode[p] = SYNC_GP5;
+                    else presetSyncMode[p] = SYNC_NONE;
+                } else {
+                    // Legacy: syncSpm boolean (true = SYNC_SPM)
+                    presetSyncMode[p] = (pObj["syncSpm"] | false) ? SYNC_SPM : SYNC_NONE;
+                }
                 
                 JsonArray buttons = pObj["buttons"];
                 if (buttons.isNull()) continue;
@@ -884,7 +893,7 @@ void handleImportUploadData() {
                             hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
                             
                             // Parse action-specific data
-                            if (msg.action == ACTION_LONG_PRESS) {
+                            if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
                                 msg.longPress.holdMs = mObj["holdMs"] | 500;  // Default 500ms
                             }
                             if (msg.action == ACTION_COMBO) {
@@ -1223,11 +1232,29 @@ void handleSerialConfig() {
                 Serial.print(systemConfig.apPassword);
                 Serial.print("\",\"buttonCount\":");
                 Serial.print(systemConfig.buttonCount);
-                Serial.print(",\"ledPin\":");
+                Serial.print(",\"buttonPins\":\"");
+                for (int i = 0; i < systemConfig.buttonCount; i++) {
+                    if (i > 0) Serial.print(",");
+                    Serial.print(systemConfig.buttonPins[i]);
+                }
+                Serial.print("\",\"ledPin\":");
                 Serial.print(systemConfig.ledPin);
                 Serial.print(",\"ledsPerButton\":");
                 Serial.print(systemConfig.ledsPerButton);
-                Serial.print(",\"brightness\":");
+                Serial.print(",\"ledMap\":\"");
+                for (int i = 0; i < 10; i++) {
+                    if (i > 0) Serial.print(",");
+                    Serial.print(systemConfig.ledMap[i]);
+                }
+                Serial.print("\",\"encoderA\":");
+                Serial.print(systemConfig.encoderA);
+                Serial.print(",\"encoderB\":");
+                Serial.print(systemConfig.encoderB);
+                Serial.print(",\"encoderBtn\":");
+                Serial.print(systemConfig.encoderBtn);
+                Serial.print(",\"bleMode\":\"");
+                Serial.print(systemConfig.bleMode == 0 ? "CLIENT" : (systemConfig.bleMode == 1 ? "SERVER" : "DUAL"));
+                Serial.print("\",\"brightness\":");
                 Serial.print(ledBrightnessOn);
                 Serial.print("}}");
                 
@@ -1358,8 +1385,45 @@ void handleSerialConfig() {
                         if (sys.containsKey("apSSID")) strncpy(systemConfig.apSSID, sys["apSSID"], 23);
                         if (sys.containsKey("apPassword")) strncpy(systemConfig.apPassword, sys["apPassword"], 15);
                         if (sys.containsKey("buttonCount")) systemConfig.buttonCount = sys["buttonCount"];
+                        // Parse buttonPins string "14,27,26,..." into array
+                        if (sys.containsKey("buttonPins")) {
+                            String pinsStr = sys["buttonPins"].as<String>();
+                            int idx = 0;
+                            int start = 0;
+                            for (int i = 0; i <= pinsStr.length() && idx < 10; i++) {
+                                if (i == pinsStr.length() || pinsStr[i] == ',') {
+                                    if (i > start) {
+                                        systemConfig.buttonPins[idx++] = pinsStr.substring(start, i).toInt();
+                                    }
+                                    start = i + 1;
+                                }
+                            }
+                        }
                         if (sys.containsKey("ledPin")) systemConfig.ledPin = sys["ledPin"];
                         if (sys.containsKey("ledsPerButton")) systemConfig.ledsPerButton = sys["ledsPerButton"];
+                        // Parse ledMap string "0,1,2,..." into array
+                        if (sys.containsKey("ledMap")) {
+                            String mapStr = sys["ledMap"].as<String>();
+                            int idx = 0;
+                            int start = 0;
+                            for (int i = 0; i <= mapStr.length() && idx < 10; i++) {
+                                if (i == mapStr.length() || mapStr[i] == ',') {
+                                    if (i > start) {
+                                        systemConfig.ledMap[idx++] = mapStr.substring(start, i).toInt();
+                                    }
+                                    start = i + 1;
+                                }
+                            }
+                        }
+                        if (sys.containsKey("encoderA")) systemConfig.encoderA = sys["encoderA"];
+                        if (sys.containsKey("encoderB")) systemConfig.encoderB = sys["encoderB"];
+                        if (sys.containsKey("encoderBtn")) systemConfig.encoderBtn = sys["encoderBtn"];
+                        if (sys.containsKey("bleMode")) {
+                            String mode = sys["bleMode"].as<String>();
+                            if (mode == "CLIENT") systemConfig.bleMode = 0;
+                            else if (mode == "SERVER") systemConfig.bleMode = 1;
+                            else if (mode == "DUAL") systemConfig.bleMode = 2;
+                        }
                         if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
                         saveSystemSettings();
                         Serial.println("System config saved!");

@@ -396,7 +396,7 @@
         var presetData = {
             presets: [
                 {
-                    name: "STOMP", presetLedMode: "NORMAL", syncSpm: true, buttons: [
+                    name: "STOMP", presetLedMode: "NORMAL", syncMode: "SPM", buttons: [
                         { name: "NR", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 43, data2: 127, rgb: "#ffffff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 43, data2: 0, rgb: "#ffffff" }] },
                         { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
                         { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
@@ -632,7 +632,13 @@
             html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
             html += '<option value="HYBRID"' + (presetMode === 'HYBRID' ? ' selected' : '') + '>Hybrid</option>';
             html += '</select></div>';
-            html += '<div class="field"><label>Sync SPM</label><input type="checkbox"' + (preset.syncSpm ? ' checked' : '') + ' onchange="chgSyncSpm(this.checked)" title="Sync effect states from Pocket Master"></div>';
+            // Sync Mode dropdown
+            var syncMode = preset.syncMode || 'NONE';
+            html += '<div class="field"><label>Sync</label><select onchange="chgSyncMode(this.value)">';
+            html += '<option value="NONE"' + (syncMode === 'NONE' ? ' selected' : '') + '>None</option>';
+            html += '<option value="SPM"' + (syncMode === 'SPM' ? ' selected' : '') + '>SPM</option>';
+            html += '<option value="GP5"' + (syncMode === 'GP5' ? ' selected' : '') + '>GP-5</option>';
+            html += '</select></div>';
             html += '</div></div>';
 
             // --- BUTTONS (2 ROWS) ----------------------------------------
@@ -750,7 +756,7 @@
                 html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="Auto" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
                 html += '</div>';
             }
-            else if (msg.action === 'LONG_PRESS') {
+            else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
                 html += '<div class="row">';
                 html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="updMsg(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
                 html += '</div>';
@@ -886,7 +892,7 @@
         }
         function chgPreset(idx) { presetData.currentPreset = parseInt(idx); selectedBtn = 0; render(); }
         function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
-        function chgSyncSpm(checked) { presetData.presets[presetData.currentPreset].syncSpm = checked; }
+        function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
         function selBtn(idx) { selectedBtn = idx; showSystem = false; render(); }
         function toggleSystem() { showSystem = !showSystem; render(); }
         function updSys(k, v) { presetData.system[k] = v; }
@@ -973,23 +979,58 @@
             'SPM: Delay Feedback 70%': 'f00e0300010000000e01010408000700000000000000020000000000000000000008080402f7',
             'SPM: Delay Feedback 80%': 'f00b0100010000000e0101040800070000000000000002000000000000000000000a000402f7',
             'SPM: Delay Feedback 90%': 'f00e0600010000000e0101040800070000000000000002000000000000000000000b000402f7',
-            'SPM: Delay Feedback 100%': 'f00e0c00010000000e0101040800070000000000000002000000000000000000000c080402f7'
+            'SPM: Delay Feedback 100%': 'f00e0c00010000000e0101040800070000000000000002000000000000000000000c080402f7',
+            // ========== GP-5 SYSEX PRESETS ==========
+            // GP-5 Effect On/Off (computed with CRC8)
+            'GP5: NR - ON': 'f0010c00010000000a0101040900000000000000000001000000000000f7',
+            'GP5: NR - OFF': 'f0000a00010000000a0101040900000000000000000000000000000000f7',
+            'GP5: PRE - ON': 'f0000f00010000000a0101040900010000000000000001000000000000f7',
+            'GP5: PRE - OFF': 'f0010900010000000a01010409000100000000000000000000000000000000f7',
+            'GP5: DST - ON': 'f0030a00010000000a0101040900020000000000000001000000000000f7',
+            'GP5: DST - OFF': 'f0020c00010000000a01010409000200000000000000000000000000000000f7',
+            'GP5: AMP - ON': 'f0020900010000000a0101040900030000000000000001000000000000f7',
+            'GP5: AMP - OFF': 'f0030f00010000000a01010409000300000000000000000000000000000000f7',
+            'GP5: CAB - ON': 'f0050000010000000a0101040900040000000000000001000000000000f7',
+            'GP5: CAB - OFF': 'f0040600010000000a01010409000400000000000000000000000000000000f7',
+            'GP5: EQ - ON': 'f0040300010000000a0101040900050000000000000001000000000000f7',
+            'GP5: EQ - OFF': 'f0050500010000000a01010409000500000000000000000000000000000000f7',
+            'GP5: MOD - ON': 'f0070600010000000a0101040900060000000000000001000000000000f7',
+            'GP5: MOD - OFF': 'f0060000010000000a01010409000600000000000000000000000000000000f7',
+            'GP5: DLY - ON': 'f0060500010000000a0101040900070000000000000001000000000000f7',
+            'GP5: DLY - OFF': 'f0070300010000000a01010409000700000000000000000000000000000000f7',
+            'GP5: RVB - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'GP5: RVB - OFF': 'f0090200010000000a01010409000800000000000000000000000000000000f7',
+            'GP5: NS - ON': 'f0090700010000000a0101040900090000000000000001000000000000f7',
+            'GP5: NS - OFF': 'f0080100010000000a01010409000900000000000000000000000000000000f7'
         };
 
         function getSysexPickerOptions() {
-            var html = '<option value="">-- Select Preset --</option>';
-            html += '<optgroup label="Reverb Type">';
+            var html = '<option value="">-- Select SysEx Preset --</option>';
+            // SPM SysEx Presets
+            html += '<optgroup label="── Sonicake Pocket Master ──">';
+            html += '<optgroup label="[SPM] Reverb Type">';
             for (var k in sysexPresets) { if (k.indexOf('Reverb Type') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
-            html += '</optgroup><optgroup label="Reverb ON/OFF">';
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb ON/OFF">';
             for (var k in sysexPresets) { if (k.indexOf('Reverb - O') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
-            html += '</optgroup><optgroup label="Delay Time">';
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Time">';
             for (var k in sysexPresets) { if (k.indexOf('Delay Time') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
-            html += '</optgroup><optgroup label="Delay Mix">';
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Mix">';
             for (var k in sysexPresets) { if (k.indexOf('Delay Mix') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
-            html += '</optgroup><optgroup label="Reverb Decay">';
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb Decay">';
             for (var k in sysexPresets) { if (k.indexOf('Reverb Decay') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
-            html += '</optgroup><optgroup label="Delay Feedback">';
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Feedback">';
             for (var k in sysexPresets) { if (k.indexOf('Delay Feedback') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            // GP-5 SysEx Presets
+            html += '<optgroup label="── Valeton GP-5 ──">';
+            html += '<optgroup label="[GP5] Effect On/Off">';
+            for (var k in sysexPresets) { if (k.indexOf('GP5:') === 0) html += '<option value="' + k + '">' + k.replace('GP5: ', '') + '</option>'; }
+            html += '</optgroup>';
             html += '</optgroup>';
             return html;
         }
@@ -1079,8 +1120,14 @@
                                 if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
                                 if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
                                 if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                                if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
                                 if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
                                 if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                                if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                                if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                                if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                                if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                                if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
                                 if (data.system.brightness) presetData.system.brightness = data.system.brightness;
                             }
                             presetData.currentPreset = data.currentPreset || 0;
