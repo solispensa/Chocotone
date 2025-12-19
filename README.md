@@ -336,7 +336,7 @@ I'm very grateful to everyone who helped me with this project ❤️
 
 - **Gustavo Silveira** ([Nerd Musician](https://www.youtube.com/@NerdMusician) on YouTube) — My mentor and great friend, who introduced me to this custom MIDI controller world and taught me almost everything I know about MIDI.
 - **Wisut Maneewan** — My friend from Thailand, who believed in the project and helped me a lot developing the code and debugging.
-- **Tom Carlo** from [PedalBot](https://www.pedalbot.com/) — Helped me understand the Tap Tempo logic for the SPM (check out the PedalBot controllers, they are amazing!).
+- **Tom Carlo** from [PedalBot](https://www.instagram.com/pedalbot_official/) — Helped me understand the Tap Tempo logic for the SPM (check out the PedalBot controllers, they are amazing!).
 - **Elmar Drexhuber** ([@ayeapprove](https://www.youtube.com/@ayeapprove) on YouTube) — Made an AWESOME website for the SPM (search for PocketEdit). This website code was used as a foundation for the Chocotone.
 - **René Alejandro Valladares** — Made a GP-5 HTML editor, similar to PocketEdit, and a beautiful custom MIDI controller for GP-5. I'm learning through his code about the GP-5 sync feature.
 - **Greg Smith** — Made a very inspiring controller for Tonex One and GP-5, a great reference for anyone in this field ([TonexOneController on GitHub](https://github.com/Builty/TonexOneController)). Very grateful for his contribution to this community. I'm starting to learn a lot from his code; my findings are still to be implemented in the Chocotone.
