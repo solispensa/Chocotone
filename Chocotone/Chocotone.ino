@@ -208,6 +208,12 @@ void loop() {
     if (!isWifiOn) {
         handleBleConnection();
         checkForSysex();
+        
+        // Apply SPM effect state to buttons if received and sync enabled
+        if (spmStateReceived && presetSyncSpm[currentPreset]) {
+            spmStateReceived = false;
+            applySpmStateToButtons();
+        }
     }
     
     // Handle serial commands for offline editor config transfer

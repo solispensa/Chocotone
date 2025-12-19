@@ -19,6 +19,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
+            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
             Serial.printf("PRESET UP → Preset %d\n", currentPreset);
             return;
             
@@ -27,6 +28,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
+            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
             Serial.printf("PRESET DOWN → Preset %d\n", currentPreset);
             return;
             
@@ -35,6 +37,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
+            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
             return;
             
         case WIFI_TOGGLE:
@@ -182,7 +185,11 @@ void loop_presetMode() {
                     if (isSelectionButton) {
                         presetSelectionState[currentPreset] = i;
                     } else if (config.ledMode == LED_TOGGLE) {
-                        ledToggleState[i] = !ledToggleState[i];
+                        // For SPM sync presets, don't toggle here - wait for SPM response
+                        // For non-SPM presets, toggle immediately as before
+                        if (!presetSyncSpm[currentPreset]) {
+                            ledToggleState[i] = !ledToggleState[i];
+                        }
                     }
                     updateLeds();
                     
@@ -205,7 +212,10 @@ void loop_presetMode() {
                                         (presetMode == PRESET_LED_HYBRID && partnerConfig.inSelectionGroup)) {
                                         presetSelectionState[currentPreset] = partner;
                                     } else if (partnerConfig.ledMode == LED_TOGGLE) {
-                                        ledToggleState[partner] = !ledToggleState[partner];
+                                        // For SPM sync presets, don't toggle here
+                                        if (!presetSyncSpm[currentPreset]) {
+                                            ledToggleState[partner] = !ledToggleState[partner];
+                                        }
                                     }
                                     updateLeds();
                                 }
@@ -332,6 +342,9 @@ void loop_presetMode() {
                         // Find the appropriate action based on toggle state
                         ActionMessage* action = nullptr;
                         
+                        Serial.printf("BTN %d: isAlternate=%d, has2nd=%d\n", 
+                            i, config.isAlternate, hasAction(config, ACTION_2ND_PRESS));
+                        
                         if (config.isAlternate) {
                             // Toggle mode - alternate between PRESS and 2ND_PRESS
                             action = findAction(config, ACTION_2ND_PRESS);
@@ -345,6 +358,9 @@ void loop_presetMode() {
                         }
                         
                         if (action) {
+                            Serial.printf("BTN %d: action type=%d, data1=%d, data2=%d\n",
+                                i, action->type, action->data1, action->data2);
+                            
                             strncpy(buttonNameToShow, config.name, 20);
                             buttonNameToShow[20] = '\0';
                             buttonNameDisplayUntil = millis() + 500;
@@ -358,8 +374,15 @@ void loop_presetMode() {
                                 // Toggle alternate state if button has 2ND_PRESS
                                 if (hasAction(config, ACTION_2ND_PRESS)) {
                                     config.isAlternate = !config.isAlternate;
+                                    // Also update LED state to match (for SPM sync presets that skip early toggle)
+                                    ledToggleState[i] = config.isAlternate;
+                                    Serial.printf("BTN %d: toggled isAlternate to %d, LED=%d\n", 
+                                        i, config.isAlternate, ledToggleState[i]);
+                                    updateLeds();
                                 }
                             }
+                        } else {
+                            Serial.printf("BTN %d: NO ACTION FOUND!\n", i);
                         }
                     }
                 }
@@ -370,8 +393,13 @@ void loop_presetMode() {
                 if (!buttonComboChecked[i]) {
                     ButtonConfig& config = buttonConfigs[currentPreset][i];
                     
-                    // Check for RELEASE action
-                    ActionMessage* releaseAction = findAction(config, ACTION_RELEASE);
+                    // Check for RELEASE or 2ND_RELEASE action based on isAlternate state
+                    ActionType releaseType = config.isAlternate ? ACTION_2ND_RELEASE : ACTION_RELEASE;
+                    ActionMessage* releaseAction = findAction(config, releaseType);
+                    if (!releaseAction) {
+                        // Fallback: try the regular RELEASE action if 2ND_RELEASE not found
+                        releaseAction = findAction(config, ACTION_RELEASE);
+                    }
                     if (releaseAction) {
                         executeActionMessage(*releaseAction);
                     }
@@ -389,10 +417,16 @@ void loop_presetMode() {
             }
         }
         
-        // ===== CHECK FOR LONG_PRESS ACTION =====
+        // ===== CHECK FOR LONG_PRESS OR 2ND_LONG_PRESS ACTION =====
         if (buttonPinActive[i] && !buttonHoldFired[i] && !buttonComboChecked[i]) {
             ButtonConfig& config = buttonConfigs[currentPreset][i];
-            ActionMessage* longPress = findAction(config, ACTION_LONG_PRESS);
+            // Check for 2ND_LONG_PRESS if in alternate state, otherwise LONG_PRESS
+            ActionType longPressType = config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
+            ActionMessage* longPress = findAction(config, longPressType);
+            if (!longPress) {
+                // Fallback: try regular LONG_PRESS if 2ND_LONG_PRESS not found
+                longPress = findAction(config, ACTION_LONG_PRESS);
+            }
             
             if (longPress) {
                 unsigned long elapsed = millis() - buttonHoldStartTime[i];
@@ -540,6 +574,7 @@ void handleEncoderButtonPress() {
                 saveCurrentPresetIndex();
                 displayOLED();
                 updateLeds();
+                if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
             }
         } else if (pressDuration >= LONG_PRESS_DURATION) {
             if (currentMode == 0) {

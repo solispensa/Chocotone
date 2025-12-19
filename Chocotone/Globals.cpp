@@ -60,7 +60,7 @@ ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // Zero-initialized
 // ============================================
 
 int ledBrightnessOn = 220;
-int ledBrightnessDim = 120;
+int ledBrightnessDim = 20;
 int buttonDebounce = 120;
 int buttonNameFontSize = 5;
 
@@ -102,6 +102,15 @@ PresetLedMode presetLedModes[4] = {PRESET_LED_NORMAL, PRESET_LED_SELECTION, PRES
 int8_t presetSelectionState[4] = {-1, -1, -1, -1};
 
 uint32_t lastLedColors[NUM_LEDS] = {0};
+
+// ============================================
+// SPM EFFECT STATE SYNC
+// ============================================
+
+bool presetSyncSpm[4] = {false, false, false, false};  // Per-preset sync with SPM
+bool spmEffectStates[9] = {false};  // NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB
+bool spmStateReceived = false;
+unsigned long lastSpmStateRequest = 0;
 
 // ============================================
 // OLED HEALTH MONITORING

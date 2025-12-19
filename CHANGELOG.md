@@ -1,6 +1,40 @@
 # Changelog
 
-All notable changes to the ESP32 MIDI Controller project will be documented in this file.
+All notable changes to the Chocotone MIDI Controller project will be documented in this file.
+
+## [v1.3] - 2024-12-19
+
+### Added
+- **SPM Effect State Sync** - Real-time synchronization of effect ON/OFF states with Sonicake Pocket Master
+  - Per-preset "Sync SPM" option to enable/disable sync behavior
+  - Automatic LED state updates when SPM preset changes
+  - Works with SPM's 32-byte state update SysEx messages
+- **New Action Types** - Extended action system with alternate variants:
+  - `2ND_RELEASE` - Triggered on release after using 2ND_PRESS (fallback to RELEASE if not defined)
+  - `2ND_LONG_PRESS` - Triggered on long-press after using 2ND_PRESS (fallback to LONG_PRESS if not defined)
+- **SysEx Picker** - Dropdown menu with pre-configured SPM SysEx commands:
+  - Reverb Type (10 types: Air, Room, Hall, Church, Plate L, Plate, Spring, N-Star, Deepsea, Sweet Space)
+  - Reverb ON/OFF toggle
+  - Delay Time (100-500ms common values)
+  - Delay Mix (0-100% in 10% increments)
+  - Delay Feedback (0-100% in 10% increments)
+  - Reverb Decay (10-100% common values)
+- **Increased SysEx Buffer** - Extended from 16 to 48 bytes to support longer SPM commands
+- **USB Serial Configuration** - Full read/write support for configuration via USB
+  - `GET_CONFIG` command returns full JSON configuration
+  - `SET_CONFIG_START/CHUNK/END` protocol for uploading configurations
+  - Offline Editor v2 now supports direct USB connection
+
+### Fixed
+- **SysEx Save/Load** - SysEx commands now correctly persist through USB serial round-trips
+- **SPM Sync Race Conditions** - Disabled faulty 32-byte SysEx parser that caused state corruption
+- **LED State Conflicts** - LED toggle state now updates after action execution for SPM-synced presets
+
+### Changed
+- Offline Editor v2 now includes USB Serial connection panel
+- SysEx field now has both picker dropdown and manual hex input
+
+---
 
 ## [v1.2] - 2024-12-16
 

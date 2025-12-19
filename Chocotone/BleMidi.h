@@ -24,6 +24,7 @@ void sendMidiToServer(byte* data, size_t length);
 void clearBLEBonds();
 void checkForSysex();
 void requestPresetState();
+void applySpmStateToButtons();  // Apply received SPM state to button toggles
 
 // Mode helpers
 inline bool isBleClientEnabled() {

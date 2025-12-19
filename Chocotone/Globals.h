@@ -45,13 +45,15 @@ enum MidiCommandType : uint8_t {
 // Action Type - when this message triggers
 enum ActionType : uint8_t {
     ACTION_NONE = 0,
-    ACTION_PRESS,       // On button press (primary action)
-    ACTION_2ND_PRESS,   // Alternate press (toggle behavior)
-    ACTION_RELEASE,     // On button release
-    ACTION_LONG_PRESS,  // After holding for threshold
-    ACTION_DOUBLE_TAP,  // Quick double press
-    ACTION_COMBO,       // When pressed with partner button
-    ACTION_NO_ACTION    // Disabled/empty slot
+    ACTION_PRESS,           // On button press (primary action)
+    ACTION_2ND_PRESS,       // Alternate press (toggle behavior)
+    ACTION_RELEASE,         // On button release
+    ACTION_2ND_RELEASE,     // Alternate release (after 2ND_PRESS)
+    ACTION_LONG_PRESS,      // After holding for threshold
+    ACTION_2ND_LONG_PRESS,  // Alternate long-press (after 2ND_PRESS)
+    ACTION_DOUBLE_TAP,      // Quick double press
+    ACTION_COMBO,           // When pressed with partner button
+    ACTION_NO_ACTION        // Disabled/empty slot
 };
 
 // LED Mode - how LED responds to button press (per-button setting)
@@ -98,13 +100,13 @@ struct ActionMessage {
             int8_t tapLock;     // Button for tap lock toggle
         } tapTempo;
         
-        // For SYSEX type - reduced buffer (most effect toggles are <16 bytes)
+        // For SYSEX type - 48-byte buffer for longer SPM commands (delay_time, reverb etc.)
         struct {
-            uint8_t data[16];   // Raw SysEx bytes (including F0 and F7)
+            uint8_t data[48];   // Raw SysEx bytes (including F0 and F7)
             uint8_t length;     // Number of valid bytes
         } sysex;
         
-        uint8_t _padding[17];   // Ensure union is 17 bytes (sysex is largest now)
+        uint8_t _padding[49];   // Ensure union is 49 bytes (sysex is largest now)
     };
 };
 
@@ -240,8 +242,18 @@ extern int8_t presetSelectionState[4];
 extern uint32_t lastLedColors[NUM_LEDS];
 
 // ============================================
+// SPM EFFECT STATE SYNC
+// ============================================
+
+extern bool presetSyncSpm[4];           // Per-preset "Sync FX - SPM" setting
+extern bool spmEffectStates[9];         // NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB
+extern bool spmStateReceived;           // Flag: state was received from SPM
+extern unsigned long lastSpmStateRequest; // Debounce state requests
+
+// ============================================
 // OLED HEALTH MONITORING
 // ============================================
+
 
 extern bool oledHealthy;
 extern unsigned long lastOledCheck;

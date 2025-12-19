@@ -65,7 +65,7 @@ void loadSystemSettings() {
     // UI Settings (prefixed keys in new format)
     buttonNameFontSize = systemPrefs.getInt("s_font", 5);
     ledBrightnessOn = systemPrefs.getInt("s_ledOn", 220);
-    ledBrightnessDim = systemPrefs.getInt("s_ledDim", 120);
+    ledBrightnessDim = systemPrefs.getInt("s_ledDim", 20);
     buttonDebounce = systemPrefs.getInt("s_debounce", 120);
     rhythmPattern = systemPrefs.getInt("s_rhythm", 0);
     if (rhythmPattern < 0 || rhythmPattern > 3) rhythmPattern = 0;
@@ -154,6 +154,7 @@ void savePresets() {
     
     prefs.putBytes("presetNames", presetNames, sizeof(presetNames));
     prefs.putBytes("ledModes", presetLedModes, sizeof(presetLedModes));
+    prefs.putBytes("syncSpm", presetSyncSpm, sizeof(presetSyncSpm));  // SPM sync settings
     
     yield();
     
@@ -203,7 +204,14 @@ void loadPresets() {
         if (lenModes == sizeof(presetLedModes)) {
             systemPrefs.getBytes("ledModes", presetLedModes, lenModes);
         }
-
+        
+        // Load SPM sync settings
+        size_t lenSync = systemPrefs.getBytesLength("syncSpm");
+        if (lenSync == sizeof(presetSyncSpm)) {
+            systemPrefs.getBytes("syncSpm", presetSyncSpm, lenSync);
+            Serial.printf("SPM Sync: P1=%d P2=%d P3=%d P4=%d\n", 
+                presetSyncSpm[0], presetSyncSpm[1], presetSyncSpm[2], presetSyncSpm[3]);
+        }
         
         // Load global special actions
         size_t lenSpecials = systemPrefs.getBytesLength("specials");

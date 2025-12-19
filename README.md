@@ -33,13 +33,15 @@
   - Addressable buttons for rhythm navigation (prev/next)
   - Lock mode to prevent auto-timeout
 - **Action-Based Message System** - Flexible message triggering:
-  - Press / 2nd Press (toggle) / Release
-  - Long Press with configurable hold time
+  - Press / 2nd Press (toggle)
+  - Release / 2nd Release (alternate release)
+  - Long Press / 2nd Long Press with configurable hold time
   - Double Tap detection
   - Combo (two-button simultaneous press)
 - **4 Presets** - Store and recall different button configurations
   - Per-preset LED modes (Normal, Selection, Hybrid)
   - Selection groups for bank switching
+  - SPM Sync mode for real-time effect state synchronization
 - **Alternate Messages** - Toggle between two MIDI messages per button
 
 ### Configuration & Management
@@ -48,7 +50,8 @@
   - **Dynamic Layouts** - Real-time updates for 4-10 button configurations
   - **Smart Templates** - Integrated device database for Sonicake Pocket Master, Hotone Ampero, and more
   - **CC Picker** - Quick selection of common Control Change numbers by name
-  - **SysEx Editor** - Direct hex entry for custom SysEx messages
+  - **SysEx Picker** - Dropdown with pre-configured SPM commands (reverb type, delay time/mix/feedback, etc.)
+  - **SysEx Editor** - Manual hex entry for custom SysEx messages (up to 48 bytes)
 - **Export/Import** - Full configuration backup/restore with JSON format
 - **Offline Editor v2** - Fully functional standalone HTML editor with device database
 - **NVS Storage** - All settings persist across power cycles (reliable save with auto-reboot)

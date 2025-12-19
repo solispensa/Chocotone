@@ -387,7 +387,7 @@
         var selectedBtn = 0;
         var showSystem = false;
 
-        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', 'LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
+        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
         var midiTypes = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
 
         // ===============================================================
@@ -396,7 +396,7 @@
         var presetData = {
             presets: [
                 {
-                    name: "STOMP", presetLedMode: "NORMAL", buttons: [
+                    name: "STOMP", presetLedMode: "NORMAL", syncSpm: true, buttons: [
                         { name: "NR", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 43, data2: 127, rgb: "#ffffff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 43, data2: 0, rgb: "#ffffff" }] },
                         { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
                         { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
@@ -632,6 +632,7 @@
             html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
             html += '<option value="HYBRID"' + (presetMode === 'HYBRID' ? ' selected' : '') + '>Hybrid</option>';
             html += '</select></div>';
+            html += '<div class="field"><label>Sync SPM</label><input type="checkbox"' + (preset.syncSpm ? ' checked' : '') + ' onchange="chgSyncSpm(this.checked)" title="Sync effect states from Pocket Master"></div>';
             html += '</div></div>';
 
             // --- BUTTONS (2 ROWS) ----------------------------------------
@@ -777,10 +778,13 @@
                 html += '</div>';
             }
 
-            // SysEx hex input field
+            // SysEx hex input field with picker
             if (msg.type === 'SYSEX') {
                 html += '<div class="row" style="margin-top:8px">';
-                html += '<div class="field" style="flex:1"><label>SysEx Hex (e.g. f00f0f00...f7)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="updMsg(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
+                html += '<div class="field" style="flex:1"><label>SysEx Preset</label><select style="font-size:11px" onchange="applySysexPreset(' + i + ',this.value)">' + getSysexPickerOptions() + '</select></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-top:6px">';
+                html += '<div class="field" style="flex:1"><label>SysEx Hex (manual edit)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="updMsg(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
                 html += '</div>';
             }
 
@@ -880,6 +884,11 @@
             presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
             render();
         }
+        function chgPreset(idx) { presetData.currentPreset = parseInt(idx); selectedBtn = 0; render(); }
+        function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
+        function chgSyncSpm(checked) { presetData.presets[presetData.currentPreset].syncSpm = checked; }
+        function selBtn(idx) { selectedBtn = idx; showSystem = false; render(); }
+        function toggleSystem() { showSystem = !showSystem; render(); }
         function updSys(k, v) { presetData.system[k] = v; }
         function saveChanges() {
             // In offline mode, save means export to JSON area
@@ -909,6 +918,87 @@
         function importJSON() { try { var data = JSON.parse(document.getElementById('jsonArea').value); if (data.presets) { presetData = data; selectedBtn = 0; showSystem = false; render(); alert('Imported!'); } else alert('Invalid format'); } catch (e) { alert('Error: ' + e.message); } }
         function copyJSON() { exportJSON(); navigator.clipboard.writeText(document.getElementById('jsonArea').value); alert('Copied!'); }
         function downloadJSON() { exportJSON(); var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chocotone_config.json'; a.click(); }
+
+        // ========== SYSEX PRESETS DATABASE (SPM) ==========
+        var sysexPresets = {
+            // Reverb Types (10 types)
+            'SPM: Reverb Type - Air': 'f0050b00010000000e0101040700080000000000000008000000000000000b00000000000cf7',
+            'SPM: Reverb Type - Room': 'f00d0100010000000e0101040700080000000000000008000000000000000000000000000cf7',
+            'SPM: Reverb Type - Hall': 'f00c0700010000000e0101040700080000000000000008000000000000000100000000000cf7',
+            'SPM: Reverb Type - Church': 'f00f0d00010000000e0101040700080000000000000008000000000000000200000000000cf7',
+            'SPM: Reverb Type - Plate L': 'f00b0600010000000e0101040700080000000000000008000000000000010000000000000cf7',
+            'SPM: Reverb Type - Plate': 'f0000300010000000e0101040700080000000000000008000000000000000f00000000000cf7',
+            'SPM: Reverb Type - Spring': 'f0080900010000000e0101040700080000000000000008000000000000000400000000000cf7',
+            'SPM: Reverb Type - N-Star': 'f00a0500010000000e0101040700080000000000000008000000000000000600000000000cf7',
+            'SPM: Reverb Type - Deepsea': 'f00b0300010000000e0101040700080000000000000008000000000000000700000000000cf7',
+            'SPM: Reverb Type - Sweet Space': 'f00f0800010000000e0101040700080000000000000008000000000000010500000000000cf7',
+            // Reverb On/Off
+            'SPM: Reverb - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'SPM: Reverb - OFF': 'f0090200010000000a0101040900080000000000000000000000000000f7',
+            // Delay Time (common values)
+            'SPM: Delay Time 100ms': 'f00d0900010000000e0101040800070000000000000001000000000000000000000c080402f7',
+            'SPM: Delay Time 150ms': 'f00b0200010000000e01010408000700000000000000010000000000000000000001060403f7',
+            'SPM: Delay Time 200ms': 'f0060800010000000e01010408000700000000000000010000000000000000000004080403f7',
+            'SPM: Delay Time 250ms': 'f00a0e00010000000e010104080007000000000000000100000000000000000000070a0403f7',
+            'SPM: Delay Time 300ms': 'f0000400010000000e01010408000700000000000000010000000000000000000009060403f7',
+            'SPM: Delay Time 350ms': 'f00b0700010000000e0101040800070000000000000001000000000000000000000b060403f7',
+            'SPM: Delay Time 400ms': 'f00d0e00010000000e0101040800070000000000000001000000000000000000000c080403f7',
+            'SPM: Delay Time 500ms': 'f0000d00010000000e0101040800070000000000000001000000000000000000000f0a0403f7',
+            // Delay Mix (common values)
+            'SPM: Delay Mix 0%': 'f0040600010000000e01010408000700000000000000000000000000000000000000000000f7',
+            'SPM: Delay Mix 10%': 'f0020800010000000e01010408000700000000000000000000000000000000000002000401f7',
+            'SPM: Delay Mix 20%': 'f0090e00010000000e0101040800070000000000000000000000000000000000000a000401f7',
+            'SPM: Delay Mix 30%': 'f0090200010000000e0101040800070000000000000000000000000000000000000f000401f7',
+            'SPM: Delay Mix 40%': 'f0020100010000000e01010408000700000000000000000000000000000000000002000402f7',
+            'SPM: Delay Mix 50%': 'f0070c00010000000e01010408000700000000000000000000000000000000000004080402f7',
+            'SPM: Delay Mix 60%': 'f0020d00010000000e01010408000700000000000000000000000000000000000007000402f7',
+            'SPM: Delay Mix 70%': 'f00c0500010000000e010104080007000000000000000000000000000000000000080c0402f7',
+            'SPM: Delay Mix 80%': 'f0090700010000000e0101040800070000000000000000000000000000000000000a000402f7',
+            'SPM: Delay Mix 90%': 'f00c0000010000000e0101040800070000000000000000000000000000000000000b000402f7',
+            'SPM: Delay Mix 100%': 'f00c0a00010000000e0101040800070000000000000000000000000000000000000c080402f7',
+            // Reverb Decay (common values)
+            'SPM: Reverb Decay 10%': 'f0020800010000000e01010408000800000000000000020000000000000000000002000401f7',
+            'SPM: Reverb Decay 30%': 'f0090200010000000e01010408000800000000000000020000000000000000000002080401f7',
+            'SPM: Reverb Decay 50%': 'f0070c00010000000e01010408000800000000000000020000000000000000000004080402f7',
+            'SPM: Reverb Decay 70%': 'f00c0500010000000e010104080008000000000000000200000000000000000000080c0402f7',
+            'SPM: Reverb Decay 100%': 'f0040800010000000e0101040800080000000000000002000000000000000000000c060402f7',
+            // Delay Feedback (common values)
+            'SPM: Delay Feedback 0%': 'f0060000010000000e01010408000700000000000000020000000000000000000000000000f7',
+            'SPM: Delay Feedback 10%': 'f0000e00010000000e01010408000700000000000000020000000000000000000002000401f7',
+            'SPM: Delay Feedback 20%': 'f00b0800010000000e0101040800070000000000000002000000000000000000000a000401f7',
+            'SPM: Delay Feedback 30%': 'f00b0400010000000e0101040800070000000000000002000000000000000000000f000401f7',
+            'SPM: Delay Feedback 40%': 'f0000700010000000e01010408000700000000000000020000000000000000000002000402f7',
+            'SPM: Delay Feedback 50%': 'f0050a00010000000e01010408000700000000000000020000000000000000000004080402f7',
+            'SPM: Delay Feedback 60%': 'f0000b00010000000e01010408000700000000000000020000000000000000000007000402f7',
+            'SPM: Delay Feedback 70%': 'f00e0300010000000e01010408000700000000000000020000000000000000000008080402f7',
+            'SPM: Delay Feedback 80%': 'f00b0100010000000e0101040800070000000000000002000000000000000000000a000402f7',
+            'SPM: Delay Feedback 90%': 'f00e0600010000000e0101040800070000000000000002000000000000000000000b000402f7',
+            'SPM: Delay Feedback 100%': 'f00e0c00010000000e0101040800070000000000000002000000000000000000000c080402f7'
+        };
+
+        function getSysexPickerOptions() {
+            var html = '<option value="">-- Select Preset --</option>';
+            html += '<optgroup label="Reverb Type">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Type') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup><optgroup label="Reverb ON/OFF">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb - O') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup><optgroup label="Delay Time">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Time') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup><optgroup label="Delay Mix">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Mix') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup><optgroup label="Reverb Decay">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Decay') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup><optgroup label="Delay Feedback">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Feedback') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            return html;
+        }
+
+        function applySysexPreset(msgIdx, presetName) {
+            if (!presetName || !sysexPresets[presetName]) return;
+            updMsg(msgIdx, 'sysex', sysexPresets[presetName]);
+            render();
+        }
 
         // ===============================================================
         // WEB SERIAL API - USB Connection to Chocotone

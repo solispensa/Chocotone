@@ -462,18 +462,177 @@ uint8_t sysexBuffer[256];
 size_t sysexLen = 0;
 
 void processBufferedSysex() {
-    // TODO: Parse incoming preset state to extract current delay time
-    // For now, just log it
+    // Log incoming SysEx 
     Serial.print("Received SysEx (");
     Serial.print(sysexLen);
     Serial.print(" bytes): ");
-    for(size_t i=0; i<min(sysexLen, (size_t)20); i++) {
+    for(size_t i=0; i<min(sysexLen, (size_t)40); i++) {
         if(sysexBuffer[i] < 0x10) Serial.print("0");
         Serial.print(sysexBuffer[i], HEX);
         Serial.print(" ");
     }
-    if(sysexLen > 20) Serial.print("...");
+    if(sysexLen > 40) Serial.print("...");
     Serial.println();
+    
+    // Only process SysEx messages (start with 80 80 F0)
+    if (sysexLen < 20 || sysexBuffer[0] != 0x80 || sysexBuffer[1] != 0x80 || sysexBuffer[2] != 0xF0) {
+        return;
+    }
+    
+    // SPM sends 5 packets for a preset dump. Only the FIRST packet (sequence 0) contains
+    // the module enable states. Bytes 7-8 contain the packet sequence number:
+    // Packet 0: 00 05 00 00 - sequence 00 (contains states - PROCESS THIS ONE)
+    // Packet 1: 00 05 00 01 - sequence 01 (effect types)
+    // Packet 2: 00 05 00 02 - sequence 02 (parameters)
+    // Packet 3: 00 05 00 03 - sequence 03 (parameters)
+    // Packet 4: 00 05 00 04 - sequence 04 (parameters, shorter packet)
+    
+    // Check for 212-byte preset dump packets with sequence number 00
+    // Pattern: bytes 5-8 should be "00 05 00 00" for the first packet
+    if (sysexLen >= 200 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05 &&
+        sysexBuffer[7] == 0x00 && sysexBuffer[8] == 0x00) {
+        
+        Serial.println("SPM: First preset dump packet (seq=00) - processing states...");
+        
+        // POCKETEDIT ALGORITHM:
+        // Search for "0A 00 00 00" chain marker from END (like JavaScript lastIndexOf)
+        // State bytes are at offsets -13, -12, -10 relative to marker (in payload coordinates)
+        
+        // Search from END of buffer for chain marker
+        int chainMarkerPosRaw = -1;
+        for (int i = (int)sysexLen - 5; i >= 10; i--) {
+            if (sysexBuffer[i] == 0x0A && sysexBuffer[i+1] == 0x00 && 
+                sysexBuffer[i+2] == 0x00 && sysexBuffer[i+3] == 0x00) {
+                chainMarkerPosRaw = i;
+                break;
+            }
+        }
+        
+        if (chainMarkerPosRaw >= 0) {
+            // Convert to payload position (pocketedit's payload starts at raw[5])
+            int chainByteIndex = chainMarkerPosRaw - 5;  // Position in payload
+        
+            Serial.printf("SPM: Chain marker at raw[%d], payload[%d]\n", chainMarkerPosRaw, chainByteIndex);
+            
+            // Calculate positions in PAYLOAD (matching pocketedit)
+            int nibble1PayloadPos = chainByteIndex - 13;
+            int nibble2PayloadPos = chainByteIndex - 12;
+            int globalStatePayloadPos = chainByteIndex - 10;
+            
+            // Convert back to RAW buffer positions
+            int nibble1Pos = nibble1PayloadPos + 5;
+            int nibble2Pos = nibble2PayloadPos + 5;
+            int globalStatePos = globalStatePayloadPos + 5;
+            
+            Serial.printf("  Positions - nibble1: payload[%d]=raw[%d], nibble2: payload[%d]=raw[%d], globalState: payload[%d]=raw[%d]\n",
+                nibble1PayloadPos, nibble1Pos, nibble2PayloadPos, nibble2Pos, globalStatePayloadPos, globalStatePos);
+            
+            if (nibble1Pos >= 5 && nibble1Pos < (int)sysexLen && globalStatePos >= 5 && globalStatePos < (int)sysexLen) {
+                uint8_t nibble1Byte = sysexBuffer[nibble1Pos];
+                uint8_t nibble2Byte = sysexBuffer[nibble2Pos];
+                uint8_t globalStateByte = sysexBuffer[globalStatePos];
+                
+                Serial.printf("  Raw values: nibble1=0x%02X nibble2=0x%02X globalState=0x%02X\n", 
+                    nibble1Byte, nibble2Byte, globalStateByte);
+                
+                // CRITICAL: pocketedit uses only the LOW NIBBLE of each state byte
+                // JavaScript: parseInt(nibble1[1] + nibble2[1], 16) -> "F" + "E" = "FE" = 0xFE
+                // So nibble1 is HIGH nibble, nibble2 is LOW nibble!
+                uint8_t lowNibble1 = nibble1Byte & 0x0F;
+                uint8_t lowNibble2 = nibble2Byte & 0x0F;
+                uint8_t mainBitmask = (lowNibble1 << 4) | lowNibble2;
+                
+                Serial.printf("  Low nibbles: 0x%X + 0x%X = bitmask 0x%02X (binary: ", 
+                    lowNibble1, lowNibble2, mainBitmask);
+                for (int b = 7; b >= 0; b--) Serial.print((mainBitmask >> b) & 1);
+                Serial.println(")");
+                
+                // RVB and Clone mode from globalStateByte
+                bool isRvbOn = (globalStateByte & 0x01) != 0;
+                bool isCloneMode = (globalStateByte & 0x02) != 0;
+                
+                Serial.printf("  globalStateByte: RVB=%d, CloneMode=%d\n", isRvbOn, isCloneMode);
+                
+                // Decode effect states
+                spmEffectStates[0] = (mainBitmask & (1 << 0)) != 0;  // NR
+                spmEffectStates[1] = (mainBitmask & (1 << 1)) != 0;  // FX1
+                spmEffectStates[2] = (mainBitmask & (1 << 2)) != 0;  // DRV
+                spmEffectStates[3] = (mainBitmask & (1 << 3)) != 0;  // AMP
+                spmEffectStates[4] = (mainBitmask & (1 << 4)) != 0;  // IR
+                spmEffectStates[5] = (mainBitmask & (1 << 5)) != 0;  // EQ
+                spmEffectStates[6] = (mainBitmask & (1 << 6)) != 0;  // FX2
+                spmEffectStates[7] = (mainBitmask & (1 << 7)) != 0;  // DLY
+                spmEffectStates[8] = isRvbOn;  // RVB from globalStateByte bit 0
+                
+                // If Clone mode is active, IR is always ON (pocketedit line 12847)
+                if (isCloneMode) {
+                    spmEffectStates[4] = true;  // IR forced ON in clone mode
+                }
+                
+                spmStateReceived = true;
+                
+                Serial.println("SPM State Decoded:");
+                Serial.printf("  NR=%d FX1=%d DRV=%d AMP=%d IR=%d EQ=%d FX2=%d DLY=%d RVB=%d\n",
+                    spmEffectStates[0], spmEffectStates[1], spmEffectStates[2], 
+                    spmEffectStates[3], spmEffectStates[4], spmEffectStates[5],
+                    spmEffectStates[6], spmEffectStates[7], spmEffectStates[8]);
+            } else {
+                Serial.printf("SPM: State byte positions out of range (nibble1=%d, globalState=%d)\n", 
+                    nibble1Pos, globalStatePos);
+            }
+        }
+        return;  // Processed first packet, exit
+    }
+    
+    // Skip subsequent preset dump packets (seq 01-04) - they don't contain module states
+    if (sysexLen >= 150 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05 &&
+        sysexBuffer[7] == 0x00 && sysexBuffer[8] > 0x00) {
+        // Silently ignore packets 1-4 of the preset dump
+        return;
+    }
+    
+    // FALLBACK: Check for PRESET CHANGE messages (24 bytes with 06 01 02 04 03 pattern)
+    // These are sent when the preset is changed on the SPM
+    // Pattern: 80 80 F0 xx xx 00 01 00 00 00 06 01 02 04 03 00 [preset#] ...
+    if (sysexLen >= 20 && sysexLen <= 30) {
+        bool isPresetChange = (sysexBuffer[10] == 0x06 && 
+                              sysexBuffer[11] == 0x01 && 
+                              sysexBuffer[12] == 0x02 && 
+                              sysexBuffer[13] == 0x04 &&
+                              sysexBuffer[14] == 0x03);
+        
+        if (isPresetChange) {
+            uint8_t presetNum = sysexBuffer[16];
+            Serial.printf("SPM Preset Changed! New preset: %d\n", presetNum);
+            
+            // Request fresh state for the new preset
+            if (presetSyncSpm[currentPreset]) {
+                Serial.println("SPM Sync: Requesting state for new preset...");
+                delay(50);  // Short delay for SPM to stabilize
+                requestPresetState();
+            }
+            return;
+        }
+    }
+    
+    // Also check for 32-byte update packets (0A 01 02 04 pattern)
+    // These are sent when effects are toggled in real-time
+    // DISABLED: This parser was incorrectly treating 32-byte packets as full state updates.
+    // The byte16=0x00 was being decoded as "all effects OFF" which corrupted button states
+    // after any single effect toggle. These packets are likely just acknowledgements.
+    // TODO: Research the actual SPM 32-byte packet format if real-time sync is needed.
+    /*
+    if (sysexLen >= 30 && sysexLen <= 40) {
+        bool isUpdatePacket = (sysexBuffer[10] == 0x0A && 
+                              sysexBuffer[11] == 0x01 && 
+                              sysexBuffer[12] == 0x02 && 
+                              sysexBuffer[13] == 0x04);
+        
+        if (isUpdatePacket) {
+            Serial.println("SPM State Update packet detected (IGNORED - parser disabled)");
+        }
+    }
+    */
 }
 
 void checkForSysex() {
@@ -503,6 +662,13 @@ void handleBleConnection() {
             doConnect = false;
             consecutiveFailures = 0;  // Reset on success
             bondsCleared = false;     // Reset bond clear flag
+            
+            // Startup handshake: Request initial state if sync is enabled
+            if (presetSyncSpm[currentPreset]) {
+                Serial.println("SPM Sync: Requesting initial state...");
+                delay(100);  // Short delay to let connection stabilize
+                requestPresetState();
+            }
         } else {
             Serial.println("✗ Connection/Service Discovery failed");
             doConnect = false;
@@ -555,9 +721,95 @@ void handleBleConnection() {
 }
 
 static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-    if (length > 0 && length < 40) {
+    if (length > 0 && length < 256) {
         memcpy(sysexBuffer, pData, length);
         sysexLen = length;
         sysexReceived = true;
     }
+}
+
+// ============================================
+// SPM STATE SYNC FUNCTIONS
+// ============================================
+
+void requestPresetState() {
+    if (!clientConnected || !pRemoteCharacteristic) {
+        Serial.println("SPM: Cannot request state - not connected");
+        return;
+    }
+    
+    // Debounce - don't request too frequently
+    if (millis() - lastSpmStateRequest < 500) {
+        return;
+    }
+    
+    // SysEx request for current preset state (from pocketedit.html analysis)
+    // This requests the SPM to send its current preset dump
+    uint8_t requestState[] = {
+        0x80, 0x80,  // BLE MIDI timestamp header
+        0xF0,        // SysEx start
+        0x00, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00,  // Header
+        0x02, 0x01, 0x02, 0x04, 0x01,              // Request preset dump command
+        0xF7         // SysEx end
+    };
+    
+    pRemoteCharacteristic->writeValue(requestState, sizeof(requestState), false);
+    lastSpmStateRequest = millis();
+    Serial.println("→ SPM: Requested preset state");
+}
+
+void applySpmStateToButtons() {
+    if (!presetSyncSpm[currentPreset]) {
+        return;  // Sync not enabled for this preset
+    }
+    
+    Serial.println("SPM Sync: Applying state to buttons...");
+    
+    // CC number to effect index mapping:
+    // CC 43 = NR (index 0)
+    // CC 44 = FX1 (index 1)
+    // CC 45 = DRV (index 2)
+    // CC 46 = AMP (index 3)
+    // CC 47 = IR (index 4)
+    // CC 48 = EQ (index 5)
+    // CC 49 = FX2 (index 6)
+    // CC 50 = DLY (index 7)
+    // CC 51 = RVB (index 8)
+    
+    for (int btn = 0; btn < systemConfig.buttonCount; btn++) {
+        ButtonConfig& config = buttonConfigs[currentPreset][btn];
+        
+        // Skip buttons that don't have 2ND_PRESS (not toggle buttons)
+        if (!hasAction(config, ACTION_2ND_PRESS)) {
+            continue;
+        }
+        
+        // Find the PRESS action to check if it's a CC for an effect
+        ActionMessage* pressAction = findAction(config, ACTION_PRESS);
+        if (!pressAction || pressAction->type != CC) {
+            continue;
+        }
+        
+        // Check if this CC is in range 43-51 (effect toggles)
+        uint8_t ccNum = pressAction->data1;
+        if (ccNum >= 43 && ccNum <= 51) {
+            int effectIndex = ccNum - 43;
+            bool effectIsOn = spmEffectStates[effectIndex];
+            
+            // Set button state:
+            // If effect is ON in SPM, next press should turn it OFF (send 2ND_PRESS action)
+            // So isAlternate = true means "we're in the ON state, next press sends OFF"
+            config.isAlternate = effectIsOn;
+            ledToggleState[btn] = effectIsOn;
+            
+            Serial.printf("  BTN %d (%s): CC%d -> Effect[%d] = %s\n", 
+                btn, config.name, ccNum, effectIndex, effectIsOn ? "ON" : "OFF");
+        }
+    }
+    
+    // Update LEDs to reflect new state
+    extern void updateLeds();  // From UI_Display.cpp
+    updateLeds();
+    
+    Serial.println("SPM Sync: State applied successfully");
 }

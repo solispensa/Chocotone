@@ -58,10 +58,8 @@ scratch_*
 # Logs
 *.log
 
-# Reference files (not part of project)
-pocketedit.*
-Sysex*.txt
-*current\ code.txt
+
+
 
 # Archive (old versions kept for reference)
 archive/

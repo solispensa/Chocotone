@@ -604,7 +604,9 @@ void handleExport() {
         chunkBuffer += String(presetNames[p]);
         chunkBuffer += "\",\"presetLedMode\":\"";
         chunkBuffer += ledModeStr;
-        chunkBuffer += "\",\"buttons\":[";
+        chunkBuffer += "\",\"syncSpm\":";
+        chunkBuffer += presetSyncSpm[p] ? "true" : "false";
+        chunkBuffer += ",\"buttons\":[";
         server.sendContent(chunkBuffer);
         chunkBuffer = ""; // Reset buffer
 
@@ -633,7 +635,9 @@ void handleExport() {
                     case ACTION_PRESS: actionName = "PRESS"; break;
                     case ACTION_2ND_PRESS: actionName = "2ND_PRESS"; break;
                     case ACTION_RELEASE: actionName = "RELEASE"; break;
+                    case ACTION_2ND_RELEASE: actionName = "2ND_RELEASE"; break;
                     case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                    case ACTION_2ND_LONG_PRESS: actionName = "2ND_LONG_PRESS"; break;
                     case ACTION_DOUBLE_TAP: actionName = "DOUBLE_TAP"; break;
                     case ACTION_COMBO: actionName = "COMBO"; break;
                     default: actionName = "NO_ACTION"; break;
@@ -836,6 +840,9 @@ void handleImportUploadData() {
                 else if (strcmp(pmStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
                 else presetLedModes[p] = PRESET_LED_NORMAL;
                 
+                // SPM Sync setting
+                presetSyncSpm[p] = pObj["syncSpm"] | false;
+                
                 JsonArray buttons = pObj["buttons"];
                 if (buttons.isNull()) continue;
                 
@@ -863,7 +870,9 @@ void handleImportUploadData() {
                             if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
                             else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
                             else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                            else if (strcmp(actStr, "2ND_RELEASE") == 0) msg.action = ACTION_2ND_RELEASE;
                             else if (strcmp(actStr, "LONG_PRESS") == 0) msg.action = ACTION_LONG_PRESS;
+                            else if (strcmp(actStr, "2ND_LONG_PRESS") == 0) msg.action = ACTION_2ND_LONG_PRESS;
                             else if (strcmp(actStr, "DOUBLE_TAP") == 0) msg.action = ACTION_DOUBLE_TAP;
                             else if (strcmp(actStr, "COMBO") == 0) msg.action = ACTION_COMBO;
                             else msg.action = ACTION_NO_ACTION;
@@ -893,7 +902,7 @@ void handleImportUploadData() {
                                 const char* hex = mObj["sysex"] | "";
                                 size_t len = strlen(hex);
                                 msg.sysex.length = 0;
-                                for (size_t s = 0; s + 1 < len && msg.sysex.length < 16; s += 2) {
+                                for (size_t s = 0; s + 1 < len && msg.sysex.length < 48; s += 2) {
                                     char h[3] = { hex[s], hex[s+1], 0 };
                                     msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
                                 }
@@ -1141,7 +1150,9 @@ void handleSerialConfig() {
                                 case ACTION_PRESS: actionName = "PRESS"; break;
                                 case ACTION_2ND_PRESS: actionName = "2ND_PRESS"; break;
                                 case ACTION_RELEASE: actionName = "RELEASE"; break;
+                                case ACTION_2ND_RELEASE: actionName = "2ND_RELEASE"; break;
                                 case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                                case ACTION_2ND_LONG_PRESS: actionName = "2ND_LONG_PRESS"; break;
                                 case ACTION_DOUBLE_TAP: actionName = "DOUBLE_TAP"; break;
                                 case ACTION_COMBO: actionName = "COMBO"; break;
                                 default: actionName = "NO_ACTION"; break;
@@ -1185,6 +1196,15 @@ void handleSerialConfig() {
                                 Serial.print(msg.tapTempo.rhythmNext);
                                 Serial.print(",\"tapLock\":");
                                 Serial.print(msg.tapTempo.tapLock);
+                            }
+                            if (msg.type == SYSEX && msg.sysex.length > 0) {
+                                Serial.print(",\"sysex\":\"");
+                                for (int s = 0; s < msg.sysex.length; s++) {
+                                    char hx[3];
+                                    snprintf(hx, sizeof(hx), "%02x", msg.sysex.data[s]);
+                                    Serial.print(hx);
+                                }
+                                Serial.print("\"");
                             }
                             Serial.print("}");
                         }
@@ -1286,7 +1306,9 @@ void handleSerialConfig() {
                                         if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
                                         else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
                                         else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                                        else if (strcmp(actStr, "2ND_RELEASE") == 0) msg.action = ACTION_2ND_RELEASE;
                                         else if (strcmp(actStr, "LONG_PRESS") == 0) msg.action = ACTION_LONG_PRESS;
+                                        else if (strcmp(actStr, "2ND_LONG_PRESS") == 0) msg.action = ACTION_2ND_LONG_PRESS;
                                         else if (strcmp(actStr, "DOUBLE_TAP") == 0) msg.action = ACTION_DOUBLE_TAP;
                                         else if (strcmp(actStr, "COMBO") == 0) msg.action = ACTION_COMBO;
                                         else msg.action = ACTION_NO_ACTION;
@@ -1310,6 +1332,15 @@ void handleSerialConfig() {
                                             msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
                                             msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
                                             msg.tapTempo.tapLock = mObj["tapLock"] | 7;
+                                        }
+                                        if (msg.type == SYSEX) {
+                                            const char* hex = mObj["sysex"] | "";
+                                            size_t len = strlen(hex);
+                                            msg.sysex.length = 0;
+                                            for (size_t s = 0; s + 1 < len && msg.sysex.length < 48; s += 2) {
+                                                char h[3] = { hex[s], hex[s+1], 0 };
+                                                msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
+                                            }
                                         }
                                         cfg.messageCount++;
                                     }
