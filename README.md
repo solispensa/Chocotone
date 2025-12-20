@@ -57,7 +57,7 @@
 - **NVS Storage** - All settings persist across power cycles (reliable save with auto-reboot)
 - **Customizable Display** - Adjustable button name font size (1-5)
 
-![Chocotone Editor](images/chocotone_editor_1v1.png)
+![Chocotone Editor](images/chocotone_editor_1v2.png)
 
 ---
 
