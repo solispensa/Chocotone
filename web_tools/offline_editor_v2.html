@@ -1223,11 +1223,29 @@
                 await bleTxChar.startNotifications();
                 bleTxChar.addEventListener('characteristicvaluechanged', handleBleNotification);
 
+                // Handle disconnection events
+                bleDevice.addEventListener('gattserverdisconnected', () => {
+                    console.log('BLE Disconnected');
+                    bleRxChar = null;
+                    bleTxChar = null;
+                    var statusEl = document.getElementById('bleStatus');
+                    if (statusEl) {
+                        statusEl.textContent = 'Disconnected';
+                        statusEl.style.color = '#ef4444';
+                    }
+                    var btnEl = document.getElementById('btnBleConnect');
+                    if (btnEl) btnEl.textContent = 'Connect BLE';
+                    render();
+                });
+
                 document.getElementById('bleStatus').textContent = 'Connected';
                 document.getElementById('bleStatus').style.color = '#22c55e';
                 document.getElementById('btnBleConnect').textContent = 'Disconnect';
 
                 console.log('BLE Connected to Chocotone');
+
+                // Brief delay to ensure connection is stable
+                await sleep(200);
             } catch (e) {
                 console.error('BLE error:', e);
                 alert('BLE Connection failed: ' + e.message);
@@ -1299,11 +1317,17 @@
         }
 
         async function readFromDeviceBLE() {
-            if (!bleRxChar) { alert('Connect Bluetooth first'); return; }
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
             try {
+                console.log('Sending GET_CONFIG via BLE...');
                 bleBuffer = '';
                 await bleRxChar.writeValue(new TextEncoder().encode('GET_CONFIG\n'));
+                console.log('GET_CONFIG sent');
             } catch (e) {
+                console.error('BLE Read error:', e);
                 alert('BLE Read error: ' + e.message);
             }
         }
