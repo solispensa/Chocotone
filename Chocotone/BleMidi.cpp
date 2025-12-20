@@ -13,6 +13,11 @@
 #define MIDI_SERVICE_UUID        "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
 
+// Config Service UUIDs (custom for Chocotone wireless configuration)
+#define CONFIG_SERVICE_UUID      "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+#define CONFIG_RX_UUID           "a1b2c3d4-e5f6-7890-abcd-ef1234567891"  // Write (editor→ESP)
+#define CONFIG_TX_UUID           "a1b2c3d4-e5f6-7890-abcd-ef1234567892"  // Notify (ESP→editor)
+
 // Forward Declarations
 static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
 static void serverMidiCallback(BLECharacteristic* pCharacteristic);
@@ -53,6 +58,12 @@ bool doScan = true;
 BLEServer* pServer = nullptr;
 BLECharacteristic* pServerMidiCharacteristic = nullptr;
 bool serverConnected = false;
+
+// BLE Config Server variables
+BLECharacteristic* pConfigRxCharacteristic = nullptr;
+BLECharacteristic* pConfigTxCharacteristic = nullptr;
+bool configClientConnected = false;
+String bleConfigBuffer = "";  // Buffer for incoming config data
 
 // ============================================
 // BLE SERVER CALLBACKS (for DAW/App connections)
@@ -95,6 +106,43 @@ class MidiCharacteristicCallbacks : public BLECharacteristicCallbacks {
             
             // TODO: Process incoming MIDI or forward to SPM if in dual mode
             // For now, just log it
+        }
+    }
+};
+
+// ============================================
+// BLE CONFIG SERVER CALLBACKS (for Web Editor)
+// ============================================
+
+// Forward declaration for config processing
+void processBleConfigCommand(const String& cmd);
+
+class ConfigCharacteristicCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic* pCharacteristic) {
+        String value = pCharacteristic->getValue();
+        if (value.length() > 0) {
+            Serial.printf("BLE Config: Received %d bytes\n", value.length());
+            
+            // Append to buffer and process complete lines
+            bleConfigBuffer += value;
+            
+            // Process complete commands (newline-terminated)
+            int nlPos;
+            while ((nlPos = bleConfigBuffer.indexOf('\n')) >= 0) {
+                String cmd = bleConfigBuffer.substring(0, nlPos);
+                cmd.trim();
+                bleConfigBuffer = bleConfigBuffer.substring(nlPos + 1);
+                
+                if (cmd.length() > 0) {
+                    processBleConfigCommand(cmd);
+                }
+            }
+            
+            // Safety: prevent buffer overflow
+            if (bleConfigBuffer.length() > 4096) {
+                Serial.println("BLE Config: Buffer overflow, clearing");
+                bleConfigBuffer = "";
+            }
         }
     }
 };
@@ -144,6 +192,52 @@ void setup_ble_server() {
     Serial.printf("  Device Name: %s\n", systemConfig.bleDeviceName);
 }
 
+// ============================================
+// BLE CONFIG SERVER SETUP (always runs for web editor)
+// ============================================
+
+void setup_ble_config_server() {
+    Serial.println("Setting up BLE Config Server (Web Editor)...");
+    
+    // Create server if not already created (may be created by MIDI server)
+    if (pServer == nullptr) {
+        pServer = BLEDevice::createServer();
+        pServer->setCallbacks(new ServerCallbacks());
+    }
+    
+    // Create Config Service
+    BLEService* pConfigService = pServer->createService(CONFIG_SERVICE_UUID);
+    
+    // Create RX Characteristic (editor writes to ESP)
+    pConfigRxCharacteristic = pConfigService->createCharacteristic(
+        CONFIG_RX_UUID,
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_WRITE_NR
+    );
+    pConfigRxCharacteristic->setCallbacks(new ConfigCharacteristicCallbacks());
+    
+    // Create TX Characteristic (ESP notifies editor)
+    pConfigTxCharacteristic = pConfigService->createCharacteristic(
+        CONFIG_TX_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_NOTIFY
+    );
+    pConfigTxCharacteristic->addDescriptor(new BLE2902());
+    
+    // Start the config service
+    pConfigService->start();
+    
+    // Add config service to advertising (alongside MIDI if present)
+    // Must restart advertising after adding new service UUID
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(CONFIG_SERVICE_UUID);
+    
+    // Restart advertising to include the new service UUID
+    BLEDevice::startAdvertising();
+    
+    Serial.println("BLE Config Server Started - Advertising restarted");
+}
+
 // Advertised Device Callbacks (for client scanning)
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -186,6 +280,15 @@ void setup_ble_midi() {
     } else {
         doScan = false;  // Disable scanning in server-only mode
         Serial.println("BLE Client Disabled (server-only mode)");
+    }
+    
+    // ALWAYS setup config server for wireless configuration from web editor
+    setup_ble_config_server();
+    
+    // Start advertising if not already started by MIDI server
+    if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
+        BLEDevice::startAdvertising();
+        Serial.println("BLE Advertising started (Config only)");
     }
 }
 
@@ -606,7 +709,7 @@ void processBufferedSysex() {
             Serial.printf("SPM Preset Changed! New preset: %d\n", presetNum);
             
             // Request fresh state for the new preset
-            if (presetSyncSpm[currentPreset]) {
+            if (presetSyncMode[currentPreset] != SYNC_NONE) {
                 Serial.println("SPM Sync: Requesting state for new preset...");
                 delay(50);  // Short delay for SPM to stabilize
                 requestPresetState();
@@ -664,7 +767,7 @@ void handleBleConnection() {
             bondsCleared = false;     // Reset bond clear flag
             
             // Startup handshake: Request initial state if sync is enabled
-            if (presetSyncSpm[currentPreset]) {
+            if (presetSyncMode[currentPreset] != SYNC_NONE) {
                 Serial.println("SPM Sync: Requesting initial state...");
                 delay(100);  // Short delay to let connection stabilize
                 requestPresetState();
@@ -759,7 +862,7 @@ void requestPresetState() {
 }
 
 void applySpmStateToButtons() {
-    if (!presetSyncSpm[currentPreset]) {
+    if (presetSyncMode[currentPreset] == SYNC_NONE) {
         return;  // Sync not enabled for this preset
     }
     
@@ -812,4 +915,98 @@ void applySpmStateToButtons() {
     updateLeds();
     
     Serial.println("SPM Sync: State applied successfully");
+}
+
+// ============================================
+// BLE CONFIG COMMAND PROCESSING
+// ============================================
+
+void sendBleConfigResponse(const String& response) {
+    if (pConfigTxCharacteristic != nullptr) {
+        // BLE MTU is typically 512 bytes, split if needed
+        int len = response.length();
+        int chunkSize = 500;  // Safe chunk size for BLE
+        
+        for (int i = 0; i < len; i += chunkSize) {
+            String chunk = response.substring(i, min(i + chunkSize, len));
+            pConfigTxCharacteristic->setValue(chunk.c_str());
+            pConfigTxCharacteristic->notify();
+            if (i + chunkSize < len) {
+                delay(10);  // Small delay between chunks
+            }
+        }
+        Serial.printf("BLE Config: Sent response (%d bytes)\n", len);
+    }
+}
+
+// External declarations for config functions (from WebInterface.cpp)
+extern String buildFullConfigJson();
+extern bool processConfigChunk(const String& chunk, int chunkNum);
+extern void finalizeConfigUpload();
+
+// Static variables for chunked config upload
+static String bleConfigUploadBuffer = "";
+static int bleConfigChunkCount = 0;
+static bool bleConfigUploadActive = false;
+
+void processBleConfigCommand(const String& cmd) {
+    Serial.printf("BLE Config Command: %s\n", cmd.substring(0, 50).c_str());
+    
+    if (cmd == "GET_CONFIG") {
+        // Return full configuration as JSON
+        String configJson = buildFullConfigJson();
+        sendBleConfigResponse(configJson);
+        Serial.println("BLE Config: Sent full config");
+    }
+    else if (cmd == "SET_CONFIG_START") {
+        // Start chunked config upload
+        bleConfigUploadBuffer = "";
+        bleConfigChunkCount = 0;
+        bleConfigUploadActive = true;
+        sendBleConfigResponse("CONFIG_READY");
+        Serial.println("BLE Config: Upload started");
+    }
+    else if (cmd.startsWith("SET_CONFIG_CHUNK:")) {
+        if (!bleConfigUploadActive) {
+            sendBleConfigResponse("ERROR:Upload not started");
+            return;
+        }
+        // Extract chunk data after the colon
+        String chunkData = cmd.substring(17);  // Skip "SET_CONFIG_CHUNK:"
+        bleConfigUploadBuffer += chunkData;
+        bleConfigChunkCount++;
+        sendBleConfigResponse("CHUNK_OK:" + String(bleConfigChunkCount));
+    }
+    else if (cmd == "SET_CONFIG_END") {
+        if (!bleConfigUploadActive) {
+            sendBleConfigResponse("ERROR:Upload not started");
+            return;
+        }
+        // Process the complete config
+        bleConfigUploadActive = false;
+        Serial.printf("BLE Config: Processing %d bytes from %d chunks\n", 
+            bleConfigUploadBuffer.length(), bleConfigChunkCount);
+        
+        // Process using the same logic as serial upload
+        if (processConfigChunk(bleConfigUploadBuffer, 0)) {
+            finalizeConfigUpload();
+            sendBleConfigResponse("CONFIG_SAVED");
+            Serial.println("BLE Config: Upload complete, saved to NVS");
+        } else {
+            sendBleConfigResponse("ERROR:Parse failed");
+            Serial.println("BLE Config: Parse error");
+        }
+        bleConfigUploadBuffer = "";
+        bleConfigChunkCount = 0;
+    }
+    else if (cmd == "PING") {
+        sendBleConfigResponse("PONG");
+    }
+    else if (cmd == "GET_VERSION") {
+        sendBleConfigResponse("Chocotone v1.0");
+    }
+    else {
+        Serial.printf("BLE Config: Unknown command: %s\n", cmd.c_str());
+        sendBleConfigResponse("ERROR:Unknown command");
+    }
 }

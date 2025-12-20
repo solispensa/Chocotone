@@ -1180,30 +1180,209 @@
 
         function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-        // Add USB section to render
+        // ===============================================================
+        // WEB BLUETOOTH API - BLE Connection to Chocotone
+        // ===============================================================
+        var bleDevice = null;
+        var bleRxChar = null;  // Write to device
+        var bleTxChar = null;  // Notify from device
+        var bleBuffer = '';
+        var bleConfigJson = '';
+        var bleExpectingConfig = false;
+
+        // Chocotone Config Service UUIDs (must match firmware)
+        const BLE_CONFIG_SERVICE = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+        const BLE_CONFIG_RX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567891';
+        const BLE_CONFIG_TX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567892';
+
+        async function connectBLE() {
+            if (!('bluetooth' in navigator)) {
+                alert('Web Bluetooth not supported. Use Chrome or Edge on desktop.');
+                return;
+            }
+            try {
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    // Use services filter instead of name to avoid case sensitivity issues
+                    // This shows all devices advertising the Config Service UUID
+                    filters: [
+                        { services: [BLE_CONFIG_SERVICE] },
+                        { namePrefix: 'CHOCOTONE' },
+                        { namePrefix: 'Chocotone' },
+                        { namePrefix: 'chocotone' }
+                    ],
+                    optionalServices: [BLE_CONFIG_SERVICE]
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(BLE_CONFIG_SERVICE);
+
+                bleRxChar = await service.getCharacteristic(BLE_CONFIG_RX);
+                bleTxChar = await service.getCharacteristic(BLE_CONFIG_TX);
+
+                // Start notifications for responses
+                await bleTxChar.startNotifications();
+                bleTxChar.addEventListener('characteristicvaluechanged', handleBleNotification);
+
+                document.getElementById('bleStatus').textContent = 'Connected';
+                document.getElementById('bleStatus').style.color = '#22c55e';
+                document.getElementById('btnBleConnect').textContent = 'Disconnect';
+
+                console.log('BLE Connected to Chocotone');
+            } catch (e) {
+                console.error('BLE error:', e);
+                alert('BLE Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectBLE() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            bleDevice = null;
+            bleRxChar = null;
+            bleTxChar = null;
+            document.getElementById('bleStatus').textContent = 'Not connected';
+            document.getElementById('bleStatus').style.color = '#71717a';
+            document.getElementById('btnBleConnect').textContent = 'Connect BLE';
+        }
+
+        function toggleBLE() {
+            if (bleDevice && bleDevice.gatt.connected) disconnectBLE();
+            else connectBLE();
+        }
+
+        function handleBleNotification(event) {
+            var value = new TextDecoder().decode(event.target.value);
+            console.log('BLE received:', value.substring(0, 100));
+            bleBuffer += value;
+            processBleData();
+        }
+
+        function processBleData() {
+            // Check for complete JSON (starts with { and ends with })
+            if (bleBuffer.startsWith('{') && bleBuffer.includes('}}')) {
+                // Find end of JSON
+                var depth = 0, end = -1;
+                for (var i = 0; i < bleBuffer.length; i++) {
+                    if (bleBuffer[i] === '{') depth++;
+                    if (bleBuffer[i] === '}') depth--;
+                    if (depth === 0) { end = i; break; }
+                }
+                if (end > 0) {
+                    var json = bleBuffer.substring(0, end + 1);
+                    bleBuffer = bleBuffer.substring(end + 1);
+                    try {
+                        var data = JSON.parse(json);
+                        console.log('BLE received config:', data);
+                        if (data.presets) {
+                            presetData.presets = data.presets;
+                            if (data.system) {
+                                Object.assign(presetData.system, data.system);
+                            }
+                            presetData.currentPreset = data.currentPreset || 0;
+                            selectedBtn = 0;
+                            showSystem = false;
+                            render();
+                            alert('Config loaded from device via Bluetooth!');
+                        }
+                    } catch (e) {
+                        console.error('BLE JSON parse error:', e);
+                    }
+                }
+            } else if (bleBuffer.includes('CONFIG_SAVED')) {
+                bleBuffer = '';
+                alert('Config saved to device via Bluetooth!');
+            } else if (bleBuffer.includes('CHUNK_OK')) {
+                // Chunk acknowledged, clear buffer
+                bleBuffer = '';
+            }
+        }
+
+        async function readFromDeviceBLE() {
+            if (!bleRxChar) { alert('Connect Bluetooth first'); return; }
+            try {
+                bleBuffer = '';
+                await bleRxChar.writeValue(new TextEncoder().encode('GET_CONFIG\n'));
+            } catch (e) {
+                alert('BLE Read error: ' + e.message);
+            }
+        }
+
+        async function sendToDeviceBLE() {
+            if (!bleRxChar) { alert('Connect Bluetooth first'); return; }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 400; // Smaller chunks for BLE
+
+            try {
+                // Start upload
+                await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(100);
+
+                // Send chunks
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+                    await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
+                    await sleep(50);
+                }
+
+                // End upload
+                await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_END\n'));
+            } catch (e) {
+                alert('BLE Send error: ' + e.message);
+            }
+        }
+
+        // Add connection sections to render
         var origRender = render;
         render = function () {
             origRender();
-            // Add USB section after header - use actual connection state
             var app = document.getElementById('app');
-            var isConnected = serialPort !== null;
-            var statusText = isConnected ? 'Connected' : 'Not connected';
-            var statusColor = isConnected ? '#22c55e' : '#71717a';
-            var btnText = isConnected ? 'Disconnect' : 'Connect USB';
 
-            var usbHtml = '<div class="section" style="background:#1a1a2e;border:1px solid #7c3aed">';
-            usbHtml += '<div class="section-title" style="color:#a78bfa">USB Serial Connection</div>';
-            usbHtml += '<div class="row" style="align-items:center">';
-            usbHtml += '<button id="btnConnect" class="btn" onclick="toggleUSB()" style="background:#7c3aed">' + btnText + '</button>';
-            usbHtml += '<span style="color:#71717a">Status: <span id="usbStatus" style="color:' + statusColor + '">' + statusText + '</span></span>';
-            usbHtml += '</div>';
-            usbHtml += '<div class="actions" style="margin-top:10px">';
-            usbHtml += '<button class="btn success" onclick="readFromDevice()">Read from Device</button>';
-            usbHtml += '<button class="btn warning" onclick="sendToDevice()">Send to Device</button>';
-            usbHtml += '</div>';
-            usbHtml += '<div style="margin-top:8px;font-size:0.75rem;color:#71717a">Requires Chrome/Edge. Read and Send work via USB serial.</div>';
-            usbHtml += '</div>';
-            app.insertAdjacentHTML('afterbegin', usbHtml);
+            // USB Status
+            var usbConnected = serialPort !== null;
+            var usbStatusText = usbConnected ? 'Connected' : 'Not connected';
+            var usbStatusColor = usbConnected ? '#22c55e' : '#71717a';
+            var usbBtnText = usbConnected ? 'Disconnect' : 'Connect USB';
+
+            // BLE Status
+            var bleConnected = bleDevice && bleDevice.gatt && bleDevice.gatt.connected;
+            var bleStatusText = bleConnected ? 'Connected' : 'Not connected';
+            var bleStatusColor = bleConnected ? '#22c55e' : '#71717a';
+            var bleBtnText = bleConnected ? 'Disconnect' : 'Connect BLE';
+
+            // Twin card container
+            var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+
+            // USB Serial Card
+            html += '<div class="section" style="flex:1;min-width:280px;background:#1a1a2e;border:1px solid #7c3aed">';
+            html += '<div class="section-title" style="color:#a78bfa">🔌 USB Serial</div>';
+            html += '<div class="row" style="align-items:center">';
+            html += '<button id="btnConnect" class="btn" onclick="toggleUSB()" style="background:#7c3aed">' + usbBtnText + '</button>';
+            html += '<span style="color:#71717a">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></span>';
+            html += '</div>';
+            html += '<div class="actions" style="margin-top:10px">';
+            html += '<button class="btn success" onclick="readFromDevice()">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDevice()">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:#71717a">Chrome/Edge only</div>';
+            html += '</div>';
+
+            // Bluetooth Card
+            html += '<div class="section" style="flex:1;min-width:280px;background:#1a1a2e;border:1px solid #0ea5e9">';
+            html += '<div class="section-title" style="color:#38bdf8">📶 Bluetooth</div>';
+            html += '<div class="row" style="align-items:center">';
+            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:#0ea5e9">' + bleBtnText + '</button>';
+            html += '<span style="color:#71717a">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></span>';
+            html += '</div>';
+            html += '<div class="actions" style="margin-top:10px">';
+            html += '<button class="btn success" onclick="readFromDeviceBLE()">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDeviceBLE()">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:#71717a">Chrome/Edge desktop only</div>';
+            html += '</div>';
+
+            html += '</div>';
+            app.insertAdjacentHTML('afterbegin', html);
         };
 
         render();

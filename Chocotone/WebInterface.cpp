@@ -1110,6 +1110,213 @@ void setup_web_server() {
 }
 
 // ============================================================================
+// SHARED CONFIG FUNCTIONS - Used by Serial and BLE config handlers
+// ============================================================================
+
+String buildFullConfigJson() {
+    // Build full config JSON in memory (Warning: uses significant heap!)
+    String json = "{\"version\":3,\"presets\":[";
+    
+    for (int p = 0; p < 4; p++) {
+        if (p > 0) json += ",";
+        
+        const char* ledModeStr = (presetLedModes[p] == PRESET_LED_NORMAL) ? "NORMAL" : 
+                                  (presetLedModes[p] == PRESET_LED_SELECTION) ? "SELECTION" : "HYBRID";
+        const char* syncModeStr = (presetSyncMode[p] == SYNC_SPM) ? "SPM" :
+                                   (presetSyncMode[p] == SYNC_GP5) ? "GP5" : "NONE";
+        
+        json += "{\"name\":\"";
+        json += presetNames[p];
+        json += "\",\"presetLedMode\":\"";
+        json += ledModeStr;
+        json += "\",\"syncMode\":\"";
+        json += syncModeStr;
+        json += "\",\"buttons\":[";
+        
+        for (int b = 0; b < systemConfig.buttonCount; b++) {
+            if (b > 0) json += ",";
+            const ButtonConfig& cfg = buttonConfigs[p][b];
+            
+            json += "{\"name\":\"";
+            json += cfg.name;
+            json += "\",\"ledMode\":\"";
+            json += (cfg.ledMode == LED_TOGGLE) ? "TOGGLE" : "MOMENTARY";
+            json += "\",\"inSelectionGroup\":";
+            json += cfg.inSelectionGroup ? "true" : "false";
+            json += ",\"messages\":[";
+            
+            for (int m = 0; m < cfg.messageCount && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                if (m > 0) json += ",";
+                const ActionMessage& msg = cfg.messages[m];
+                
+                const char* actionName = "PRESS";
+                switch(msg.action) {
+                    case ACTION_PRESS: actionName = "PRESS"; break;
+                    case ACTION_2ND_PRESS: actionName = "2ND_PRESS"; break;
+                    case ACTION_RELEASE: actionName = "RELEASE"; break;
+                    case ACTION_2ND_RELEASE: actionName = "2ND_RELEASE"; break;
+                    case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                    default: actionName = "NO_ACTION"; break;
+                }
+                
+                char hexColor[8];
+                rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+                
+                json += "{\"action\":\"";
+                json += actionName;
+                json += "\",\"type\":\"";
+                json += getCommandTypeString(msg.type);
+                json += "\",\"channel\":";
+                json += String(msg.channel);
+                json += ",\"data1\":";
+                json += String(msg.data1);
+                json += ",\"data2\":";
+                json += String(msg.data2);
+                json += ",\"color\":\"";
+                json += hexColor;
+                json += "\"}";
+            }
+            json += "]}";
+        }
+        json += "]}";
+    }
+    
+    // System config
+    json += "],\"system\":{";
+    json += "\"buttonCount\":";
+    json += String(systemConfig.buttonCount);
+    json += ",\"ledsPerButton\":";
+    json += String(systemConfig.ledsPerButton);
+    json += ",\"bleDeviceName\":\"";
+    json += systemConfig.bleDeviceName;
+    json += "\",\"apSSID\":\"";
+    json += systemConfig.apSSID;
+    json += "\",\"brightness\":";
+    json += String(ledBrightnessOn);
+    json += "}}";
+    
+    return json;
+}
+
+bool processConfigChunk(const String& jsonStr, int chunkNum) {
+    // Parse and apply JSON config (same logic as multipart upload handler)
+    StaticJsonDocument<512> filter;
+    filter["version"] = true;
+    filter["presets"] = true;
+    filter["system"] = true;
+    
+    DynamicJsonDocument doc(24576);  // 24KB for full config
+    DeserializationError error = deserializeJson(doc, jsonStr);
+    
+    if (error) {
+        Serial.printf("JSON parse error: %s\n", error.c_str());
+        return false;
+    }
+    
+    // Process presets
+    JsonArray presets = doc["presets"];
+    if (!presets.isNull()) {
+        int p = 0;
+        for (JsonObject pObj : presets) {
+            if (p >= 4) break;
+            
+            const char* pName = pObj["name"] | "";
+            strncpy(presetNames[p], pName, 20);
+            presetNames[p][20] = '\0';
+            
+            // LED Mode
+            const char* ledModeStr = pObj["presetLedMode"] | "NORMAL";
+            if (strcmp(ledModeStr, "SELECTION") == 0) presetLedModes[p] = PRESET_LED_SELECTION;
+            else if (strcmp(ledModeStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
+            else presetLedModes[p] = PRESET_LED_NORMAL;
+            
+            // Sync Mode
+            if (pObj.containsKey("syncMode")) {
+                const char* syncStr = pObj["syncMode"] | "NONE";
+                if (strcmp(syncStr, "SPM") == 0) presetSyncMode[p] = SYNC_SPM;
+                else if (strcmp(syncStr, "GP5") == 0) presetSyncMode[p] = SYNC_GP5;
+                else presetSyncMode[p] = SYNC_NONE;
+            }
+            
+            // Buttons
+            JsonArray buttons = pObj["buttons"];
+            if (!buttons.isNull()) {
+                int b = 0;
+                for (JsonObject bObj : buttons) {
+                    if (b >= MAX_BUTTONS) break;
+                    ButtonConfig& cfg = buttonConfigs[p][b];
+                    
+                    const char* bName = bObj["name"] | "";
+                    strncpy(cfg.name, bName, 20);
+                    cfg.name[20] = '\0';
+                    
+                    const char* lmStr = bObj["ledMode"] | "TOGGLE";
+                    cfg.ledMode = (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
+                    cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
+                    cfg.messageCount = 0;
+                    
+                    JsonArray msgs = bObj["messages"];
+                    if (!msgs.isNull()) {
+                        for (int m = 0; m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                            JsonObject mObj = msgs[m];
+                            ActionMessage& msg = cfg.messages[m];
+                            
+                            // Action type
+                            const char* actStr = mObj["action"] | "PRESS";
+                            if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
+                            else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
+                            else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                            else msg.action = ACTION_PRESS;
+                            
+                            // MIDI type
+                            const char* typeStr = mObj["type"] | "OFF";
+                            msg.type = parseCommandType(String(typeStr));
+                            
+                            msg.channel = mObj["channel"] | 1;
+                            msg.data1 = mObj["data1"] | 0;
+                            msg.data2 = mObj["data2"] | 127;
+                            
+                            // Color
+                            const char* colorStr = mObj["color"] | "#bb86fc";
+                            hexToRgb(String(colorStr), msg.rgb);
+                            
+                            cfg.messageCount++;
+                        }
+                    }
+                    b++;
+                }
+            }
+            p++;
+        }
+    }
+    
+    // Process system config
+    JsonObject sys = doc["system"];
+    if (!sys.isNull()) {
+        if (sys.containsKey("buttonCount")) systemConfig.buttonCount = sys["buttonCount"];
+        if (sys.containsKey("ledsPerButton")) systemConfig.ledsPerButton = sys["ledsPerButton"];
+        if (sys.containsKey("bleDeviceName")) {
+            strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"] | "Chocotone", 23);
+        }
+        if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+    }
+    
+    return true;
+}
+
+void finalizeConfigUpload() {
+    // Save to NVS
+    savePresets();
+    saveSystemSettings();
+    
+    // Update display
+    displayOLED();
+    updateLeds();
+    
+    Serial.println("Config saved to NVS");
+}
+
+// ============================================================================
 // SERIAL CONFIG HANDLER - For offline_editor_v2.html via USB Serial
 // ============================================================================
 static String serialBuffer = "";

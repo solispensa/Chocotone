@@ -6,6 +6,7 @@
 // BLE Setup and Connection
 void setup_ble_midi();
 void setup_ble_server();
+void setup_ble_config_server();  // Config server for web editor (always runs)
 void startBleScan();
 void handleBleConnection();
 
