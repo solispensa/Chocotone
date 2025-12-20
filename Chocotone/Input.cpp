@@ -457,7 +457,7 @@ void loop_menuMode() {
     if (newEncoderPosition == oldEncoderPosition) return;
 
     int change = (newEncoderPosition - oldEncoderPosition);
-    int numMenuItems = 12;
+    int numMenuItems = 13;
 
     if (inSubMenu) {
         editingValue += change;
@@ -534,6 +534,16 @@ void handleMenuSelection() {
                     systemConfig.bleMode = BLE_CLIENT_ONLY;
                 }
                 bleModeChanged = true;
+                displayMenu();
+                break;
+            case 12:
+                // Toggle BLE Config Mode - pauses scanning for web editor
+                bleConfigMode = !bleConfigMode;
+                if (bleConfigMode) {
+                    Serial.println("BLE Config Mode ENABLED - scanning paused");
+                } else {
+                    Serial.println("BLE Config Mode DISABLED - scanning resumed");
+                }
                 displayMenu();
                 break;
         }

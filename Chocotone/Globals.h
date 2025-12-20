@@ -11,6 +11,9 @@
 #include <BLEDevice.h>
 #include "Config.h"
 
+// Forward declaration for DeviceProfiles
+enum DeviceType : uint8_t;
+
 // ============================================
 // v3.0 ACTION-BASED DATA STRUCTURES
 // ============================================
@@ -67,6 +70,13 @@ enum PresetLedMode : uint8_t {
     PRESET_LED_NORMAL = 0,    // Each button uses its own LED mode (Momentary/Toggle)
     PRESET_LED_SELECTION = 1, // Radio-button style - one selected, others dim
     PRESET_LED_HYBRID = 2     // Mix of selection buttons and normal buttons
+};
+
+// Sync Mode - which device to sync effect states with
+enum SyncMode : uint8_t {
+    SYNC_NONE = 0,    // No effect state sync
+    SYNC_SPM = 1,     // Sync with Sonicake Pocket Master
+    SYNC_GP5 = 2      // Sync with Valeton GP-5
 };
 
 // ============================================
@@ -127,7 +137,7 @@ struct ButtonConfig {
 };
 
 // ============================================
-// SYSTEM CONFIG (~93 bytes)
+// SYSTEM CONFIG (~95 bytes)
 // ============================================
 struct SystemConfig {
     char bleDeviceName[24]; // 24 bytes
@@ -143,6 +153,10 @@ struct SystemConfig {
     BleMode bleMode;        // 1 byte
     uint8_t ledsPerButton;  // 1 byte
     uint8_t ledMap[10];     // 10 bytes
+    
+    // Device abstraction (v3.1)
+    DeviceType targetDevice; // 1 byte - Which device to control (SPM, GP5, Generic)
+    uint8_t midiChannel;     // 1 byte - MIDI channel for device (1-16)
 };
 
 // ============================================
@@ -171,6 +185,7 @@ extern WebServer server;
 extern bool clientConnected;
 extern bool doConnect;
 extern bool doScan;
+extern bool bleConfigMode;  // True when BLE Config Mode is active (pauses scanning)
 extern BLEClient* pClient;
 extern BLERemoteCharacteristic* pRemoteCharacteristic;
 extern BLEAdvertisedDevice* myDevice;
@@ -242,12 +257,16 @@ extern int8_t presetSelectionState[4];
 extern uint32_t lastLedColors[NUM_LEDS];
 
 // ============================================
-// SPM EFFECT STATE SYNC
+// EFFECT STATE SYNC (Device-Agnostic + Legacy)
 // ============================================
 
-extern bool presetSyncSpm[4];           // Per-preset "Sync FX - SPM" setting
-extern bool spmEffectStates[9];         // NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB
-extern bool spmStateReceived;           // Flag: state was received from SPM
+// Number of abstract effect blocks (from DeviceProfiles.h)
+#define EFFECT_BLOCK_COUNT_MAX 10
+
+extern SyncMode presetSyncMode[4];       // Per-preset sync mode (NONE, SPM, GP5)
+extern bool spmEffectStates[9];         // Legacy: NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB (SPM only)
+extern bool effectStates[EFFECT_BLOCK_COUNT_MAX];  // Unified effect states for all devices
+extern bool spmStateReceived;           // Flag: state was received from device
 extern unsigned long lastSpmStateRequest; // Debounce state requests
 
 // ============================================

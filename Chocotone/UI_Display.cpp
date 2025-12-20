@@ -220,7 +220,7 @@ void displayMenu() {
     display.setTextColor(SSD1306_WHITE);
 
     // Build menu items dynamically to show status
-    char menuItems[12][25];  // Array to hold menu item strings
+    char menuItems[13][25];  // Array to hold menu item strings
     strncpy(menuItems[0], "Save and Exit", 25);
     strncpy(menuItems[1], "Exit without Saving", 25);
     snprintf(menuItems[2], 25, "Wi-Fi Editor (%s)", isWifiOn ? "ON" : "OFF");
@@ -236,8 +236,10 @@ void displayMenu() {
     const char* bleModeStr = systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
                              systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL" : "SERVER";
     snprintf(menuItems[11], 25, "BLE: %s", bleModeStr);
+    // BLE Config Mode (pauses scanning for web editor)
+    snprintf(menuItems[12], 25, "BLE Config: %s", bleConfigMode ? "ON" : "OFF");
     
-    int numMenuItems = 12;
+    int numMenuItems = 13;
 
     display.setCursor(0, 0);
     display.printf("-- Menu CHOCOTONE --");

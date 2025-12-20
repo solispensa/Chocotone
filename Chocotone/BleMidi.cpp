@@ -53,6 +53,7 @@ BLERemoteCharacteristic* pRemoteCharacteristic = nullptr;
 bool doConnect = false;
 bool clientConnected = false;
 bool doScan = true;
+bool bleConfigMode = false;  // When true, BLE scanning is paused for web editor config
 
 // Global BLE Server variables
 BLEServer* pServer = nullptr;
@@ -92,7 +93,7 @@ class ServerCallbacks : public BLEServerCallbacks {
 // MIDI Characteristic Callbacks (for incoming MIDI from DAW)
 class MidiCharacteristicCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic) {
-        String value = pCharacteristic->getValue();
+        auto value = pCharacteristic->getValue();
         if (value.length() > 2) {
             // Skip BLE MIDI header bytes (timestamp)
             Serial.print("BLE Server: Received MIDI from DAW (");
@@ -119,9 +120,9 @@ void processBleConfigCommand(const String& cmd);
 
 class ConfigCharacteristicCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic) {
-        String value = pCharacteristic->getValue();
+        auto value = pCharacteristic->getValue();
         if (value.length() > 0) {
-            Serial.printf("BLE Config: Received %d bytes\n", value.length());
+            Serial.printf("BLE Config: Received %d bytes\n", (int)value.length());
             
             // Append to buffer and process complete lines
             bleConfigBuffer += value;
@@ -815,8 +816,9 @@ void handleBleConnection() {
         }
     }
     
-    // Only scan if not connected and enough time has passed
-    if (!clientConnected && !doConnect && (millis() - lastScanAttempt > RESCAN_INTERVAL)) {
+    // Only scan if not connected, config mode OFF, and enough time has passed
+    // bleConfigMode pauses scanning to allow web editor BLE connection
+    if (!clientConnected && !doConnect && !bleConfigMode && (millis() - lastScanAttempt > RESCAN_INTERVAL)) {
         Serial.println("→ Scanning for SPM (BLE Client auto-connect)...");
         startBleScan();
         lastScanAttempt = millis();
