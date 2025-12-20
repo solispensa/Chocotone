@@ -7,6 +7,7 @@
 void setup_ble_midi();
 void setup_ble_server();
 void setup_ble_config_server();  // Config server for web editor (always runs)
+void toggleBleConfigMode();  // Toggle config mode ON/OFF, handling BLE advertising
 void startBleScan();
 void handleBleConnection();
 

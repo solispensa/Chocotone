@@ -538,12 +538,7 @@ void handleMenuSelection() {
                 break;
             case 12:
                 // Toggle BLE Config Mode - pauses scanning for web editor
-                bleConfigMode = !bleConfigMode;
-                if (bleConfigMode) {
-                    Serial.println("BLE Config Mode ENABLED - scanning paused");
-                } else {
-                    Serial.println("BLE Config Mode DISABLED - scanning resumed");
-                }
+                toggleBleConfigMode();
                 displayMenu();
                 break;
         }

@@ -27,10 +27,21 @@ class MySecurityCallbacks : public BLESecurityCallbacks {
     uint32_t onPassKeyRequest() { return 123456; }
     void onPassKeyNotify(uint32_t pass_key) {}
     bool onConfirmPIN(uint32_t pass_key) { return true; }
-    bool onSecurityRequest() { return true; }
+    bool onSecurityRequest() { 
+        // Always allow security request - handle in onAuthenticationComplete
+        return true; 
+    }
     void onAuthenticationComplete(esp_ble_auth_cmpl_t auth_cmpl) {
-        if (auth_cmpl.success) Serial.println("BLE Security: Auth Success");
-        else Serial.println("BLE Security: Auth Failed");
+        if (auth_cmpl.success) {
+            Serial.println("BLE Security: Auth Success");
+        } else {
+            // In config mode, auth failure is expected from web browsers
+            if (bleConfigMode) {
+                Serial.println("BLE Security: Auth skipped (Config Mode)");
+            } else {
+                Serial.println("BLE Security: Auth Failed");
+            }
+        }
     }
 };
 
@@ -80,9 +91,11 @@ class ServerCallbacks : public BLEServerCallbacks {
     
     void onDisconnect(BLEServer* pServer) {
         serverConnected = false;
+        configClientConnected = false;  // Also mark config client as disconnected
         Serial.println("BLE Server: Device disconnected");
         // Restart advertising for reconnection
-        if (systemConfig.bleMode != BLE_CLIENT_ONLY) {
+        // Also restart if bleConfigMode is active (for web editor connections)
+        if (systemConfig.bleMode != BLE_CLIENT_ONLY || bleConfigMode) {
             delay(100);  // Small delay before restarting advertising
             BLEDevice::startAdvertising();
             Serial.println("BLE Server: Advertising restarted");
@@ -210,19 +223,23 @@ void setup_ble_config_server() {
     BLEService* pConfigService = pServer->createService(CONFIG_SERVICE_UUID);
     
     // Create RX Characteristic (editor writes to ESP)
+    // Set permissions to allow write without encryption (for web browser compatibility)
     pConfigRxCharacteristic = pConfigService->createCharacteristic(
         CONFIG_RX_UUID,
         BLECharacteristic::PROPERTY_WRITE |
         BLECharacteristic::PROPERTY_WRITE_NR
     );
+    pConfigRxCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE);  // No encryption required
     pConfigRxCharacteristic->setCallbacks(new ConfigCharacteristicCallbacks());
     
     // Create TX Characteristic (ESP notifies editor)
+    // Set permissions to allow read/notify without encryption
     pConfigTxCharacteristic = pConfigService->createCharacteristic(
         CONFIG_TX_UUID,
         BLECharacteristic::PROPERTY_READ |
         BLECharacteristic::PROPERTY_NOTIFY
     );
+    pConfigTxCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE);  // No encryption required
     pConfigTxCharacteristic->addDescriptor(new BLE2902());
     
     // Start the config service
@@ -237,6 +254,62 @@ void setup_ble_config_server() {
     BLEDevice::startAdvertising();
     
     Serial.println("BLE Config Server Started - Advertising restarted");
+}
+
+// Toggle BLE Config Mode - called from menu
+// When entering: stops scanning, disconnects, restarts advertising
+// When exiting: resumes normal operations
+void toggleBleConfigMode() {
+    bleConfigMode = !bleConfigMode;
+    
+    if (bleConfigMode) {
+        Serial.println("=== ENTERING BLE CONFIG MODE ===");
+        
+        // 1. Stop any ongoing BLE scan
+        BLEScan* pScan = BLEDevice::getScan();
+        if (pScan) {
+            pScan->stop();
+            Serial.println("  - Scanning stopped");
+        }
+        
+        // 2. Disconnect BLE client if connected to SPM
+        if (pClient && pClient->isConnected()) {
+            pClient->disconnect();
+            Serial.println("  - Client disconnected from SPM");
+        }
+        clientConnected = false;
+        doConnect = false;
+        
+        // 3. Stop advertising briefly
+        BLEDevice::stopAdvertising();
+        delay(100);
+        
+        // 4. Configure and restart advertising with config service
+        BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+        pAdvertising->setScanResponse(true);
+        pAdvertising->setMinPreferred(0x06);
+        pAdvertising->setMaxPreferred(0x12);
+        
+        // Make sure config service UUID is advertised
+        pAdvertising->addServiceUUID(CONFIG_SERVICE_UUID);
+        
+        // 5. Start advertising
+        BLEDevice::startAdvertising();
+        Serial.println("  - Advertising started for web editor");
+        Serial.println("=== BLE CONFIG MODE READY - Connect from web editor ===");
+        
+    } else {
+        Serial.println("=== EXITING BLE CONFIG MODE ===");
+        
+        // Normal operations will resume on next loop cycle
+        // doScan and other flags will trigger appropriate behavior
+        if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+            doScan = true;  // Re-enable scanning for SPM
+            Serial.println("  - Scanning will resume for SPM");
+        }
+        
+        Serial.println("=== NORMAL BLE OPERATIONS RESUMED ===");
+    }
 }
 
 // Advertised Device Callbacks (for client scanning)
