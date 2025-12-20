@@ -7,19 +7,22 @@
     <title>Chocotone Manual & Walkthrough</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;900&display=swap"
+        rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0a0a0a;
-            --bg-card: #141414;
-            --bg-section: #111111;
-            --text-main: #ffffff;
-            --text-muted: #888888;
-            --accent: #bb86fc;
-            /* Chocotone Purple */
-            --accent-glow: rgba(187, 134, 252, 0.2);
+            --bg-dark: #000000;
+            --bg-card: #111111;
+            --bg-section: #0a0a0a;
+            --text-main: #e5fff2;
+            --text-muted: #8ffdff;
+            --accent: #8c81df;
+            /* Chocotone Lavender */
+            --accent-glow: rgba(140, 129, 223, 0.2);
             --border: #333333;
+            --mint: #e5fff2;
+            --cyan: #8ffdff;
         }
 
         * {
@@ -33,7 +36,7 @@
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
             line-height: 1.6;
@@ -141,12 +144,17 @@
 
         .hero-title {
             font-size: 4rem;
-            font-weight: 700;
+            font-weight: 900;
             margin-bottom: 0.5rem;
-            background: linear-gradient(to right, #fff, var(--accent));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            letter-spacing: -4px;
+        }
+
+        .hero-title .logo-part-1 {
+            color: var(--mint);
+        }
+
+        .hero-title .logo-part-2 {
+            color: var(--accent);
         }
 
         /* Controls Grid */
@@ -1363,13 +1371,13 @@
     <section id="hero">
         <div class="container" style="max-width: 1400px;">
             <div
-                style="position: relative; padding: 40px; background: linear-gradient(135deg, #1a1a20 0%, #0f0f12 100%); border-radius: 24px; overflow: hidden;">
+                style="position: relative; padding: 40px; background: linear-gradient(135deg, #111 0%, #000 100%); border-radius: 24px; overflow: hidden;">
                 <!-- Background glows -->
                 <div
-                    style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0, 0, 0, 0) 70%); top: -200px; right: -200px; z-index: 0; pointer-events: none;">
+                    style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, rgba(0, 0, 0, 0) 70%); top: -200px; right: -200px; z-index: 0; pointer-events: none;">
                 </div>
                 <div
-                    style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(0, 0, 0, 0) 70%); bottom: -100px; left: -100px; z-index: 0; pointer-events: none;">
+                    style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(143, 253, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%); bottom: -100px; left: -100px; z-index: 0; pointer-events: none;">
                 </div>
 
                 <!-- Header -->
@@ -1377,11 +1385,12 @@
                     style="z-index: 1; position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 220px; margin-bottom: 20px;">
                     <div
                         style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; justify-content: center; backdrop-filter: blur(10px);">
-                        <h1
-                            style="font-size: 72px; font-weight: 800; margin: 0; background: linear-gradient(to right, #fff, #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -2px; line-height: 1;">
-                            CHOCOTONE</h1>
-                        <div style="font-size: 24px; color: #9ca3af; font-weight: 400; margin-top: 8px;">Advanced BLE
-                            MIDI Controller</div>
+                        <h1 style="font-size: 72px; font-weight: 900; margin: 0; letter-spacing: -4px; line-height: 1;">
+                            <span style="color: #e5fff2;">CHOCO</span><span style="color: #8c81df;">TONE</span>
+                        </h1>
+                        <div
+                            style="font-size: 20px; color: #8ffdff; font-weight: 400; margin-top: 8px; letter-spacing: 2px;">
+                            OPEN MIDI CONTROLLER</div>
                         <div style="margin-top: 16px; color: #6b7280; font-size: 14px;">Made by André Solis Albuquerque
                             - 2025</div>
                     </div>
@@ -2778,14 +2787,16 @@
                 <div class="control-card">
                     <div class="control-icon">🎛️</div>
                     <h3>Button Actions</h3>
-                    <p>Buttons support dual messages via toggling:</p>
+                    <p>Each button supports 5 configurable action types:</p>
                     <div style="margin-top: 1rem;">
-                        <p><span class="badge">PRESS (1st)</span><br>Sends the <strong>Primary Message</strong> (e.g.,
-                            Effect On). The LED will light up securely.</p>
-                        <hr style="border:0; border-top:1px solid #333; margin:1rem 0;">
-                        <p><span class="badge">PRESS (2nd)</span><br>Sends the <strong>Alternate Message</strong> (e.g.,
-                            Effect Off). The LED dims or turns off.</p>
+                        <p><span class="badge">PRESS</span> Primary action - toggles effects, sends CC/PC</p>
+                        <p><span class="badge">RELEASE</span> Triggers on button release (momentary behavior)</p>
+                        <p><span class="badge">LONG PRESS</span> Alternate action after holding 500ms+</p>
+                        <p><span class="badge">DOUBLE TAP</span> Quick double-press for fast switching</p>
+                        <p><span class="badge">COMBO</span> Press multiple buttons simultaneously</p>
                     </div>
+                    <p style="margin-top: 1rem; font-size: 0.85rem; color: #8ffdff;"><strong>LED Modes:</strong> Toggle,
+                        Fixed, Sync, Blink for visual feedback</p>
                 </div>
 
                 <!-- ENCODER -->
@@ -2810,9 +2821,10 @@
                     <p>To switch presets:</p>
                     <ol style="margin-left:1.5rem; color:#888;">
                         <li>Assign a button to "Preset +" or "Preset -".</li>
-                        <li>OR use the Encoder in the main view (if configured).</li>
+                        <li>OR use the Encoder click in the main view.</li>
                     </ol>
-                    <p style="margin-top:1rem;"><em>Pro Tip: Each preset has its own name and LED color scheme.</em></p>
+                    <p style="margin-top:1rem;"><em>Pro Tip: Each preset has its own name, button count (4-10), and LED
+                            color scheme.</em></p>
                 </div>
             </div>
         </div>
@@ -2827,35 +2839,47 @@
                     <div class="step-num">1</div>
                     <div>
                         <h3>Enter Tap Mode</h3>
-                        <p>Press any button assigned to <strong>TAP_TEMPO</strong>. The screen will switch to the BPM
-                            view.</p>
+                        <p>Press any button assigned to <strong>TAP_TEMPO</strong>. The screen switches to BPM view
+                            showing current tempo and delay time in milliseconds.</p>
                     </div>
                 </div>
                 <div class="step-item">
                     <div class="step-num">2</div>
                     <div>
                         <h3>Tap it in</h3>
-                        <p>Tap the button rhythmically. The controller calculates the average BPM instantly.</p>
+                        <p>Tap the button rhythmically. The controller calculates the <strong>rolling average
+                                BPM</strong> for smooth, accurate timing.</p>
                     </div>
                 </div>
                 <div class="step-item">
                     <div class="step-num">3</div>
                     <div>
                         <h3>Fine Tune</h3>
-                        <p>Rotate the encoder to adjust the BPM in <strong>0.5</strong> increments for precision.</p>
+                        <p>Rotate the encoder to adjust BPM in <strong>0.5</strong> increments. Hold encoder + rotate
+                            for faster ±5 BPM adjustment.</p>
                     </div>
                 </div>
                 <div class="step-item">
                     <div class="step-num">4</div>
                     <div>
                         <h3>Rhythm Patterns</h3>
-                        <p>Short-press the encoder to cycle through subdivisions:</p>
+                        <p>Click encoder or use <strong>R.prev/R.next</strong> buttons to cycle subdivisions:</p>
                         <div class="rhythm-patterns">
                             <span class="pattern-tag">1/4 (Quarter)</span>
                             <span class="pattern-tag">1/8 (Eighth)</span>
                             <span class="pattern-tag">1/8d (Dotted)</span>
                             <span class="pattern-tag">1/2 (Half)</span>
                         </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-num">5</div>
+                    <div>
+                        <h3>Lock Mode</h3>
+                        <p>Configure <strong>TAP_MODE_LOCK</strong> in the button settings to stay in tap tempo mode
+                            indefinitely. Perfect for live performers who need constant BPM access.</p>
+                        <p style="color: #8ffdff; font-size: 0.9rem; margin-top: 0.5rem;">Tap tempo sends MIDI CC to
+                            your connected device in real-time!</p>
                     </div>
                 </div>
             </div>
@@ -2867,33 +2891,58 @@
         <div class="container">
             <h2>OLED System Menu</h2>
             <p style="text-align: center; max-width:600px; margin: 0 auto 2rem auto;">
-                Long-press the Encoder to enter the menu. Here is what you can do:
+                Long-press the Encoder to enter the menu. Rotate to navigate, click to select. Here are the options:
             </p>
 
             <div class="menu-tree">
                 <div class="menu-item">
                     <div class="menu-title">Save and Exit</div>
-                    <p>Saves any changes made in the menu to permanent memory and returns to play mode.</p>
+                    <p>Saves all changes to permanent memory (EEPROM) and returns to play mode.</p>
                 </div>
                 <div class="menu-item">
                     <div class="menu-title">Wi-Fi Config</div>
-                    <p>Toggles the WiFi Access Point on/off. <br><em>Enable this to connect via browser editor.</em></p>
+                    <p>Toggles the WiFi Access Point on/off. <em>Enable to access the web editor at 192.168.4.1</em></p>
                 </div>
                 <div class="menu-item">
-                    <div class="menu-title">LED Brightness</div>
-                    <p>Adjusts the global brightness of the NeoPixels (Low/Med/High).</p>
+                    <div class="menu-title">BLE Mode</div>
+                    <p>Select Bluetooth behavior: <strong>CLIENT</strong> (connect to pedals), <strong>SERVER</strong>
+                        (accept connections), or <strong>DUAL</strong> (both).</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">LED Brightness On</div>
+                    <p>Adjusts the brightness level for active LEDs (0-255). Controls how bright buttons glow when
+                        effects are ON.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">LED Brightness Off</div>
+                    <p>Adjusts the dim level for inactive LEDs (0-255). Set to 0 for fully off, or low value for visible
+                        but dim.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Button Count</div>
+                    <p>Configure number of buttons per preset (4-10). Allows different presets to have different
+                        layouts.</p>
                 </div>
                 <div class="menu-item">
                     <div class="menu-title">Pad Debounce</div>
-                    <p>Adjusts button sensitivity to prevent double-triggering.</p>
+                    <p>Adjusts button sensitivity delay (1-500ms) to prevent double-triggering.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Display Timeout</div>
+                    <p>Screen sleep timer (1-60 seconds). Screen dims after inactivity to save power.</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-title">Screen Contrast</div>
+                    <p>Adjust OLED brightness/contrast for different lighting conditions.</p>
                 </div>
                 <div class="menu-item">
                     <div class="menu-title">Clear BLE Bonds</div>
-                    <p>Forgets all paired Bluetooth devices. Useful if you can't connect to a new pedal.</p>
+                    <p>Forgets all paired Bluetooth devices. Useful if connection issues occur.</p>
                 </div>
                 <div class="menu-item">
                     <div class="menu-title">Factory Reset</div>
-                    <p>Wipes all settings and presets back to default state.</p>
+                    <p>Wipes all settings and presets back to default. <strong style="color:#ff6b6b;">Cannot be
+                            undone!</strong></p>
                 </div>
             </div>
         </div>
@@ -2903,13 +2952,36 @@
     <section id="web" style="background: radial-gradient(circle at center, #222 0%, #111 100%);">
         <div class="container" style="text-align: center;">
             <h2>Web Configuration</h2>
-            <img src="images/chocotone_editor.png" alt="Web Editor"
+            <img src="images/chocotone_editor_1v2.png" alt="Web Editor"
                 style="max-width: 800px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
-            <p>For deep editing, connect to the WiFi network:</p>
-            <h3 style="color:var(--accent); font-family: monospace; font-size: 2rem;">CHOCOTONE</h3>
-            <p>Then navigate to <a href="http://192.168.4.1" style="color:white;">http://192.168.4.1</a> in your
-                browser.</p>
-            <p>Password: <code>12345678</code></p>
+
+            <h3 style="color:var(--accent); margin-bottom: 1rem;">Three Ways to Configure</h3>
+
+            <div
+                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align: left; max-width: 900px; margin: 0 auto 2rem auto;">
+                <div
+                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                    <h4 style="color: #8c81df; margin-bottom: 0.5rem;">🌐 WiFi Editor</h4>
+                    <p style="font-size: 0.9rem;">Connect to WiFi AP <strong>CHOCOTONE</strong> (password:
+                        <code>12345678</code>), then open <code>192.168.4.1</code>
+                    </p>
+                </div>
+                <div
+                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                    <h4 style="color: #8ffdff; margin-bottom: 0.5rem;">🔌 USB Serial</h4>
+                    <p style="font-size: 0.9rem;">Connect via USB and use the offline editor's Serial connection. No
+                        WiFi needed!</p>
+                </div>
+                <div
+                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
+                    <h4 style="color: #e5fff2; margin-bottom: 0.5rem;">📱 Bluetooth</h4>
+                    <p style="font-size: 0.9rem;">Pair via Web Bluetooth in Chrome for wireless configuration without
+                        WiFi.</p>
+                </div>
+            </div>
+
+            <p style="color: #888; font-size: 0.9rem;">Use the offline editor (<code>offline_editor_v2.html</code>) for
+                full access to all configuration options including JSON import/export.</p>
         </div>
     </section>
 

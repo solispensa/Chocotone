@@ -1,4 +1,5 @@
 #include "Globals.h"
+#include "DeviceProfiles.h"
 
 // ============================================
 // GLOBAL OBJECTS
@@ -36,7 +37,9 @@ SystemConfig systemConfig = {
     false,                      // wifiOnAtBoot
     BLE_CLIENT_ONLY,            // bleMode
     1,                          // ledsPerButton
-    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}  // ledMap[10]
+    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9},  // ledMap[10]
+    DEVICE_SPM,                 // targetDevice (default: SPM for backward compat)
+    1                           // midiChannel (default: 1)
 };
 
 bool isWifiOn = false;
@@ -104,11 +107,12 @@ int8_t presetSelectionState[4] = {-1, -1, -1, -1};
 uint32_t lastLedColors[NUM_LEDS] = {0};
 
 // ============================================
-// SPM EFFECT STATE SYNC
+// EFFECT STATE SYNC (Device-Agnostic + Legacy)
 // ============================================
 
-bool presetSyncSpm[4] = {false, false, false, false};  // Per-preset sync with SPM
-bool spmEffectStates[9] = {false};  // NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB
+SyncMode presetSyncMode[4] = {SYNC_NONE, SYNC_NONE, SYNC_NONE, SYNC_NONE};  // Per-preset sync mode
+bool spmEffectStates[9] = {false};  // Legacy: NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB (SPM only)
+bool effectStates[EFFECT_BLOCK_COUNT_MAX] = {false};  // Unified effect states for all devices
 bool spmStateReceived = false;
 unsigned long lastSpmStateRequest = 0;
 

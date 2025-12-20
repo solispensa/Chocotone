@@ -92,7 +92,7 @@ void loadFactoryPresets() {
     strncpy(presetNames[0], "STOMP", 20);
     presetNames[0][20] = '\0';
     presetLedModes[0] = PRESET_LED_NORMAL;
-    presetSyncSpm[0] = true;  // Enable SPM effect state sync for STOMP preset
+    presetSyncMode[0] = SYNC_SPM;  // Enable SPM effect state sync for STOMP preset
     
     // NR (CC#43) - White
     setToggleCC(buttonConfigs[0][0], "NR", 43, 0xFF, 0xFF, 0xFF);

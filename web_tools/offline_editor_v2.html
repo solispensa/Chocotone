@@ -6,20 +6,26 @@
     <meta name='viewport' content='width=device-width,initial-scale=1'>
     <title>Chocotone MIDI Editor v2</title>
     <style>
+        /* Import Montserrat Font */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+
         :root {
-            --bg: #0a0a0f;
-            --card: #16161e;
-            --card-hover: #1e1e2a;
-            --text: #e4e4e7;
-            --text-dim: #71717a;
-            --acc: #a78bfa;
-            --acc-dim: #7c3aed;
-            --inp: #27272a;
-            --brd: #3f3f46;
+            --bg: #000000;
+            --card: #111111;
+            --card-hover: #1a1a1a;
+            --text: #e5fff2;
+            --text-dim: #8ffdff;
+            --acc: #8c81df;
+            --acc-dim: #6b62b0;
+            --inp: #1a1a1a;
+            --brd: #333333;
             --success: #22c55e;
-            --warning: #f59e0b;
+            --warning: #8c81df;
             --danger: #ef4444;
             --radius: 10px;
+            --cyan: #8ffdff;
+            --mint: #e5fff2;
+            --orange: #8c81df;
         }
 
         * {
@@ -29,36 +35,92 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
             padding: 20px;
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
-        /* Header */
+        /* Header / Logo */
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--brd);
         }
 
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #fff, var(--acc));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
         }
 
-        .header .sub {
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            margin-top: 4px;
+        .logo-part-1 {
+            color: var(--mint);
+        }
+
+        .logo-part-2 {
+            color: var(--orange);
+        }
+
+        .logo-subline {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--cyan);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-top: 6px;
+        }
+
+        /* Two-Column Desktop Layout */
+        .two-col-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .col-left,
+        .col-right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (min-width: 1024px) {
+            .two-col-layout {
+                flex-direction: row;
+                gap: 12px;
+            }
+
+            .col-left,
+            .col-right {
+                flex: 0 0 calc(50% - 6px);
+                width: calc(50% - 6px);
+                min-width: 280px;
+            }
+        }
+
+        /* Wide Desktop 16:9 optimization */
+        @media (min-width: 1400px) {
+            body {
+                max-width: 1400px;
+                padding: 30px 50px;
+            }
+        }
+
+        /* Connection Cards */
+        .conn-card-usb {
+            border-color: var(--orange) !important;
+        }
+
+        .conn-card-ble {
+            border-color: var(--cyan) !important;
         }
 
         /* Section Cards */
@@ -233,7 +295,7 @@
 
         .sys-tile.active {
             border-color: var(--acc);
-            background: linear-gradient(135deg, #3700b3, #7c3aed);
+            background: linear-gradient(135deg, #cc8a2e, #ffae3d);
         }
 
         .sys-tile .icon {
@@ -354,18 +416,40 @@
             resize: vertical;
         }
 
-        /* Responsive */
-        @media (max-width: 600px) {
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
             body {
-                padding: 10px;
+                padding: 12px;
             }
 
             .row {
                 grid-template-columns: 1fr;
             }
 
-            .header h1 {
-                font-size: 1.2rem;
+            .logo-text {
+                font-size: 32px;
+            }
+
+            .logo-subline {
+                font-size: 11px;
+                letter-spacing: 2px;
+            }
+        }
+
+        /* Desktop - wider layout */
+        @media (min-width: 1024px) {
+            body {
+                padding: 30px 40px;
+            }
+
+            .desktop-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+
+            .row {
+                grid-template-columns: repeat(3, 1fr);
             }
         }
     </style>
@@ -374,8 +458,10 @@
 
 <body>
     <div class="header">
-        <h1>Chocotone MIDI Editor</h1>
-        <div class="sub">v2.0 - Hybrid Action System</div>
+        <h1 class="logo-text">
+            <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
+        </h1>
+        <div class="logo-subline">OPEN MIDI CONTROLLER</div>
     </div>
 
     <div id="app"></div>
@@ -619,6 +705,12 @@
             var showSelGroup = (presetMode === 'HYBRID');
             var html = '';
 
+            // Start two-column layout wrapper
+            html += '<div class="two-col-layout">';
+
+            // ========== LEFT COLUMN ==========
+            html += '<div class="col-left">';
+
             // --- PRESET CONFIG -------------------------------------------
             html += '<div class="section">';
             html += '<div class="section-title">Preset Configuration</div>';
@@ -659,24 +751,30 @@
                 var isActive = (b === selectedBtn && !showSystem);
                 var msg1 = (bt.messages && bt.messages[0]) ? bt.messages[0] : { type: 'OFF', data1: 0, rgb: '#555' };
 
-                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')">';
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px">';
+                html += '<div style="flex:1;min-width:0;text-align:left">';
                 html += '<div class="num">BTN ' + (b + 1) + '</div>';
                 html += '<div class="name">' + bt.name + '</div>';
                 html += '<div class="info">' + msg1.type + ' ' + msg1.data1 + '</div>';
-                html += '<div class="colors">';
-                html += '<div class="dot" style="background:' + msg1.rgb + '"></div>';
-                html += '</div></div>';
+                html += '</div>';
+                html += '<div style="background:' + msg1.rgb + ';width:26px;height:26px;border-radius:50%;border:2px solid #fff3;flex-shrink:0;margin-left:12px"></div>';
+                html += '</div>';
             }
             html += '</div>';
             html += '</div>'; // Close Buttons section
 
-            // System Tile - OUTSIDE the Buttons card
+            // System Tile
             html += '<div class="sys-tile-wrap">';
             html += '<div class="sys-tile' + (showSystem ? ' active' : '') + '" onclick="toggleSystem()">';
             html += '<span class="label">System Configuration</span>';
             html += '</div></div>';
 
-            // --- MAIN CONTENT --------------------------------------------
+            html += '</div>'; // Close LEFT COLUMN
+
+            // ========== RIGHT COLUMN ==========
+            html += '<div class="col-right">';
+
+            // --- MAIN CONTENT (Button Detail or System Config) ------------
             if (showSystem) {
                 html += renderSystemConfig();
             } else {
@@ -693,6 +791,10 @@
             html += '<button class="btn secondary" onclick="copyJSON()">Copy</button>';
             html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
             html += '</div></div>';
+
+            html += '</div>'; // Close RIGHT COLUMN
+
+            html += '</div>'; // Close two-col-layout
 
             html += '<div style="text-align:center;color:#555;font-size:0.7rem;margin-top:10px">Chocotone v2.0 - Hybrid Editor</div>';
             document.getElementById('app').innerHTML = html;
@@ -899,6 +1001,7 @@
         function saveChanges() {
             // In offline mode, save means export to JSON area
             exportJSON();
+            render();  // Update buttons selection UI with new values
             alert('Changes saved! JSON has been updated in the Export area below.');
         }
         function updBtnCount(count) {
@@ -1388,35 +1491,35 @@
             var bleStatusColor = bleConnected ? '#22c55e' : '#71717a';
             var bleBtnText = bleConnected ? 'Disconnect' : 'Connect BLE';
 
-            // Twin card container
-            var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">';
+            // Twin card container - uses same layout as columns for alignment
+            var html = '<div class="two-col-layout" style="margin-bottom:12px">';
 
-            // USB Serial Card
-            html += '<div class="section" style="flex:1;min-width:280px;background:#1a1a2e;border:1px solid #7c3aed">';
-            html += '<div class="section-title" style="color:#a78bfa">🔌 USB Serial</div>';
+            // USB Serial Card - Orange theme (uses CSS vars)
+            html += '<div class="section conn-card-usb col-left" style="margin-bottom:0">';
+            html += '<div class="section-title">🔌 USB Serial</div>';
             html += '<div class="row" style="align-items:center">';
-            html += '<button id="btnConnect" class="btn" onclick="toggleUSB()" style="background:#7c3aed">' + usbBtnText + '</button>';
-            html += '<span style="color:#71717a">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></span>';
+            html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()">' + usbBtnText + '</button>';
+            html += '<span style="color:var(--cyan)">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></span>';
             html += '</div>';
             html += '<div class="actions" style="margin-top:10px">';
             html += '<button class="btn success" onclick="readFromDevice()">Read</button>';
             html += '<button class="btn warning" onclick="sendToDevice()">Send</button>';
             html += '</div>';
-            html += '<div style="margin-top:8px;font-size:0.7rem;color:#71717a">Chrome/Edge only</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge only</div>';
             html += '</div>';
 
-            // Bluetooth Card
-            html += '<div class="section" style="flex:1;min-width:280px;background:#1a1a2e;border:1px solid #0ea5e9">';
-            html += '<div class="section-title" style="color:#38bdf8">📶 Bluetooth</div>';
+            // Bluetooth Card - Cyan theme (uses CSS vars)
+            html += '<div class="section conn-card-ble col-right" style="margin-bottom:0">';
+            html += '<div class="section-title" style="color:var(--cyan)">📶 Bluetooth</div>';
             html += '<div class="row" style="align-items:center">';
-            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:#0ea5e9">' + bleBtnText + '</button>';
-            html += '<span style="color:#71717a">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></span>';
+            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000">' + bleBtnText + '</button>';
+            html += '<span style="color:var(--cyan)">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></span>';
             html += '</div>';
             html += '<div class="actions" style="margin-top:10px">';
             html += '<button class="btn success" onclick="readFromDeviceBLE()">Read</button>';
             html += '<button class="btn warning" onclick="sendToDeviceBLE()">Send</button>';
             html += '</div>';
-            html += '<div style="margin-top:8px;font-size:0.7rem;color:#71717a">Chrome/Edge desktop only</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge desktop only</div>';
             html += '</div>';
 
             html += '</div>';
@@ -1424,6 +1527,149 @@
         };
 
         render();
+
+        // ===============================================================
+        // DEV TOOLS - Live Color Palette Editor
+        // ===============================================================
+        (function () {
+            var devPanel = document.createElement('div');
+            devPanel.id = 'devTools';
+            devPanel.className = 'collapsed';
+            devPanel.innerHTML = `
+                <style>
+                    #devTools {
+                        position: fixed;
+                        top: 15px;
+                        right: 15px;
+                        background: var(--card, #111);
+                        border: 2px solid var(--orange, #ffae3d);
+                        border-radius: 12px;
+                        padding: 16px;
+                        z-index: 9999;
+                        font-family: 'Montserrat', sans-serif;
+                        font-size: 12px;
+                        color: var(--mint, #e5fff2);
+                        min-width: 200px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                    }
+                    #devTools.collapsed { 
+                        padding: 0;
+                        min-width: auto;
+                        border-radius: 50%;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    #devTools.collapsed .dev-content { display: none; }
+                    #devTools.collapsed .dev-header-text { display: none; }
+                    #devTools .dev-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 12px;
+                        font-weight: 700;
+                        color: var(--orange, #ffae3d);
+                        cursor: pointer;
+                    }
+                    #devTools.collapsed .dev-header { 
+                        margin-bottom: 0;
+                        font-size: 18px;
+                    }
+                    #devTools .dev-asterisk {
+                        display: none;
+                    }
+                    #devTools.collapsed .dev-asterisk {
+                        display: block;
+                        font-size: 20px;
+                    }
+                    #devTools .color-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin-bottom: 8px;
+                    }
+                    #devTools .color-row label {
+                        flex: 1;
+                        color: var(--cyan, #8ffdff);
+                    }
+                    #devTools input[type="color"] {
+                        width: 40px;
+                        height: 28px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn {
+                        width: 100%;
+                        padding: 8px;
+                        margin-top: 10px;
+                        background: var(--orange, #ffae3d);
+                        color: #000;
+                        border: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn:hover { background: var(--acc-dim, #cc8a2e); }
+                </style>
+                <div class="dev-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <span class="dev-asterisk">✱</span>
+                    <span class="dev-header-text">🎨 Dev Tools</span>
+                    <span class="dev-header-text" style="font-size:10px">✕</span>
+                </div>
+                <div class="dev-content">
+                    <div class="color-row">
+                        <label>Background</label>
+                        <input type="color" id="devBg" value="#000000">
+                    </div>
+                    <div class="color-row">
+                        <label>Mint (Text)</label>
+                        <input type="color" id="devMint" value="#e5fff2">
+                    </div>
+                    <div class="color-row">
+                        <label>Cyan (Dim)</label>
+                        <input type="color" id="devCyan" value="#8ffdff">
+                    </div>
+                    <div class="color-row">
+                        <label>Accent (Acc)</label>
+                        <input type="color" id="devOrange" value="#8c81df">
+                    </div>
+                    <button class="dev-btn" onclick="exportPalette()">📋 Export Palette</button>
+                </div>
+            `;
+            document.body.appendChild(devPanel);
+
+            // Live color update functions
+            document.getElementById('devBg').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--bg', e.target.value);
+            });
+            document.getElementById('devMint').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text', e.target.value);
+                document.documentElement.style.setProperty('--mint', e.target.value);
+            });
+            document.getElementById('devCyan').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text-dim', e.target.value);
+                document.documentElement.style.setProperty('--cyan', e.target.value);
+            });
+            document.getElementById('devOrange').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--acc', e.target.value);
+                document.documentElement.style.setProperty('--warning', e.target.value);
+                document.documentElement.style.setProperty('--orange', e.target.value);
+            });
+
+            // Export palette function
+            window.exportPalette = function () {
+                var bg = document.getElementById('devBg').value;
+                var mint = document.getElementById('devMint').value;
+                var cyan = document.getElementById('devCyan').value;
+                var orange = document.getElementById('devOrange').value;
+                var code = `Palette:\n--bg: ${bg};\n--mint: ${mint};\n--cyan: ${cyan};\n--orange: ${orange};`;
+                navigator.clipboard.writeText(code);
+                alert('Palette copied to clipboard!\n\n' + code);
+            };
+        })();
     </script>
 </body>
 

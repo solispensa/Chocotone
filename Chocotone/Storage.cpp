@@ -154,7 +154,7 @@ void savePresets() {
     
     prefs.putBytes("presetNames", presetNames, sizeof(presetNames));
     prefs.putBytes("ledModes", presetLedModes, sizeof(presetLedModes));
-    prefs.putBytes("syncSpm", presetSyncSpm, sizeof(presetSyncSpm));  // SPM sync settings
+    prefs.putBytes("syncSpm", presetSyncMode, sizeof(presetSyncMode));  // Sync mode settings (NONE/SPM/GP5)
     
     yield();
     
@@ -205,12 +205,12 @@ void loadPresets() {
             systemPrefs.getBytes("ledModes", presetLedModes, lenModes);
         }
         
-        // Load SPM sync settings
+        // Load sync mode settings
         size_t lenSync = systemPrefs.getBytesLength("syncSpm");
-        if (lenSync == sizeof(presetSyncSpm)) {
-            systemPrefs.getBytes("syncSpm", presetSyncSpm, lenSync);
-            Serial.printf("SPM Sync: P1=%d P2=%d P3=%d P4=%d\n", 
-                presetSyncSpm[0], presetSyncSpm[1], presetSyncSpm[2], presetSyncSpm[3]);
+        if (lenSync == sizeof(presetSyncMode)) {
+            systemPrefs.getBytes("syncSpm", presetSyncMode, lenSync);
+            Serial.printf("Sync Mode: P1=%d P2=%d P3=%d P4=%d\n", 
+                presetSyncMode[0], presetSyncMode[1], presetSyncMode[2], presetSyncMode[3]);
         }
         
         // Load global special actions

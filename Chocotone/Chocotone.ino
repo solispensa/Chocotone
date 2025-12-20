@@ -210,7 +210,7 @@ void loop() {
         checkForSysex();
         
         // Apply SPM effect state to buttons if received and sync enabled
-        if (spmStateReceived && presetSyncSpm[currentPreset]) {
+        if (spmStateReceived && presetSyncMode[currentPreset] != SYNC_NONE) {
             spmStateReceived = false;
             applySpmStateToButtons();
         }

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chocotone Features</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=VT323&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=VT323&display=swap');
 
         * {
             box-sizing: border-box;
@@ -15,9 +15,9 @@
         body {
             margin: 0;
             padding: 0;
-            background-color: #0f0f12;
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #e5fff2;
+            font-family: 'Montserrat', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -64,7 +64,7 @@
             position: absolute;
             width: 600px;
             height: 600px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
             top: -200px;
             right: -200px;
             z-index: 0;
@@ -75,7 +75,7 @@
             position: absolute;
             width: 500px;
             height: 500px;
-            background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+            background: radial-gradient(circle, rgba(143, 253, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
             bottom: -100px;
             left: -100px;
             z-index: 0;
@@ -142,14 +142,18 @@
 
         h1 {
             font-size: 72px;
-            font-weight: 800;
+            font-weight: 900;
             margin: 0;
-            background: linear-gradient(to right, #fff, #a78bfa);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -2px;
+            letter-spacing: -4px;
             line-height: 1;
+        }
+
+        .logo-part-1 {
+            color: #e5fff2;
+        }
+
+        .logo-part-2 {
+            color: #8c81df;
         }
 
         @media (max-width: 767px) {
@@ -160,9 +164,10 @@
 
         .subtitle {
             font-size: 24px;
-            color: #9ca3af;
+            color: #8ffdff;
             font-weight: 400;
             margin-top: 8px;
+            letter-spacing: 2px;
         }
 
         @media (max-width: 767px) {
@@ -277,23 +282,23 @@
 
         /* Accents */
         .accent-purple {
-            color: #a78bfa;
+            color: #8c81df;
         }
 
         .accent-pink {
-            color: #f472b6;
+            color: #8c81df;
         }
 
         .accent-blue {
-            color: #60a5fa;
+            color: #8ffdff;
         }
 
         .accent-green {
-            color: #4ade80;
+            color: #22c55e;
         }
 
         .accent-orange {
-            color: #fb923c;
+            color: #8c81df;
         }
 
         /* Visual Elements */
@@ -413,8 +418,8 @@
 
         <header>
             <div class="header-box">
-                <h1>CHOCOTONE</h1>
-                <div class="subtitle">Advanced BLE MIDI Controller</div>
+                <h1><span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span></h1>
+                <div class="subtitle">OPEN MIDI CONTROLLER</div>
                 <div class="version-tag">Made by André Solis Albuquerque - 2025</div>
             </div>
             <div class="header-image-box">
