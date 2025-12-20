@@ -1333,25 +1333,39 @@
         }
 
         async function sendToDeviceBLE() {
-            if (!bleRxChar) { alert('Connect Bluetooth first'); return; }
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
             var json = JSON.stringify(presetData);
-            var CHUNK_SIZE = 400; // Smaller chunks for BLE
+            var CHUNK_SIZE = 150; // Small chunks for reliable BLE transfer
+            var totalChunks = Math.ceil(json.length / CHUNK_SIZE);
 
             try {
+                console.log('BLE Send: Starting upload of ' + json.length + ' bytes in ' + totalChunks + ' chunks');
+
                 // Start upload
                 await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_START\n'));
-                await sleep(100);
+                await sleep(200);
 
-                // Send chunks
+                // Send chunks with progress
                 for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
                     var chunk = json.substring(i, i + CHUNK_SIZE);
                     await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
-                    await sleep(50);
+                    await sleep(80);  // Longer delay for reliable receive
+
+                    if (chunkNum % 10 === 0) {
+                        console.log('BLE Send: Chunk ' + chunkNum + '/' + totalChunks);
+                    }
                 }
 
                 // End upload
+                await sleep(100);
                 await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_END\n'));
+                console.log('BLE Send: Upload complete');
             } catch (e) {
+                console.error('BLE Send error:', e);
                 alert('BLE Send error: ' + e.message);
             }
         }
