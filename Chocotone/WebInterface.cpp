@@ -1276,8 +1276,8 @@ bool processConfigChunk(const String& jsonStr, int chunkNum) {
                             msg.data1 = mObj["data1"] | 0;
                             msg.data2 = mObj["data2"] | 127;
                             
-                            // Color
-                            const char* colorStr = mObj["color"] | "#bb86fc";
+                            // Color - web editor uses "rgb", check both
+                            const char* colorStr = mObj["rgb"] | (mObj["color"] | "#bb86fc");
                             hexToRgb(String(colorStr), msg.rgb);
                             
                             cfg.messageCount++;
