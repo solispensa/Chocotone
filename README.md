@@ -330,6 +330,16 @@ Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidel
 
 ---
 
+## About the Name 🍫
+I use an **M-VAVE Chocolate Plus**, a 4-button MIDI footswitch which offers the best value on the market. If you are reading this, you probably already know that.
+
+My prototype was initially intended to be a "Chocolate Plus Pro Max," with added features and more control. So I wanted a name that started with "Choco"... and thus, **Chocotone** was born!
+
+It shares its name with a Brazilian Christmas dessert (a chocolate-filled Panettone), which is fitting for a Brazilian controller created during Christmastime. The name stuck, and here we are. In my defense, the colorful RGB LEDs certainly contribute to the candy theme.
+
+> [!NOTE]
+> Not to be confused with **Chocottone**, the trademark registered by Bauducco for the most popular version of this chocolate-filled bread. Delicious!
+
 ## Special Thanks
 
 I'm very grateful to everyone who helped me with this project ❤️
