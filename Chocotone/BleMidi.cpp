@@ -998,17 +998,18 @@ void applySpmStateToButtons() {
 
 void sendBleConfigResponse(const String& response) {
     if (pConfigTxCharacteristic != nullptr) {
-        // BLE MTU is typically 512 bytes, split if needed
+        // Web Bluetooth negotiates higher MTU (usually 512), but use safe value
+        // for maximum compatibility. 180 bytes with delay works reliably.
         int len = response.length();
-        int chunkSize = 500;  // Safe chunk size for BLE
+        int chunkSize = 180;  // Safe chunk size for negotiated BLE MTU
+        
+        Serial.printf("BLE Config: Sending %d bytes in %d chunks...\n", len, (len + chunkSize - 1) / chunkSize);
         
         for (int i = 0; i < len; i += chunkSize) {
             String chunk = response.substring(i, min(i + chunkSize, len));
             pConfigTxCharacteristic->setValue(chunk.c_str());
             pConfigTxCharacteristic->notify();
-            if (i + chunkSize < len) {
-                delay(10);  // Small delay between chunks
-            }
+            delay(15);  // Delay between chunks for reliable transfer
         }
         Serial.printf("BLE Config: Sent response (%d bytes)\n", len);
     }
