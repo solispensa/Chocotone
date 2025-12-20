@@ -19,7 +19,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
-            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
+            if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected) requestPresetState();
             Serial.printf("PRESET UP → Preset %d\n", currentPreset);
             return;
             
@@ -28,7 +28,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
-            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
+            if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected) requestPresetState();
             Serial.printf("PRESET DOWN → Preset %d\n", currentPreset);
             return;
             
@@ -37,7 +37,7 @@ void executeActionMessage(const ActionMessage& msg) {
             saveCurrentPresetIndex();
             displayOLED();
             updateLeds();
-            if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
+            if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected) requestPresetState();
             return;
             
         case WIFI_TOGGLE:
@@ -187,7 +187,7 @@ void loop_presetMode() {
                     } else if (config.ledMode == LED_TOGGLE) {
                         // For SPM sync presets, don't toggle here - wait for SPM response
                         // For non-SPM presets, toggle immediately as before
-                        if (!presetSyncSpm[currentPreset]) {
+                        if (presetSyncMode[currentPreset] == SYNC_NONE) {
                             ledToggleState[i] = !ledToggleState[i];
                         }
                     }
@@ -213,7 +213,7 @@ void loop_presetMode() {
                                         presetSelectionState[currentPreset] = partner;
                                     } else if (partnerConfig.ledMode == LED_TOGGLE) {
                                         // For SPM sync presets, don't toggle here
-                                        if (!presetSyncSpm[currentPreset]) {
+                                        if (presetSyncMode[currentPreset] == SYNC_NONE) {
                                             ledToggleState[partner] = !ledToggleState[partner];
                                         }
                                     }
@@ -574,21 +574,18 @@ void handleEncoderButtonPress() {
                 saveCurrentPresetIndex();
                 displayOLED();
                 updateLeds();
-                if (presetSyncSpm[currentPreset] && clientConnected) requestPresetState();
+                if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected) requestPresetState();
             }
         } else if (pressDuration >= LONG_PRESS_DURATION) {
+            // Long press only enters menu from preset mode
             if (currentMode == 0) {
                 currentMode = 1;
                 menuSelection = 0;
                 inSubMenu = false;
                 inTapTempoMode = false;
                 displayMenu();
-            } else {
-                saveSystemSettings();
-                currentMode = 0;
-                safeDisplayOLED();
-                updateLeds();
             }
+            // In menu mode: long press does nothing (use Save & Exit or Cancel)
         }
     } else if (currentState && !encoderButtonPressed) {
         encoderButtonPressed = true;
