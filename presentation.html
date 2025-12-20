@@ -12,17 +12,29 @@
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #000000;
-            --bg-card: #111111;
-            --bg-section: #0a0a0a;
-            --text-main: #e5fff2;
-            --text-muted: #8ffdff;
-            --accent: #8c81df;
-            /* Chocotone Lavender */
-            --accent-glow: rgba(140, 129, 223, 0.2);
-            --border: #333333;
-            --mint: #e5fff2;
-            --cyan: #8ffdff;
+            /* Palette */
+            --bg-dark: #050505;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --text-dim: #4b5563;
+
+            /* Chocotone Brand Colors */
+            --brand-mint: #e5fff2;
+            --brand-cyan: #8ffdff;
+            --brand-lavender: #8c81df;
+            --brand-lavender-dim: #6b62b0;
+
+            /* Functional */
+            --accent: var(--brand-lavender);
+            --accent-glow: rgba(140, 129, 223, 0.4);
+            --border: rgba(255, 255, 255, 0.1);
+            --border-hover: rgba(140, 129, 223, 0.5);
+
+            /* Spacing */
+            --section-spacing: 8rem;
+            --container-width: 1200px;
         }
 
         * {
@@ -33,201 +45,348 @@
 
         html {
             scroll-behavior: smooth;
+            font-size: 16px;
         }
 
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(140, 129, 223, 0.08) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(143, 253, 255, 0.05) 0%, transparent 25%);
             color: var(--text-main);
             line-height: 1.6;
+            overflow-x: hidden;
         }
 
-        /* Nav */
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        h4 {
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 4rem;
+            text-align: center;
+            background: linear-gradient(to right, #fff, var(--brand-lavender));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: fit-content;
+            left: auto;
+            transform: none;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #fff;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+        }
+
+        /* Navigation */
         nav {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(10, 10, 10, 0.9);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border);
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: var(--container-width);
+            background: rgba(15, 15, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 100px;
             z-index: 1000;
-            padding: 1rem 2rem;
+            padding: 0.75rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
         }
 
         .nav-logo {
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: var(--text-main);
-            letter-spacing: 1px;
+            font-weight: 900;
+            font-size: 1.25rem;
+            color: var(--brand-mint);
+            letter-spacing: -1px;
+            display: flex;
+            align-items: center;
         }
 
         .nav-logo span {
-            color: var(--accent);
+            color: var(--brand-lavender);
         }
 
         .nav-links {
             display: flex;
-            gap: 2rem;
+            gap: 2.5rem;
         }
 
         .nav-links a {
             color: var(--text-muted);
             text-decoration: none;
-            transition: color 0.3s;
-            font-size: 0.9rem;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
+            position: relative;
         }
 
         .nav-links a:hover {
-            color: var(--accent);
+            color: #fff;
         }
 
-        /* Sections */
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0%;
+            height: 2px;
+            background: var(--brand-lavender);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Layout */
         section {
-            padding: 6rem 2rem;
-            min-height: 80vh;
+            padding: var(--section-spacing) 2rem;
+            min-height: auto;
+            position: relative;
+        }
+
+        section#hero {
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-        }
-
-        section:nth-child(even) {
-            background-color: var(--bg-section);
+            padding-top: 120px;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: var(--container-width);
             width: 100%;
             margin: 0 auto;
         }
 
-        h2 {
-            font-size: 2.5rem;
-            margin-bottom: 3rem;
-            text-align: center;
-            color: var(--accent);
-        }
-
-        h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: var(--text-main);
-        }
-
-        p {
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-        }
-
-        /* Hero */
-        #hero {
-            text-align: center;
-            min-height: 100vh;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 70%);
-        }
-
-        .hero-img {
-            max-width: 800px;
-            width: 100%;
-            margin: 2rem 0;
-            border-radius: 12px;
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-            border: 1px solid #333;
-        }
-
-        .hero-title {
-            font-size: 4rem;
-            font-weight: 900;
-            margin-bottom: 0.5rem;
-            letter-spacing: -4px;
-        }
-
-        .hero-title .logo-part-1 {
-            color: var(--mint);
-        }
-
-        .hero-title .logo-part-2 {
-            color: var(--accent);
-        }
-
-        /* Controls Grid */
+        /* Card System (Glassmorphism) */
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
         }
 
+        .control-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
 
+        .control-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(800px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.06), transparent 40%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            z-index: 0;
+        }
 
         .control-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent);
+            transform: translateY(-8px);
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-card:hover::before {
+            opacity: 1;
+        }
+
+        .control-card>* {
+            position: relative;
+            z-index: 1;
         }
 
         .control-icon {
-            font-size: 48px;
-            margin-bottom: 45px;
-            display: inline-block;
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 20px rgba(140, 129, 223, 0.2));
+            transition: transform 0.3s ease;
         }
 
-        /* Bento Card Styles (from slide) */
-        .control-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-            gap: 12px;
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            backdrop-filter: blur(10px);
-            position: relative;
-            min-height: 140px;
-        }
-
-        .control-card h3,
-        .control-card p {
-            text-align: left;
-            width: 70%;
-        }
-
-        .control-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.05);
+        .control-card:hover .control-icon {
+            transform: scale(1.1);
         }
 
         .badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            color: #fff;
-            font-size: 0.8rem;
-            margin-right: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35em 0.8em;
+            background: rgba(140, 129, 223, 0.15);
+            border: 1px solid rgba(140, 129, 223, 0.3);
+            border-radius: 6px;
+            color: var(--brand-mint);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 0.75rem;
+            min-width: 90px;
+            justify-content: center;
         }
 
-        /* VIRTUAL CONTROLLER CSS + VARIABLES */
-        .controller-wrapper {
+        /* Step List (Tap Tempo) */
+        .step-list {
+            display: grid;
+            gap: 2rem;
             position: relative;
-            width: 100%;
-            width: 100%;
-            max-width: var(--chassis-w, 800px);
-            margin: 0 auto;
-            perspective: 1000px;
+        }
 
-            /* LAYOUT VARIABLES (Editable) */
-            /* FINAL LAYOUT CONFIG */
-            --chassis-w: 800px;
+        .step-list::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 20px;
+            bottom: 20px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 0;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-num {
+            background: #111;
+            border: 2px solid var(--brand-lavender);
+            color: var(--brand-lavender);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            box-shadow: 0 0 20px rgba(140, 129, 223, 0.3);
+        }
+
+        /* Menu Tree (OLED) */
+        .menu-tree {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .menu-item {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 0 12px 12px 0;
+            transition: all 0.3s;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-left-color: var(--brand-cyan);
+            padding-left: 2rem;
+        }
+
+        .menu-title {
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .menu-item p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        /* Rhythm Patterns Tags */
+        .rhythm-patterns {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .pattern-tag {
+            background: #222;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: #ccc;
+            border: 1px solid #333;
+        }
+
+        /* Footer */
+        footer {
+            padding: 4rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Utils */
+        .text-accent {
+            color: var(--brand-lavender);
+        }
+
+        .text-cyan {
+            color: var(--brand-cyan);
+        }
+
+        .text-mint {
+            color: var(--brand-mint);
+        }
+
+        /* VIRTUAL CONTROLLER OVERRIDES */
+        /* Keep existing controller vars but adjust container max-width if needed */
+        .controller-wrapper {
+            /* Existing controller styling follows... */
             --chassis-ar: 51.5%;
             --chassis-rad: 40px;
             --oled-w: 23%;
@@ -1944,6 +2103,16 @@
             const btmRowCount = count / 2;  // step=2 ensures even numbers
             const topRowCount = count / 2;
 
+            // SAFETY: For 10 buttons, reduce spacing if it's too wide (avoids overflow)
+            const spacingSlider = document.getElementById('sl-btn-spacing');
+            let spacingVal = parseFloat(spacingSlider.value);
+            if (count >= 10 && spacingVal > 22) {
+                spacingVal = 22; // Clamp spacing for 5-column layout
+                spacingSlider.value = spacingVal;
+                document.getElementById('val-btn-spacing').textContent = spacingVal + '%';
+                wrapper.style.setProperty('--btn-spacing', spacingVal + '%');
+            }
+
             // Get current styles
             const btnStyle = document.getElementById('sel-btn-fmt')?.value || '';
             const ledStyle = document.getElementById('sel-led-fmt')?.value || 'led-ring';
@@ -1997,10 +2166,11 @@
 
             // Use same formula as CSS: left: calc(50% + multiplier * var(--btn-spacing))
             // The multiplier positions: -1.5, -0.5, 0.5, 1.5 for 4 buttons
+            // Reset padding-bottom to 0 to override CSS class hack, rely on aspect-ratio for perfect square
             if (row === 'top') {
-                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,0);`;
+                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,-50%); aspect-ratio:1/1; height:auto; padding-bottom:0; width:var(--btn-size);`;
             } else {
-                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,0);`;
+                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,-50%); aspect-ratio:1/1; height:auto; padding-bottom:0; width:var(--btn-size);`;
             }
 
             const footswitch = document.createElement('div');
@@ -2774,6 +2944,17 @@
             });
         });
 
+        // Mouse tracking for glassmorphism cards
+        document.querySelectorAll('.control-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+
         // Initial render
         render();
     </script>
@@ -2955,27 +3136,26 @@
             <img src="images/chocotone_editor_1v2.png" alt="Web Editor"
                 style="max-width: 800px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
 
-            <h3 style="color:var(--accent); margin-bottom: 1rem;">Three Ways to Configure</h3>
+            <h3 style="color:var(--accent); margin-bottom: 3rem;">Three Ways to Configure</h3>
 
-            <div
-                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; text-align: left; max-width: 900px; margin: 0 auto 2rem auto;">
-                <div
-                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
-                    <h4 style="color: #8c81df; margin-bottom: 0.5rem;">🌐 WiFi Editor</h4>
-                    <p style="font-size: 0.9rem;">Connect to WiFi AP <strong>CHOCOTONE</strong> (password:
+            <div class="controls-grid" style="text-align: left; max-width: 1200px; margin: 0 auto 3rem auto;">
+                <div class="control-card">
+                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">🌐</div>
+                    <h3 class="text-accent">WiFi Editor</h3>
+                    <p>Connect to WiFi AP <strong>CHOCOTONE</strong> (password:
                         <code>12345678</code>), then open <code>192.168.4.1</code>
                     </p>
                 </div>
-                <div
-                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
-                    <h4 style="color: #8ffdff; margin-bottom: 0.5rem;">🔌 USB Serial</h4>
-                    <p style="font-size: 0.9rem;">Connect via USB and use the offline editor's Serial connection. No
+                <div class="control-card">
+                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                    <h3 class="text-cyan">USB Serial</h3>
+                    <p>Connect via USB and use the offline editor's Serial connection. No
                         WiFi needed!</p>
                 </div>
-                <div
-                    style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid #333;">
-                    <h4 style="color: #e5fff2; margin-bottom: 0.5rem;">📱 Bluetooth</h4>
-                    <p style="font-size: 0.9rem;">Pair via Web Bluetooth in Chrome for wireless configuration without
+                <div class="control-card">
+                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+                    <h3 class="text-mint">Bluetooth</h3>
+                    <p>Pair via Web Bluetooth in Chrome for wireless configuration without
                         WiFi.</p>
                 </div>
             </div>
