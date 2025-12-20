@@ -280,11 +280,16 @@ void toggleBleConfigMode() {
         clientConnected = false;
         doConnect = false;
         
-        // 3. Stop advertising briefly
+        // 3. Disable BLE security for config mode (allow unauth connections)
+        esp_ble_auth_req_t auth_req = ESP_LE_AUTH_NO_BOND;
+        esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(auth_req));
+        Serial.println("  - Security disabled for config");
+        
+        // 4. Stop advertising briefly
         BLEDevice::stopAdvertising();
         delay(100);
         
-        // 4. Configure and restart advertising with config service
+        // 5. Configure and restart advertising with config service
         BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
         pAdvertising->setScanResponse(true);
         pAdvertising->setMinPreferred(0x06);
@@ -293,13 +298,18 @@ void toggleBleConfigMode() {
         // Make sure config service UUID is advertised
         pAdvertising->addServiceUUID(CONFIG_SERVICE_UUID);
         
-        // 5. Start advertising
+        // 6. Start advertising
         BLEDevice::startAdvertising();
         Serial.println("  - Advertising started for web editor");
         Serial.println("=== BLE CONFIG MODE READY - Connect from web editor ===");
         
     } else {
         Serial.println("=== EXITING BLE CONFIG MODE ===");
+        
+        // Re-enable BLE security for normal operations
+        esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND;
+        esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(auth_req));
+        Serial.println("  - Security re-enabled");
         
         // Normal operations will resume on next loop cycle
         // doScan and other flags will trigger appropriate behavior
