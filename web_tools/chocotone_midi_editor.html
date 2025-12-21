@@ -824,9 +824,11 @@
             html += '<div class="section">';
             html += '<div class="section-title">Import / Export</div>';
             html += '<textarea class="json-area" id="jsonArea" placeholder="Paste JSON here..."></textarea>';
+            html += '<input type="file" id="fileInput" accept=".json" style="display:none" onchange="openFile(this)">';
             html += '<div class="actions" style="margin-top:10px">';
             html += '<button class="btn success" onclick="exportJSON()">Export</button>';
             html += '<button class="btn secondary" onclick="importJSON()">Import</button>';
+            html += '<button class="btn primary" onclick="document.getElementById(\'fileInput\').click()">Open File</button>';
             html += '<button class="btn secondary" onclick="copyJSON()">Copy</button>';
             html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
             html += '</div></div>';
@@ -1135,6 +1137,30 @@
             a.href = URL.createObjectURL(blob);
             a.download = filename;
             a.click();
+        }
+        function openFile(input) {
+            var file = input.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    if (data.presets) {
+                        presetData = data;
+                        selectedBtn = 0;
+                        showSystem = false;
+                        render();
+                        document.getElementById('jsonArea').value = e.target.result;
+                        alert('File loaded!\\n\\nConfig: ' + (data.configName || 'Unnamed') + '\\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                    } else {
+                        alert('Invalid file format: no presets found');
+                    }
+                } catch (err) {
+                    alert('Error reading file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset for future opens
         }
 
         // Send preset change to connected device
