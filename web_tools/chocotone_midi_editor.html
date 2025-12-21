@@ -1110,8 +1110,9 @@
 
         function exportJSON() {
             presetData.lastModified = new Date().toISOString().slice(0, 19).replace('T', ' ');
-            document.getElementById('jsonArea').value = JSON.stringify(presetData, null, 2);
-            render(); // Update UI to show new timestamp
+            var jsonStr = JSON.stringify(presetData, null, 2);
+            render(); // Update UI to show new timestamp (rebuilds DOM)
+            document.getElementById('jsonArea').value = jsonStr; // Restore JSON after render
         }
         function importJSON() {
             try {
