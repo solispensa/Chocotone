@@ -21,4 +21,9 @@ void sendOptions(String& out, MidiCommandType currentType);
 void sendActionFields(String& out, const char* id, const ActionMessage* msg);
 void handleSerialConfig();  // Handle serial commands (GET_CONFIG, SET_CONFIG)
 
+// Bluetooth Serial (SPP) for wireless editor connection
+void turnBtSerialOn();
+void turnBtSerialOff();
+void handleBtSerialConfig();
+
 #endif

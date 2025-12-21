@@ -201,6 +201,7 @@ extern BLECharacteristic* pServerMidiCharacteristic;
 
 extern SystemConfig systemConfig;
 extern bool isWifiOn;
+extern bool isBtSerialOn;  // Bluetooth Serial active (disables BLE like WiFi)
 
 // ============================================
 // PRESET DATA

@@ -1354,7 +1354,7 @@
             serialWriter = null;
             document.getElementById('usbStatus').textContent = 'Not connected';
             document.getElementById('usbStatus').style.color = '#71717a';
-            document.getElementById('btnConnect').textContent = 'Connect USB';
+            document.getElementById('btnConnect').textContent = 'Connect USB/BT';
         }
 
         function toggleUSB() {
@@ -1445,21 +1445,22 @@
         async function sendToDevice() {
             if (!serialWriter) { alert('Connect USB first'); return; }
             var json = JSON.stringify(presetData);
-            var CHUNK_SIZE = 500; // Send in 500-byte chunks
+            var CHUNK_SIZE = 400; // Smaller chunks for BT Serial compatibility
 
             try {
                 // Start upload
                 await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
-                await sleep(100);
+                await sleep(200);  // Longer delay for BT Serial init
 
                 // Send chunks
                 for (var i = 0; i < json.length; i += CHUNK_SIZE) {
                     var chunk = json.substring(i, i + CHUNK_SIZE);
                     await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
-                    await sleep(50); // Small delay between chunks
+                    await sleep(100); // Longer delay for BT Serial
                 }
 
-                // End upload
+                // End upload - wait for all chunks to be processed
+                await sleep(300);
                 await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
                 alert('Config sent to device! Check serial monitor for status.');
             } catch (e) {
@@ -1669,7 +1670,7 @@
             var usbConnected = serialPort !== null;
             var usbStatusText = usbConnected ? 'Connected' : 'Not connected';
             var usbStatusColor = usbConnected ? '#22c55e' : '#71717a';
-            var usbBtnText = usbConnected ? 'Disconnect' : 'Connect USB';
+            var usbBtnText = usbConnected ? 'Disconnect' : 'Connect USB/BT';
 
             // BLE Status
             var bleConnected = bleDevice && bleDevice.gatt && bleDevice.gatt.connected;
@@ -1682,7 +1683,7 @@
 
             // USB Serial Card - Orange theme (uses CSS vars)
             html += '<div class="section conn-card-usb col-left" style="margin-bottom:0">';
-            html += '<div class="section-title">🔌 USB Serial</div>';
+            html += '<div class="section-title">🔌 USB or BT Serial</div>';
             html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
             html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()" style="grid-column:1/span 2; width:100%">' + usbBtnText + '</button>';
             html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></div>';
@@ -1694,7 +1695,7 @@
 
             // Bluetooth Card - Cyan theme (uses CSS vars)
             html += '<div class="section conn-card-ble col-right" style="margin-bottom:0">';
-            html += '<div class="section-title" style="color:var(--cyan)">📶 Bluetooth</div>';
+            html += '<div class="section-title" style="color:var(--cyan)">📶 BLE Connection</div>';
             html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
             html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000; grid-column:1/span 2; width:100%">' + bleBtnText + '</button>';
             html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></div>';

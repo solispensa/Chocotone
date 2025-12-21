@@ -462,15 +462,15 @@ void loop_menuMode() {
     if (newEncoderPosition == oldEncoderPosition) return;
 
     int change = (newEncoderPosition - oldEncoderPosition);
-    int numMenuItems = 13;
+    int numMenuItems = 14;  // Increased for BT Serial
 
     if (inSubMenu) {
         editingValue += change;
         oldEncoderPosition = newEncoderPosition;
-        if (menuSelection == 3) editingValue = constrain(editingValue, 0, 255);
-        if (menuSelection == 4) editingValue = constrain(editingValue, 0, 255);
-        if (menuSelection == 5) editingValue = constrain(editingValue, 1, 500);
-        if (menuSelection == 9) editingValue = constrain(editingValue, 1, 5);
+        if (menuSelection == 4) editingValue = constrain(editingValue, 0, 255);  // LED Bright On
+        if (menuSelection == 5) editingValue = constrain(editingValue, 0, 255);  // LED Bright Dim
+        if (menuSelection == 6) editingValue = constrain(editingValue, 1, 500);  // Pad Debounce
+        if (menuSelection == 10) editingValue = constrain(editingValue, 1, 5);   // Name Font Size
     } else {
         long menuStep = newEncoderPosition / 2;
         long oldMenuStep = oldEncoderPosition / 2;
@@ -486,7 +486,7 @@ void loop_menuMode() {
 void handleMenuSelection() {
     if (!inSubMenu) {
         switch (menuSelection) {
-            case 0:
+            case 0:  // Save and Exit
                 saveSystemSettings();
                 if (bleModeChanged) {
                     Serial.println("BLE Mode changed - rebooting...");
@@ -497,40 +497,65 @@ void handleMenuSelection() {
                 safeDisplayOLED();
                 updateLeds();
                 break;
-            case 1:
+            case 1:  // Exit without Saving
                 currentMode = 0;
                 safeDisplayOLED();
                 updateLeds();
                 break;
-            case 2:
+            case 2:  // WiFi Toggle
                 if(isWifiOn) {
                     turnWifiOff();
                     delay(100);
                     yield();
                     displayMenu();  // Safe after WiFi off
                 } else {
+                    if (isBtSerialOn) {
+                        Serial.println("Cannot enable WiFi while BT Serial is on");
+                        // Turn off BT Serial first
+                        turnBtSerialOff();
+                        delay(200);
+                    }
                     turnWifiOn();
                     delay(200);
                     yield();
                     // Skip displayMenu when WiFi just started - heap is low
                 }
                 break;
-            case 3: inSubMenu = true; editingValue = ledBrightnessOn; break;
-            case 4: inSubMenu = true; editingValue = ledBrightnessDim; break;
-            case 5: inSubMenu = true; editingValue = buttonDebounce; break;
-            case 6: clearBLEBonds(); currentMode = 0; break;
-            case 7: ESP.restart(); break;
-            case 8: 
+            case 3:  // BT Serial Toggle (NEW)
+                if(isBtSerialOn) {
+                    turnBtSerialOff();
+                    delay(100);
+                    yield();
+                    displayMenu();
+                } else {
+                    if (isWifiOn) {
+                        Serial.println("Cannot enable BT Serial while WiFi is on");
+                        // Turn off WiFi first
+                        turnWifiOff();
+                        delay(200);
+                    }
+                    turnBtSerialOn();
+                    delay(200);
+                    yield();
+                    displayMenu();
+                }
+                break;
+            case 4: inSubMenu = true; editingValue = ledBrightnessOn; break;
+            case 5: inSubMenu = true; editingValue = ledBrightnessDim; break;
+            case 6: inSubMenu = true; editingValue = buttonDebounce; break;
+            case 7: clearBLEBonds(); currentMode = 0; break;
+            case 8: ESP.restart(); break;
+            case 9: 
                systemPrefs.begin("midi_presets", false); systemPrefs.clear(); systemPrefs.end();
                systemPrefs.begin("midi_system", false); systemPrefs.clear(); systemPrefs.end();
                ESP.restart(); 
                break;
-            case 9: inSubMenu = true; editingValue = buttonNameFontSize; break;
-            case 10:
+            case 10: inSubMenu = true; editingValue = buttonNameFontSize; break;
+            case 11:  // WiFi at Boot
                 systemConfig.wifiOnAtBoot = !systemConfig.wifiOnAtBoot;
                 displayMenu();
                 break;
-            case 11:
+            case 12:  // BLE Mode
                 if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
                     systemConfig.bleMode = BLE_DUAL_MODE;
                 } else if (systemConfig.bleMode == BLE_DUAL_MODE) {
@@ -541,7 +566,7 @@ void handleMenuSelection() {
                 bleModeChanged = true;
                 displayMenu();
                 break;
-            case 12:
+            case 13:  // BLE Config Mode
                 // Toggle BLE Config Mode - pauses scanning for web editor
                 toggleBleConfigMode();
                 displayMenu();
@@ -550,10 +575,10 @@ void handleMenuSelection() {
     } else {
         inSubMenu = false;
         switch (menuSelection) {
-            case 3: ledBrightnessOn = editingValue; updateLeds(); break;
-            case 4: ledBrightnessDim = editingValue; updateLeds(); break;
-            case 5: buttonDebounce = editingValue; break;
-            case 9: buttonNameFontSize = editingValue; break;
+            case 4: ledBrightnessOn = editingValue; updateLeds(); break;
+            case 5: ledBrightnessDim = editingValue; updateLeds(); break;
+            case 6: buttonDebounce = editingValue; break;
+            case 10: buttonNameFontSize = editingValue; break;
         }
     }
     displayMenu();

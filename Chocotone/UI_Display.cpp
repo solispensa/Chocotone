@@ -130,11 +130,15 @@ void displayOLED() {
     display.setCursor((SCREEN_WIDTH - w) / 2, 32);
     display.print(bpmStr);
 
-    // BLE Connection Status + WiFi Status
+    // BLE Connection Status + WiFi/BT Status
     display.setCursor(0, 44);
     display.printf("BLE:%c", clientConnected?'Y':'N');
-    display.setCursor(90, 44);
-    display.printf("WiFi:%c", isWifiOn?'Y':'N');
+    display.setCursor(80, 44);
+    if (isBtSerialOn) {
+        display.print("BT:Y");
+    } else {
+        display.printf("WiFi:%c", isWifiOn?'Y':'N');
+    }
 
     // Last Sent
     lastSentMidiString[19] = '\0';
@@ -220,26 +224,27 @@ void displayMenu() {
     display.setTextColor(SSD1306_WHITE);
 
     // Build menu items dynamically to show status
-    char menuItems[13][25];  // Array to hold menu item strings
+    char menuItems[14][25];  // Array to hold menu item strings (increased for BT Serial)
     strncpy(menuItems[0], "Save and Exit", 25);
     strncpy(menuItems[1], "Exit without Saving", 25);
     snprintf(menuItems[2], 25, "Wi-Fi Editor (%s)", isWifiOn ? "ON" : "OFF");
-    strncpy(menuItems[3], "LED Bright (On)", 25);
-    strncpy(menuItems[4], "LED Bright (Dim)", 25);
-    strncpy(menuItems[5], "Pad Debounce", 25);
-    strncpy(menuItems[6], "Clear BLE Bonds", 25);
-    strncpy(menuItems[7], "Reboot", 25);
-    strncpy(menuItems[8], "Factory Reset", 25);
-    strncpy(menuItems[9], "Name Font Size", 25);
-    snprintf(menuItems[10], 25, "Wifi %s at Boot", systemConfig.wifiOnAtBoot ? "ON" : "OFF");
+    snprintf(menuItems[3], 25, "BT Serial (%s)", isBtSerialOn ? "ON" : "OFF");
+    strncpy(menuItems[4], "LED Bright (On)", 25);
+    strncpy(menuItems[5], "LED Bright (Dim)", 25);
+    strncpy(menuItems[6], "Pad Debounce", 25);
+    strncpy(menuItems[7], "Clear BLE Bonds", 25);
+    strncpy(menuItems[8], "Reboot", 25);
+    strncpy(menuItems[9], "Factory Reset", 25);
+    strncpy(menuItems[10], "Name Font Size", 25);
+    snprintf(menuItems[11], 25, "Wifi %s at Boot", systemConfig.wifiOnAtBoot ? "ON" : "OFF");
     // BLE Mode display
     const char* bleModeStr = systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
                              systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL" : "SERVER";
-    snprintf(menuItems[11], 25, "BLE: %s", bleModeStr);
+    snprintf(menuItems[12], 25, "BLE: %s", bleModeStr);
     // BLE Config Mode (pauses scanning for web editor)
-    snprintf(menuItems[12], 25, "BLE Config: %s", bleConfigMode ? "ON" : "OFF");
+    snprintf(menuItems[13], 25, "BLE Config: %s", bleConfigMode ? "ON" : "OFF");
     
-    int numMenuItems = 13;
+    int numMenuItems = 14;
 
     display.setCursor(0, 0);
     display.printf("-- Menu CHOCOTONE --");

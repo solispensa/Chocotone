@@ -219,5 +219,8 @@ void loop() {
     // Handle serial commands for offline editor config transfer
     handleSerialConfig();
     
+    // Handle Bluetooth Serial commands (wireless editor)
+    handleBtSerialConfig();
+    
     yield();  // Feed watchdog
 }

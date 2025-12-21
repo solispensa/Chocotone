@@ -3,6 +3,10 @@
 #include "UI_Display.h"
 #include "BleMidi.h"
 #include <ArduinoJson.h>
+#include "BluetoothSerial.h"
+
+// Bluetooth Serial (SPP) for wireless editor connection
+BluetoothSerial SerialBT;
 
 // Minimal WiFi page - just import/export (full editing via offline_editor_v2.html + Serial)
 const char MINIMAL_PAGE[] PROGMEM = R"rawliteral(
@@ -27,7 +31,8 @@ input[type=file]{display:none}
 <h1>Chocotone Config</h1>
 <div class='info'>
   <b>Quick Import/Export</b><br>
-  For full editing, use <b>offline_editor_v2.html</b> with USB Serial connection.
+  For full editing, use <b>chocotone_midi_editor.html</b> with USB Serial connection.<br>
+  <span style='color:#ffab40'>⚠ BLE is disabled while WiFi is active.</span>
 </div>
 <div class='btns'>
   <button class='export' onclick='doExport()'>Export Config</button>
@@ -968,93 +973,118 @@ void handleImportUploadData() {
 void turnWifiOn() {
     if (isWifiOn) return;
     
-    Serial.printf("Free heap before WiFi: %d bytes\n", ESP.getFreeHeap());
+    // CRITICAL: Stop BLE scan IMMEDIATELY before anything else
+    doScan = false;
+    BLEScan* pScan = BLEDevice::getScan();
+    if (pScan) {
+        pScan->stop();
+    }
+    delay(200);
+    yield();
     
-    // Pause ALL BLE activity to avoid WiFi conflicts
-    Serial.println("Pausing BLE for WiFi stability...");
+    Serial.println("=== WiFi Startup ===");
+    Serial.flush();
     
-    // Stop BLE Client scanning first (always safe to call)
-    doScan = false;  // Prevent auto-scanning
+    uint32_t freeHeap = ESP.getFreeHeap();
+    Serial.printf("Free heap: %d bytes\n", freeHeap);
+    Serial.flush();
     
-    // Only try to stop scan if BLE was initialized
-    try {
-        BLEScan* pScan = BLEDevice::getScan();
-        if (pScan) {
-            pScan->stop();
-            Serial.println("BLE: scan stopped");
-        }
-    } catch (...) {
-        Serial.println("BLE: scan stop failed (ignored)");
+    // Critical: Check if we have enough memory for WiFi
+    if (freeHeap < 40000) {
+        Serial.println("ERROR: Insufficient memory for WiFi!");
+        Serial.flush();
+        doScan = true;
+        return;
     }
     
-    // Disconnect client if connected AND pClient exists
+    // Disconnect client if connected
     if (clientConnected && pClient != nullptr) {
-        try {
-            pClient->disconnect();
-            Serial.println("BLE Client: disconnected");
-        } catch (...) {
-            Serial.println("BLE Client: disconnect failed (ignored)");
-        }
+        pClient->disconnect();
+        clientConnected = false;
+        Serial.println("BLE Client: disconnected");
+        Serial.flush();
     }
-    
-    // Stop BLE Server advertising (if that mode is active)
-    if (systemConfig.bleMode == BLE_SERVER_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
-        try {
-            BLEDevice::stopAdvertising();
-            Serial.println("BLE Server: advertising stopped");
-        } catch (...) {
-            Serial.println("BLE Server: stop advertising failed (ignored)");
-        }
-    }
-    
-    // Give BLE time to fully release resources
-    delay(300);
+    delay(100);
     yield();
     
-    Serial.printf("Free heap after BLE stop: %d bytes\n", ESP.getFreeHeap());
+    // CRITICAL: Completely deinitialize BLE to release the radio
+    // ESP32 BLE and WiFi share the same radio - they can't run together
+    Serial.println("Deinitializing BLE (releasing radio for WiFi)...");
+    Serial.flush();
+    BLEDevice::deinit(false);  // false = don't release memory (faster reinit later)
+    delay(500);
+    yield();
     
+    Serial.printf("Free heap after BLE deinit: %d bytes\n", ESP.getFreeHeap());
+    Serial.flush();
+    
+    // Start WiFi
+    Serial.println("Setting WiFi mode to AP...");
+    Serial.flush();
     WiFi.mode(WIFI_AP);
+    delay(200);
     yield();
     
-    WiFi.softAP(systemConfig.apSSID, systemConfig.apPassword);
+    Serial.println("Starting softAP...");
+    Serial.flush();
+    bool apStarted = WiFi.softAP(systemConfig.apSSID, systemConfig.apPassword);
+    if (!apStarted) {
+        Serial.println("ERROR: WiFi.softAP() failed!");
+        Serial.flush();
+        return;
+    }
+    delay(200);
     yield();
     
+    Serial.println("Starting web server...");
+    Serial.flush();
     server.begin();
+    delay(100);
     yield();
     
     isWifiOn = true;
-    Serial.printf("WiFi AP Started (BLE paused) - Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("WiFi AP Started! Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("SSID: %s\n", systemConfig.apSSID);
     Serial.println("Access web editor at: http://192.168.4.1");
+    Serial.flush();
     
-    // Refresh display to show main screen with WiFi:Y status
     yield();
     displayOLED();
 }
 
 void turnWifiOff() {
     if (!isWifiOn) return;
+    
+    Serial.println("=== WiFi Shutdown ===");
+    Serial.flush();
+    
     server.stop();
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_OFF);
     isWifiOn = false;
+    
+    delay(200);
+    yield();
+    
     Serial.println("WiFi AP Stopped");
+    Serial.printf("Free heap after WiFi off: %d bytes\n", ESP.getFreeHeap());
+    Serial.flush();
     
-    // Resume BLE based on mode
-    Serial.println("Resuming BLE...");
+    // Re-initialize BLE (it was completely deinitialized when WiFi started)
+    Serial.println("Reinitializing BLE...");
+    Serial.flush();
+    setup_ble_midi();  // Full BLE reinit
     
-    // Resume scanning only if client mode is enabled
+    Serial.println("BLE reinitialized successfully");
+    Serial.flush();
+    
+    // Resume scanning if client mode is enabled
     if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
         doScan = true;
-        startBleScan();
-        Serial.println("BLE Client: scan resumed");
+        Serial.println("BLE scanning will resume");
     }
     
-    // Server advertising restarts automatically when a client disconnects
-    // But if server was stopped, it needs to be restarted
-    if (systemConfig.bleMode == BLE_SERVER_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
-        BLEDevice::startAdvertising();
-        Serial.println("BLE Server: advertising resumed");
-    }
+    displayOLED();
 }
 
 // Handle preset change from web editor - sync to controller display
@@ -1428,7 +1458,7 @@ void handleSerialConfig() {
                             Serial.print("\"");
                             
                             // Action-specific fields
-                            if (msg.action == ACTION_LONG_PRESS) {
+                            if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
                                 Serial.print(",\"holdMs\":");
                                 Serial.print(msg.longPress.holdMs);
                             }
@@ -1724,6 +1754,507 @@ void handleSerialConfig() {
             serialBuffer = "";
         } else {
             serialBuffer += c;
+        }
+    }
+}
+
+// ============================================================================
+// BLUETOOTH SERIAL (SPP) - Wireless editor connection
+// ============================================================================
+// Similar to USB Serial, but over Classic Bluetooth.
+// Note: Cannot run simultaneously with BLE MIDI (shared radio).
+
+static String btSerialBuffer = "";
+
+void turnBtSerialOn() {
+    if (isBtSerialOn) return;
+    if (isWifiOn) {
+        Serial.println("Cannot enable BT Serial while WiFi is on");
+        return;
+    }
+    
+    Serial.println("=== Bluetooth Serial Startup ===");
+    Serial.flush();
+    yield();
+    
+    // Step 1: Stop BLE scan first
+    Serial.println("Step 1: Stopping BLE scan...");
+    doScan = false;
+    BLEScan* pScan = BLEDevice::getScan();
+    if (pScan) {
+        pScan->stop();
+        pScan->clearResults();
+    }
+    delay(100);
+    yield();
+    
+    // Step 2: Stop BLE advertising
+    Serial.println("Step 2: Stopping BLE advertising...");
+    BLEDevice::stopAdvertising();
+    delay(100);
+    yield();
+    
+    // Step 3: Disconnect BLE client if connected
+    Serial.println("Step 3: Disconnecting BLE client...");
+    if (clientConnected && pClient != nullptr) {
+        pClient->disconnect();
+        clientConnected = false;
+        delay(200);
+        yield();
+    }
+    
+    // Step 4: Wait for BLE stack to settle
+    Serial.println("Step 4: Waiting for BLE to settle...");
+    Serial.flush();
+    for (int i = 0; i < 5; i++) {
+        delay(100);
+        yield();
+    }
+    
+    // Step 5: Deinitialize BLE to free the radio
+    Serial.println("Step 5: Deinitializing BLE...");
+    Serial.flush();
+    BLEDevice::deinit(false);
+    
+    // Wait for deinit to complete
+    for (int i = 0; i < 8; i++) {
+        delay(100);
+        yield();
+    }
+    
+    // Step 6: Start Bluetooth Serial
+    Serial.printf("Step 6: Starting Bluetooth Serial as '%s'...\n", systemConfig.bleDeviceName);
+    Serial.flush();
+    
+    if (!SerialBT.begin(systemConfig.bleDeviceName)) {
+        Serial.println("ERROR: Failed to start Bluetooth Serial!");
+        // Try to recover by reinitializing BLE
+        setup_ble_midi();
+        return;
+    }
+    
+    delay(300);
+    yield();
+    
+    isBtSerialOn = true;
+    btSerialBuffer = "";
+    
+    Serial.printf("Bluetooth Serial Started! Pair with '%s' on your computer.\n", systemConfig.bleDeviceName);
+    Serial.println("Then select the Bluetooth COM port in the editor.");
+    Serial.flush();
+    
+    displayOLED();
+}
+
+void turnBtSerialOff() {
+    if (!isBtSerialOn) return;
+    
+    Serial.println("=== Bluetooth Serial Shutdown ===");
+    Serial.flush();
+    
+    SerialBT.end();
+    isBtSerialOn = false;
+    btSerialBuffer = "";
+    
+    delay(200);
+    yield();
+    
+    Serial.println("Bluetooth Serial Stopped");
+    Serial.println("Reinitializing BLE...");
+    Serial.flush();
+    
+    // Reinitialize BLE
+    setup_ble_midi();
+    
+    // Resume scanning if client mode
+    if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+        doScan = true;
+    }
+    
+    Serial.println("BLE reinitialized");
+    Serial.flush();
+    
+    displayOLED();
+}
+
+// Handle Bluetooth Serial config commands - mirrors handleSerialConfig()
+void handleBtSerialConfig() {
+    if (!isBtSerialOn) return;
+    
+    while (SerialBT.available()) {
+        char c = SerialBT.read();
+        if (c == '\n') {
+            btSerialBuffer.trim();
+            
+            // GET_CONFIG - Send config as JSON
+            if (btSerialBuffer == "GET_CONFIG") {
+                SerialBT.println("CONFIG_START");
+                yield();  // Feed watchdog
+                
+                // Send config JSON (same format as USB serial)
+                SerialBT.print("{\"version\":3,\"configName\":\"");
+                SerialBT.print(configProfileName);
+                SerialBT.print("\",\"lastModified\":\"");
+                SerialBT.print(configLastModified);
+                SerialBT.print("\",\"presets\":[");
+                
+                for (int p = 0; p < 4; p++) {
+                    yield();  // Feed watchdog for each preset
+                    if (p > 0) SerialBT.print(",");
+                    
+                    const char* ledModeStr = (presetLedModes[p] == PRESET_LED_NORMAL) ? "NORMAL" : 
+                                              (presetLedModes[p] == PRESET_LED_SELECTION) ? "SELECTION" : "HYBRID";
+                    const char* syncModeStr = (presetSyncMode[p] == SYNC_SPM) ? "SPM" : 
+                                              (presetSyncMode[p] == SYNC_GP5) ? "GP5" : "NONE";
+                    
+                    SerialBT.print("{\"name\":\"");
+                    SerialBT.print(presetNames[p]);
+                    SerialBT.print("\",\"presetLedMode\":\"");
+                    SerialBT.print(ledModeStr);
+                    SerialBT.print("\",\"syncMode\":\"");
+                    SerialBT.print(syncModeStr);
+                    SerialBT.print("\",\"buttons\":[");
+                    
+                    for (int b = 0; b < systemConfig.buttonCount; b++) {
+                        yield();  // Feed watchdog for each button
+                        if (b > 0) SerialBT.print(",");
+                        const ButtonConfig& cfg = buttonConfigs[p][b];
+                        
+                        SerialBT.print("{\"name\":\"");
+                        SerialBT.print(cfg.name);
+                        SerialBT.print("\",\"ledMode\":\"");
+                        SerialBT.print(cfg.ledMode == LED_TOGGLE ? "TOGGLE" : "MOMENTARY");
+                        SerialBT.print("\",\"inSelectionGroup\":");
+                        SerialBT.print(cfg.inSelectionGroup ? "true" : "false");
+                        SerialBT.print(",\"messages\":[");
+                        
+                        for (int m = 0; m < cfg.messageCount && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                            yield();  // Feed watchdog for each message
+                            if (m > 0) SerialBT.print(",");
+                            const ActionMessage& msg = cfg.messages[m];
+                            
+                            const char* actionName = "PRESS";
+                            switch(msg.action) {
+                                case ACTION_PRESS: actionName = "PRESS"; break;
+                                case ACTION_2ND_PRESS: actionName = "2ND_PRESS"; break;
+                                case ACTION_RELEASE: actionName = "RELEASE"; break;
+                                case ACTION_2ND_RELEASE: actionName = "2ND_RELEASE"; break;
+                                case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                                case ACTION_2ND_LONG_PRESS: actionName = "2ND_LONG_PRESS"; break;
+                                case ACTION_DOUBLE_TAP: actionName = "DOUBLE_TAP"; break;
+                                case ACTION_COMBO: actionName = "COMBO"; break;
+                                default: actionName = "NO_ACTION"; break;
+                            }
+                            
+                            char hexColor[8];
+                            rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+                            
+                            SerialBT.print("{\"action\":\"");
+                            SerialBT.print(actionName);
+                            SerialBT.print("\",\"type\":\"");
+                            SerialBT.print(getCommandTypeString(msg.type));
+                            SerialBT.print("\",\"channel\":");
+                            SerialBT.print(msg.channel);
+                            SerialBT.print(",\"data1\":");
+                            SerialBT.print(msg.data1);
+                            SerialBT.print(",\"data2\":");
+                            SerialBT.print(msg.data2);
+                            SerialBT.print(",\"rgb\":\"");
+                            SerialBT.print(hexColor);
+                            SerialBT.print("\"");
+                            
+                            // Label (if set)
+                            if (msg.label[0] != '\0') {
+                                SerialBT.print(",\"label\":\"");
+                                SerialBT.print(msg.label);
+                                SerialBT.print("\"");
+                            }
+                            
+                            // COMBO partner
+                            if (msg.action == ACTION_COMBO) {
+                                SerialBT.print(",\"partner\":");
+                                SerialBT.print(msg.combo.partner);
+                            }
+                            
+                            // LONG_PRESS holdMs
+                            if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
+                                SerialBT.print(",\"holdMs\":");
+                                SerialBT.print(msg.longPress.holdMs);
+                            }
+                            
+                            // TAP_TEMPO fields
+                            if (msg.type == TAP_TEMPO) {
+                                SerialBT.print(",\"rhythmPrev\":");
+                                SerialBT.print(msg.tapTempo.rhythmPrev);
+                                SerialBT.print(",\"rhythmNext\":");
+                                SerialBT.print(msg.tapTempo.rhythmNext);
+                                SerialBT.print(",\"tapLock\":");
+                                SerialBT.print(msg.tapTempo.tapLock);
+                            }
+                            
+                            // SYSEX data
+                            if (msg.type == SYSEX && msg.sysex.length > 0) {
+                                SerialBT.print(",\"sysex\":\"");
+                                for (int s = 0; s < msg.sysex.length; s++) {
+                                    char hx[3];
+                                    snprintf(hx, sizeof(hx), "%02x", msg.sysex.data[s]);
+                                    SerialBT.print(hx);
+                                }
+                                SerialBT.print("\"");
+                            }
+                            
+                            SerialBT.print("}");
+                        }
+                        SerialBT.print("]}");
+                    }
+                    SerialBT.print("]}");
+                }
+                
+                yield();  // Feed watchdog before system config
+                
+                // System config - same as USB Serial
+                SerialBT.print("],\"system\":{");
+                SerialBT.print("\"bleDeviceName\":\"");
+                SerialBT.print(systemConfig.bleDeviceName);
+                SerialBT.print("\",\"apSSID\":\"");
+                SerialBT.print(systemConfig.apSSID);
+                SerialBT.print("\",\"apPassword\":\"");
+                SerialBT.print(systemConfig.apPassword);
+                SerialBT.print("\",\"buttonCount\":");
+                SerialBT.print(systemConfig.buttonCount);
+                SerialBT.print(",\"buttonPins\":\"");
+                for (int i = 0; i < systemConfig.buttonCount; i++) {
+                    if (i > 0) SerialBT.print(",");
+                    SerialBT.print(systemConfig.buttonPins[i]);
+                }
+                SerialBT.print("\",\"ledPin\":");
+                SerialBT.print(systemConfig.ledPin);
+                SerialBT.print(",\"ledsPerButton\":");
+                SerialBT.print(systemConfig.ledsPerButton);
+                yield();  // Feed watchdog mid-system config
+                SerialBT.print(",\"ledMap\":\"");
+                for (int i = 0; i < 10; i++) {
+                    if (i > 0) SerialBT.print(",");
+                    SerialBT.print(systemConfig.ledMap[i]);
+                }
+                yield();  // Feed watchdog
+                SerialBT.print("\",\"encoderA\":");
+                SerialBT.print(systemConfig.encoderA);
+                SerialBT.print(",\"encoderB\":");
+                SerialBT.print(systemConfig.encoderB);
+                SerialBT.print(",\"encoderBtn\":");
+                SerialBT.print(systemConfig.encoderBtn);
+                SerialBT.print(",\"bleMode\":\"");
+                SerialBT.print(systemConfig.bleMode == 0 ? "CLIENT" : (systemConfig.bleMode == 1 ? "SERVER" : "DUAL"));
+                SerialBT.print("\",\"brightness\":");
+                SerialBT.print(ledBrightnessOn);
+                SerialBT.print(",\"brightnessDim\":");
+                SerialBT.print(ledBrightnessDim);
+                SerialBT.print(",\"brightnessTap\":");
+                SerialBT.print(ledBrightnessTap);
+                SerialBT.print("}}");
+                
+                SerialBT.println();
+                SerialBT.println("CONFIG_END");
+            }
+            // SET_PRESET:N - Change preset
+            else if (btSerialBuffer.startsWith("SET_PRESET:")) {
+                int preset = btSerialBuffer.substring(11).toInt();
+                if (preset >= 0 && preset < 4) {
+                    currentPreset = preset;
+                    displayOLED();
+                    updateLeds();
+                    SerialBT.print("PRESET_OK:");
+                    SerialBT.println(preset);
+                } else {
+                    SerialBT.println("PRESET_ERROR:Invalid preset");
+                }
+            }
+            // PING - Simple connection test
+            else if (btSerialBuffer == "PING") {
+                SerialBT.println("PONG");
+            }
+            // SET_CONFIG_START - Begin receiving config (uses same uploadBuffer as USB)
+            else if (btSerialBuffer == "SET_CONFIG_START") {
+                uploadBufferLen = 0;
+                memset(uploadBuffer, 0, sizeof(uploadBuffer));
+                SerialBT.println("READY");
+                Serial.println("BT: SET_CONFIG_START");
+            }
+            // SET_CONFIG_CHUNK:{data} - Receive a chunk of config data
+            else if (btSerialBuffer.startsWith("SET_CONFIG_CHUNK:")) {
+                String chunk = btSerialBuffer.substring(17);
+                size_t chunkLen = chunk.length();
+                if (uploadBufferLen + chunkLen < sizeof(uploadBuffer)) {
+                    memcpy(uploadBuffer + uploadBufferLen, chunk.c_str(), chunkLen);
+                    uploadBufferLen += chunkLen;
+                    SerialBT.print("CHUNK_OK:");
+                    SerialBT.println(uploadBufferLen);
+                    Serial.printf("BT: Chunk received, total: %d\n", uploadBufferLen);
+                } else {
+                    SerialBT.println("CHUNK_ERROR:Buffer full");
+                    Serial.println("BT: Buffer full!");
+                }
+            }
+            // SET_CONFIG_END - Parse and save the received config
+            else if (btSerialBuffer == "SET_CONFIG_END") {
+                uploadBuffer[uploadBufferLen] = '\0';
+                Serial.printf("BT: Parsing %d bytes of config...\n", uploadBufferLen);
+                yield();  // Feed watchdog before parsing
+                
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, uploadBuffer, uploadBufferLen);
+                yield();  // Feed watchdog after parsing
+                
+                if (error) {
+                    SerialBT.print("JSON_ERROR:");
+                    SerialBT.println(error.c_str());
+                    Serial.printf("BT: JSON error: %s\n", error.c_str());
+                } else {
+                    // Parse config metadata
+                    const char* cfgName = doc["configName"] | "";
+                    if (strlen(cfgName) > 0) {
+                        strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
+                        configProfileName[sizeof(configProfileName) - 1] = '\0';
+                    }
+                    const char* cfgModified = doc["lastModified"] | "";
+                    if (strlen(cfgModified) > 0) {
+                        strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
+                        configLastModified[sizeof(configLastModified) - 1] = '\0';
+                    }
+                    yield();  // Feed watchdog
+                    
+                    // Parse presets
+                    JsonArray presets = doc["presets"];
+                    if (!presets.isNull()) {
+                        for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
+                            yield();  // Feed watchdog for each preset
+                            JsonObject pObj = presets[p];
+                            strncpy(presetNames[p], pObj["name"] | "Preset", 20);
+                            presetNames[p][20] = '\0';
+                            
+                            const char* pmStr = pObj["presetLedMode"] | "NORMAL";
+                            if (strcmp(pmStr, "SELECTION") == 0) presetLedModes[p] = PRESET_LED_SELECTION;
+                            else if (strcmp(pmStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
+                            else presetLedModes[p] = PRESET_LED_NORMAL;
+                            
+                            const char* syncStr = pObj["syncMode"] | "NONE";
+                            if (strcmp(syncStr, "SPM") == 0) presetSyncMode[p] = SYNC_SPM;
+                            else if (strcmp(syncStr, "GP5") == 0) presetSyncMode[p] = SYNC_GP5;
+                            else presetSyncMode[p] = SYNC_NONE;
+                            
+                            JsonArray buttons = pObj["buttons"];
+                            if (buttons.isNull()) continue;
+                            
+                            int btnCount = min((int)buttons.size(), (int)systemConfig.buttonCount);
+                            for (int b = 0; b < btnCount; b++) {
+                                yield();  // Feed watchdog for each button
+                                JsonObject bObj = buttons[b];
+                                ButtonConfig& cfg = buttonConfigs[p][b];
+                                
+                                strncpy(cfg.name, bObj["name"] | "BTN", 20);
+                                cfg.name[20] = '\0';
+                                
+                                const char* lmStr = bObj["ledMode"] | "MOMENTARY";
+                                cfg.ledMode = (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
+                                cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
+                                cfg.messageCount = 0;
+                                
+                                JsonArray msgs = bObj["messages"];
+                                if (!msgs.isNull()) {
+                                    for (int m = 0; m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON; m++) {
+                                        JsonObject mObj = msgs[m];
+                                        ActionMessage& msg = cfg.messages[m];
+                                        memset(&msg, 0, sizeof(ActionMessage));
+                                        
+                                        const char* actStr = mObj["action"] | "PRESS";
+                                        if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
+                                        else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
+                                        else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                                        else if (strcmp(actStr, "2ND_RELEASE") == 0) msg.action = ACTION_2ND_RELEASE;
+                                        else if (strcmp(actStr, "LONG_PRESS") == 0) msg.action = ACTION_LONG_PRESS;
+                                        else if (strcmp(actStr, "2ND_LONG_PRESS") == 0) msg.action = ACTION_2ND_LONG_PRESS;
+                                        else if (strcmp(actStr, "DOUBLE_TAP") == 0) msg.action = ACTION_DOUBLE_TAP;
+                                        else if (strcmp(actStr, "COMBO") == 0) msg.action = ACTION_COMBO;
+                                        else msg.action = ACTION_NO_ACTION;
+                                        
+                                        msg.type = parseCommandType(mObj["type"] | "OFF");
+                                        msg.channel = mObj["channel"] | 1;
+                                        msg.data1 = mObj["data1"] | 0;
+                                        msg.data2 = mObj["data2"] | 0;
+                                        hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
+                                        
+                                        // COMBO partner
+                                        if (msg.action == ACTION_COMBO) {
+                                            msg.combo.partner = mObj["partner"] | 0;
+                                        }
+                                        
+                                        // LONG_PRESS holdMs
+                                        if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
+                                            msg.longPress.holdMs = mObj["holdMs"] | 500;
+                                        }
+                                        
+                                        // Label
+                                        const char* label = mObj["label"] | "";
+                                        strncpy(msg.label, label, 5);
+                                        msg.label[5] = '\0';
+                                        
+                                        // TAP_TEMPO fields
+                                        if (msg.type == TAP_TEMPO) {
+                                            msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
+                                            msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
+                                            msg.tapTempo.tapLock = mObj["tapLock"] | 7;
+                                        }
+                                        
+                                        // SYSEX data
+                                        if (msg.type == SYSEX) {
+                                            const char* hex = mObj["sysex"] | "";
+                                            size_t len = strlen(hex);
+                                            msg.sysex.length = 0;
+                                            for (size_t s = 0; s + 1 < len && msg.sysex.length < 48; s += 2) {
+                                                char h[3] = { hex[s], hex[s+1], 0 };
+                                                msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
+                                            }
+                                        }
+                                        cfg.messageCount++;
+                                    }
+                                }
+                            }
+                        }
+                        yield();  // Feed watchdog before save
+                        savePresets();
+                        yield();  // Feed watchdog after save
+                        Serial.println("BT: Presets saved!");
+                    }
+                    
+                    // Parse system config
+                    JsonObject sys = doc["system"];
+                    if (!sys.isNull()) {
+                        if (sys.containsKey("bleDeviceName")) strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"], 23);
+                        if (sys.containsKey("buttonCount")) systemConfig.buttonCount = sys["buttonCount"];
+                        if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+                        yield();  // Feed watchdog before save
+                        saveSystemSettings();
+                        yield();  // Feed watchdog after save
+                        Serial.println("BT: System config saved!");
+                    }
+                    
+                    currentPreset = 0;
+                    yield();  // Feed watchdog before display update
+                    displayOLED();
+                    updateLeds();
+                    SerialBT.println("SAVE_OK");
+                    Serial.println("BT: Config saved successfully!");
+                }
+            }
+            
+            btSerialBuffer = "";
+        } else {
+            btSerialBuffer += c;
+            // Prevent buffer overflow
+            if (btSerialBuffer.length() > 16000) {
+                btSerialBuffer = "";
+            }
         }
     }
 }

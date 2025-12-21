@@ -43,6 +43,7 @@ SystemConfig systemConfig = {
 };
 
 bool isWifiOn = false;
+bool isBtSerialOn = false;  // Bluetooth Serial (SPP) active
 
 // ============================================
 // GLOBAL SPECIAL ACTIONS
