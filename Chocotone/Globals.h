@@ -245,6 +245,7 @@ extern int activeNotesOnButtonPins[MAX_BUTTONS];
 extern unsigned long buttonHoldStartTime[MAX_BUTTONS];
 extern bool buttonHoldFired[MAX_BUTTONS];
 extern bool buttonComboChecked[MAX_BUTTONS];
+extern bool buttonConsumed[MAX_BUTTONS];
 
 // Display state
 extern char buttonNameToShow[21];

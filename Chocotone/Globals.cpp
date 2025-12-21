@@ -92,6 +92,7 @@ int activeNotesOnButtonPins[MAX_BUTTONS] = {0};
 unsigned long buttonHoldStartTime[MAX_BUTTONS] = {0};
 bool buttonHoldFired[MAX_BUTTONS] = {false};
 bool buttonComboChecked[MAX_BUTTONS] = {false};
+bool buttonConsumed[MAX_BUTTONS] = {false};  // Blocks re-trigger until released
 
 // Display state
 char buttonNameToShow[21] = "";

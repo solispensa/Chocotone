@@ -15,6 +15,13 @@ static bool bleModeChanged = false;
 void executeActionMessage(const ActionMessage& msg) {
     switch (msg.type) {
         case PRESET_UP:
+            // Clear all button states to prevent triggers in new preset
+            for (int b = 0; b < MAX_BUTTONS; b++) {
+                buttonPinActive[b] = false;
+                buttonHoldFired[b] = true;  // Mark as fired to prevent deferred PRESS
+                buttonComboChecked[b] = true;  // Block combo/release actions
+                buttonConsumed[b] = true;  // BLOCK re-trigger until released
+            }
             currentPreset = (currentPreset + 1) % 4;
             saveCurrentPresetIndex();
             displayOLED();
@@ -24,6 +31,13 @@ void executeActionMessage(const ActionMessage& msg) {
             return;
             
         case PRESET_DOWN:
+            // Clear all button states to prevent triggers in new preset
+            for (int b = 0; b < MAX_BUTTONS; b++) {
+                buttonPinActive[b] = false;
+                buttonHoldFired[b] = true;
+                buttonComboChecked[b] = true;
+                buttonConsumed[b] = true;  // BLOCK re-trigger until released
+            }
             currentPreset = (currentPreset - 1 + 4) % 4;
             saveCurrentPresetIndex();
             displayOLED();
@@ -33,6 +47,13 @@ void executeActionMessage(const ActionMessage& msg) {
             return;
             
         case PRESET_1: case PRESET_2: case PRESET_3: case PRESET_4:
+            // Clear all button states to prevent triggers in new preset
+            for (int b = 0; b < MAX_BUTTONS; b++) {
+                buttonPinActive[b] = false;
+                buttonHoldFired[b] = true;
+                buttonComboChecked[b] = true;
+                buttonConsumed[b] = true;  // BLOCK re-trigger until released
+            }
             currentPreset = msg.type - PRESET_1;
             saveCurrentPresetIndex();
             displayOLED();
@@ -168,6 +189,12 @@ void loop_presetMode() {
         if (pressed != buttonPinActive[i]) {
             if (pressed) {
                 // ===== BUTTON PRESS =====
+                // Skip if button was consumed by preset change (requires release first)
+                if (buttonConsumed[i]) {
+                    buttonPinActive[i] = true;  // Track state but don't process
+                    continue;
+                }
+                
                 if (millis() - lastButtonPressTime_pads[i] > buttonDebounce) {
                     buttonPinActive[i] = true;
                     lastButtonPressTime_pads[i] = millis();
@@ -371,9 +398,21 @@ void loop_presetMode() {
                             buttonNameDisplayUntil = millis() + 500;
                             safeDisplayOLED();
                             
-                            if (action->type == TAP_TEMPO) {
+                            // Check if button has LONG_PRESS - if so, defer PRESS to release
+                            ActionType longPressType = config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
+                            ActionMessage* longPress = findAction(config, longPressType);
+                            if (!longPress) {
+                                longPress = findAction(config, ACTION_LONG_PRESS);
+                            }
+                            
+                            if (longPress) {
+                                // Has long press configured - DON'T fire PRESS now
+                                // It will fire on release if held time < holdMs threshold
+                                Serial.printf("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
+                            } else if (action->type == TAP_TEMPO) {
                                 handleTapTempo(i);
                             } else {
+                                // No LONG_PRESS configured - fire PRESS immediately
                                 executeActionMessage(*action);
                                 
                                 // Toggle alternate state if button has 2ND_PRESS
@@ -398,6 +437,41 @@ void loop_presetMode() {
                 if (!buttonComboChecked[i]) {
                     ButtonConfig& config = buttonConfigs[currentPreset][i];
                     
+                    // ===== DEFERRED PRESS (for buttons with LONG_PRESS) =====
+                    // If button has LONG_PRESS but it didn't fire, fire PRESS now
+                    if (!buttonHoldFired[i]) {
+                        ActionType longPressType = config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
+                        ActionMessage* longPress = findAction(config, longPressType);
+                        if (!longPress) {
+                            longPress = findAction(config, ACTION_LONG_PRESS);
+                        }
+                        
+                        if (longPress) {
+                            // Button has LONG_PRESS configured but it didn't fire
+                            // This means we need to fire the deferred PRESS now
+                            ActionMessage* pressAction = config.isAlternate ? 
+                                findAction(config, ACTION_2ND_PRESS) : findAction(config, ACTION_PRESS);
+                            if (!pressAction) {
+                                pressAction = findAction(config, ACTION_PRESS);
+                            }
+                            
+                            if (pressAction && pressAction->type != TAP_TEMPO) {
+                                Serial.printf("BTN %d: Firing deferred PRESS on release\n", i);
+                                executeActionMessage(*pressAction);
+                                
+                                // Toggle alternate state if button has 2ND_PRESS
+                                if (hasAction(config, ACTION_2ND_PRESS)) {
+                                    config.isAlternate = !config.isAlternate;
+                                    ledToggleState[i] = config.isAlternate;
+                                    Serial.printf("BTN %d: toggled isAlternate to %d\n", i, config.isAlternate);
+                                }
+                            } else if (pressAction && pressAction->type == TAP_TEMPO) {
+                                // Handle deferred TAP_TEMPO
+                                handleTapTempo(i);
+                            }
+                        }
+                    }
+                    
                     // Check for RELEASE or 2ND_RELEASE action based on isAlternate state
                     ActionType releaseType = config.isAlternate ? ACTION_2ND_RELEASE : ACTION_RELEASE;
                     ActionMessage* releaseAction = findAction(config, releaseType);
@@ -418,6 +492,7 @@ void loop_presetMode() {
                 
                 buttonComboChecked[i] = false;
                 buttonHoldFired[i] = false;
+                buttonConsumed[i] = false;  // Allow button to trigger again after release
                 updateLeds();
             }
         }
