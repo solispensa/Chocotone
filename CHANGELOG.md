@@ -2,6 +2,29 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
+## [v1.4] - 2024-12-21
+
+### Added
+- **Labels for All Action Types** - Every action can now have a custom OLED label, not just COMBO
+  - When label is blank, button name is displayed (for CC, PC, NOTE, SYSEX types)
+  - Special types still have auto-labels: TAP_TEMPO→"TAP", PRESET_UP→">", PRESET_DOWN→"<", etc.
+  - Label field moved outside COMBO-only section in both editors
+- **LED Tap Tempo Brightness** - Separate brightness control for tap tempo LED blink (default: 240)
+
+### Changed
+- **TAP_TEMPO UI Improvements**:
+  - Renamed fields: R.Prev→"Rhythm <", R.Next→"Rhythm >", Lock→"Lock Btn"
+  - Changed button numbering from 0-9 to 1-10 (1-indexed display)
+  - Hidden D1/D2 fields when TAP_TEMPO type is selected (not applicable)
+- **System Config Button Color** - Fixed active state to use palette colors instead of hardcoded orange
+
+### Fixed
+- **USB Reconnection** - Can now reconnect USB serial without page refresh
+  - Properly releases reader/writer locks before closing port
+  - Added error handling to prevent stuck connections
+
+---
+
 ## [v1.3] - 2024-12-19
 
 ### Added

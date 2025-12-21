@@ -4,7 +4,7 @@
 #include "Globals.h"
 
 void handleEncoderButtonPress();
-void handleTapTempo();
+void handleTapTempo(int buttonIndex);
 void loop_presetMode();
 void loop_menuMode();
 void handleMenuSelection();

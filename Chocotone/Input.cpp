@@ -94,11 +94,11 @@ void executeActionMessage(const ActionMessage& msg) {
 // TAP TEMPO HANDLING
 // ============================================
 
-void handleTapTempo() {
+void handleTapTempo(int buttonIndex) {
     unsigned long now = millis();
     
-    // LED feedback on every tap
-    blinkAllLeds();
+    // LED feedback on tap - blink only the tap button
+    blinkTapButton(buttonIndex);
     
     // Reset if more than 3 seconds since last tap
     if (!inTapTempoMode || (now - lastTapTime > 3000)) {
@@ -228,8 +228,8 @@ void loop_presetMode() {
                                 const ActionMessage& comboMsg = globalSpecialActions[i].comboAction;
                                 
                                 // Show label
-                                if (comboMsg.combo.label[0] != '\0') {
-                                    strncpy(buttonNameToShow, comboMsg.combo.label, 20);
+                                if (comboMsg.label[0] != '\0') {
+                                    strncpy(buttonNameToShow, comboMsg.label, 20);
                                 } else if (comboMsg.type == PRESET_DOWN) {
                                     strncpy(buttonNameToShow, "<", 20);
                                 } else if (comboMsg.type == PRESET_UP) {
@@ -260,8 +260,8 @@ void loop_presetMode() {
                                 
                                 const ActionMessage& comboMsg = globalSpecialActions[p].comboAction;
                                 
-                                if (comboMsg.combo.label[0] != '\0') {
-                                    strncpy(buttonNameToShow, comboMsg.combo.label, 20);
+                                if (comboMsg.label[0] != '\0') {
+                                    strncpy(buttonNameToShow, comboMsg.label, 20);
                                 } else if (comboMsg.type == PRESET_DOWN) {
                                     strncpy(buttonNameToShow, "<", 20);
                                 } else if (comboMsg.type == PRESET_UP) {
@@ -361,13 +361,18 @@ void loop_presetMode() {
                             Serial.printf("BTN %d: action type=%d, data1=%d, data2=%d\n",
                                 i, action->type, action->data1, action->data2);
                             
-                            strncpy(buttonNameToShow, config.name, 20);
+                            // Display action label if set, otherwise use button name
+                            if (action->label[0] != '\0') {
+                                strncpy(buttonNameToShow, action->label, 20);
+                            } else {
+                                strncpy(buttonNameToShow, config.name, 20);
+                            }
                             buttonNameToShow[20] = '\0';
                             buttonNameDisplayUntil = millis() + 500;
                             safeDisplayOLED();
                             
                             if (action->type == TAP_TEMPO) {
-                                handleTapTempo();
+                                handleTapTempo(i);
                             } else {
                                 executeActionMessage(*action);
                                 

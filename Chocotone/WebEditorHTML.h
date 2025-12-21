@@ -1139,6 +1139,31 @@ if (typeof window !== 'undefined') {
 
             return html;
         }
+
+        // Auto-label generator for ALL action types
+        function getAutoLabel(msg) {
+            switch (msg.type) {
+                case 'NOTE_MOMENTARY':
+                case 'NOTE_ON':
+                case 'NOTE_OFF':
+                case 'CC':
+                case 'PC':
+                case 'SYSEX':
+                    return '';  // Use button label
+                case 'TAP_TEMPO': return 'TAP';
+                case 'PRESET_UP': return '>';
+                case 'PRESET_DOWN': return '<';
+                case 'PRESET_1': return presetData.presets[0] ? presetData.presets[0].name : 'P1';
+                case 'PRESET_2': return presetData.presets[1] ? presetData.presets[1].name : 'P2';
+                case 'PRESET_3': return presetData.presets[2] ? presetData.presets[2].name : 'P3';
+                case 'PRESET_4': return presetData.presets[3] ? presetData.presets[3].name : 'P4';
+                case 'WIFI_TOGGLE': return 'WiFi';
+                case 'CLEAR_BLE_BONDS': return 'xBLE';
+                case 'OFF': return '';
+                default: return '';
+            }
+        }
+
         function getCCPickerOptions(selectedVal) {
             if (typeof buildCCSelectOptions === 'function') {
                 return buildCCSelectOptions(selectedVal);
@@ -1367,8 +1392,11 @@ if (typeof window !== 'undefined') {
             var html = '<div class="msg-box">';
             html += '<div class="remove-btn" onclick="delMsg(' + i + ')">×</div>';
 
-            // Action Type
+            // Action Type + Label (for ALL action types)
             html += '<div class="field" style="margin-bottom:8px; padding-right:30px"><label style="font-weight:600;color:var(--acc)">ACTION</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            html += '<div class="row" style="margin-bottom:8px">';
+            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
+            html += '</div>';
 
             // Conditional fields
             if (msg.action === 'COMBO') {
@@ -1379,7 +1407,6 @@ if (typeof window !== 'undefined') {
                     if (b !== selectedBtn) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
                 }
                 html += '</select></div>';
-                html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="Auto" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
                 html += '</div>';
             }
             else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
@@ -1392,21 +1419,24 @@ if (typeof window !== 'undefined') {
             html += '<div class="row">';
             html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
             html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
-            // D1 as CC Picker dropdown for CC type
-            if (msg.type === 'CC') {
-                html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
-            } else {
-                html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+            // D1/D2 hidden for TAP_TEMPO
+            if (msg.type !== 'TAP_TEMPO') {
+                // D1 as CC Picker dropdown for CC type
+                if (msg.type === 'CC') {
+                    html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                } else {
+                    html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                }
+                html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
             }
-            html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
             html += '</div>';
 
             if (msg.type === 'TAP_TEMPO') {
                 html += '<div class="row" style="margin-top:8px">';
-                html += '<div class="field"><label>R.Prev</label><input type="number" min="0" max="9" value="' + (msg.rhythmPrev || 0) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value))"></div>';
-                html += '<div class="field"><label>R.Next</label><input type="number" min="0" max="9" value="' + (msg.rhythmNext || 4) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value))"></div>';
-                html += '<div class="field"><label>Lock</label><input type="number" min="0" max="9" value="' + (msg.tapLock || 7) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
                 html += '</div>';
             }
 
@@ -1421,6 +1451,11 @@ if (typeof window !== 'undefined') {
             return html;
         }
 
+        function checkBrightnessWarning() {
+            var sys = presetData.system;
+            var warn = document.getElementById('brightnessWarning');
+            if (warn) warn.style.display = ((sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240) ? 'block' : 'none';
+        }
         function renderSystemConfig() {
             var sys = presetData.system;
             var html = '<div class="section">';
@@ -1453,7 +1488,14 @@ if (typeof window !== 'undefined') {
             html += '<div class="row">';
             html += '<div class="field"><label>Buttons #</label><input type="number" min="4" max="10" value="' + sys.buttonCount + '" onchange="updBtnCount(parseInt(this.value))"></div>';
             html += '<div class="field"><label>Btn Pins</label><input type="text" value="' + sys.buttonPins + '" onchange="updSys(\'buttonPins\',this.value)"></div>';
-            html += '</div>';
+            html += '</div>'; // Close the first row
+            html += '<div class="row">'; // New row for brightness settings
+            html += '<div class="field"><label style="font-size:11px">LED Bright On</label><input type="number" min="0" max="255" value="' + (sys.brightness || 220) + '" onchange="updSys(\'brightness\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Bright Dim</label><input type="number" min="0" max="255" value="' + (sys.brightnessDim || 20) + '" onchange="updSys(\'brightnessDim\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Tap Tempo</label><input type="number" min="0" max="255" value="' + (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) + '" onchange="updSys(\'brightnessTap\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '</div>'; // Close the new brightness row
+            var showWarning = (sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240;
+            html += '<div class="warning" id="brightnessWarning" style="display:' + (showWarning ? 'block' : 'none') + '">Warning: Brightness values > 240 may cause flickering or instability.</div>';
             html += '<div class="row">';
             html += '<div class="field"><label>LED Pin</label><input type="number" min="0" max="39" value="' + sys.ledPin + '" onchange="updSys(\'ledPin\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>LEDs/Btn</label><input type="number" min="1" max="32" value="' + sys.ledsPerButton + '" onchange="updSys(\'ledsPerButton\',parseInt(this.value))"></div>';

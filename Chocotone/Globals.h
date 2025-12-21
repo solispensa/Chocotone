@@ -89,13 +89,13 @@ struct ActionMessage {
     uint8_t data1;          // 1 byte - Note/CC number
     uint8_t data2;          // 1 byte - Velocity/Value
     uint8_t rgb[3];         // 3 bytes - LED color
+    char label[6];          // 6 bytes - Custom OLED label (5 chars + null) for ALL action types
     
     // Action-specific data (union to save memory)
     union {
         // For ACTION_COMBO
         struct {
             int8_t partner;     // Partner button index (-1 = none)
-            char label[6];      // Custom OLED label (5 chars + null)
         } combo;
         
         // For ACTION_LONG_PRESS
@@ -217,6 +217,7 @@ extern GlobalSpecialAction globalSpecialActions[MAX_BUTTONS];
 
 extern int ledBrightnessOn;
 extern int ledBrightnessDim;
+extern int ledBrightnessTap;
 extern int buttonDebounce;
 extern int buttonNameFontSize;
 

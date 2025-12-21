@@ -64,6 +64,7 @@ ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // Zero-initialized
 
 int ledBrightnessOn = 220;
 int ledBrightnessDim = 20;
+int ledBrightnessTap = 240;
 int buttonDebounce = 120;
 int buttonNameFontSize = 5;
 

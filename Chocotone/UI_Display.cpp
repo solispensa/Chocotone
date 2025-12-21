@@ -433,6 +433,47 @@ void blinkAllLeds() {
     strip.show();
 }
 
+void blinkTapButton(int buttonIndex) {
+    // Blink only the tap tempo button's LED using configurable brightness
+    uint8_t lpb = systemConfig.ledsPerButton;
+    if (lpb < 1) lpb = 1;
+    
+    // Calculate white color at configured brightness
+    uint8_t tapBright = constrain(ledBrightnessTap, 0, 255);
+    
+    if (lpb == 1) {
+        // Single LED mode - use ledMap
+        int ledIndex = systemConfig.ledMap[buttonIndex];
+        uint32_t savedColor = strip.getPixelColor(ledIndex);
+        
+        strip.setPixelColor(ledIndex, strip.Color(tapBright, tapBright, tapBright));
+        strip.show();
+        delay(50);
+        
+        strip.setPixelColor(ledIndex, savedColor);
+        strip.show();
+    } else {
+        // Strip mode - button controls multiple LEDs
+        int startLed = buttonIndex * lpb;
+        int endLed = startLed + lpb;
+        uint32_t savedColors[lpb];
+        
+        // Save and flash
+        for (int i = startLed; i < endLed; i++) {
+            savedColors[i - startLed] = strip.getPixelColor(i);
+            strip.setPixelColor(i, strip.Color(tapBright, tapBright, tapBright));
+        }
+        strip.show();
+        delay(50);
+        
+        // Restore
+        for (int i = startLed; i < endLed; i++) {
+            strip.setPixelColor(i, savedColors[i - startLed]);
+        }
+        strip.show();
+    }
+}
+
 // ============================================================================
 // OLED Health Monitoring & Auto-Recovery System
 // ============================================================================

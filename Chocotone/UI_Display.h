@@ -7,6 +7,7 @@ void displayOLED();
 void displayMenu();
 void updateLeds();
 void blinkAllLeds();
+void blinkTapButton(int buttonIndex);
 void displayTapTempoMode();
 void displayButtonName();
 void midiNoteNumberToString(char* buffer, size_t bufferSize, int note);

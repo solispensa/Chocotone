@@ -1530,7 +1530,7 @@
     <section id="hero">
         <div class="container" style="max-width: 1400px;">
             <div
-                style="position: relative; padding: 40px; background: linear-gradient(135deg, #111 0%, #000 100%); border-radius: 24px; overflow: hidden;">
+                style="position: relative; padding: 40px; background: linear-gradient(135deg, #111 0%, #000 100%); border-radius: 24px; overflow: hidden; aspect-ratio: 16/9; width: 100%; height: auto; display: flex; flex-direction: column;">
                 <!-- Background glows -->
                 <div
                     style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, rgba(0, 0, 0, 0) 70%); top: -200px; right: -200px; z-index: 0; pointer-events: none;">
@@ -1541,7 +1541,7 @@
 
                 <!-- Header -->
                 <header
-                    style="z-index: 1; position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 220px; margin-bottom: 20px;">
+                    style="z-index: 1; position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 0 0 28%; margin-bottom: 20px;">
                     <div
                         style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; justify-content: center; backdrop-filter: blur(10px);">
                         <h1 style="font-size: 72px; font-weight: 900; margin: 0; letter-spacing: -4px; line-height: 1;">
@@ -1562,7 +1562,7 @@
 
                 <!-- Bento Grid -->
                 <div
-                    style="display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px; z-index: 1; position: relative;">
+                    style="display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px; z-index: 1; position: relative; flex: 1 1 auto;">
                     <!-- Card 1: 8 Buttons -->
                     <div class="control-card" style="position: relative;">
                         <div class="control-icon" style="color: #f472b6;">🎛️</div>
@@ -2103,14 +2103,70 @@
             const btmRowCount = count / 2;  // step=2 ensures even numbers
             const topRowCount = count / 2;
 
-            // SAFETY: For 10 buttons, reduce spacing if it's too wide (avoids overflow)
-            const spacingSlider = document.getElementById('sl-btn-spacing');
-            let spacingVal = parseFloat(spacingSlider.value);
-            if (count >= 10 && spacingVal > 22) {
-                spacingVal = 22; // Clamp spacing for 5-column layout
-                spacingSlider.value = spacingVal;
-                document.getElementById('val-btn-spacing').textContent = spacingVal + '%';
-                wrapper.style.setProperty('--btn-spacing', spacingVal + '%');
+            // SAFETY: For 10 buttons, ensure layout fits by clamping values.
+            // Restore original user values when returning to < 10.
+            if (count >= 10) {
+                // Save current values if not already saved (and only if we are actually clamping something, 
+                // but simpler to just save current state if we are entering high-density mode)
+                if (!wrapper.dataset.savedSettings) {
+                    wrapper.dataset.savedSettings = JSON.stringify({
+                        spacing: document.getElementById('sl-btn-spacing').value,
+                        size: document.getElementById('sl-btn-size').value,
+                        encX: document.getElementById('sl-enc-x').value
+                    });
+                }
+
+                // 1. Clamp Spacing
+                const spacingSlider = document.getElementById('sl-btn-spacing');
+                if (parseFloat(spacingSlider.value) > 17) {
+                    spacingSlider.value = 17;
+                    document.getElementById('val-btn-spacing').textContent = '17%';
+                    wrapper.style.setProperty('--btn-spacing', '17%');
+                }
+
+                // 2. Reduce Button Size
+                const sizeSlider = document.getElementById('sl-btn-size');
+                if (parseFloat(sizeSlider.value) > 7.5) {
+                    sizeSlider.value = 7.5;
+                    document.getElementById('val-btn-size').textContent = '7.5%';
+                    wrapper.style.setProperty('--btn-size', '7.5%');
+                }
+
+                // 3. Move Encoder to Edge
+                const encXSlider = document.getElementById('sl-enc-x');
+                if (parseFloat(encXSlider.value) > 2.5) {
+                    encXSlider.value = 2.5;
+                    document.getElementById('val-enc-x').textContent = '2.5%';
+                    wrapper.style.setProperty('--enc-x', '2.5%');
+                }
+            } else {
+                // Restore values if they were saved (exiting high-density mode)
+                if (wrapper.dataset.savedSettings) {
+                    try {
+                        const saved = JSON.parse(wrapper.dataset.savedSettings);
+
+                        // Restore Spacing
+                        const spacingSlider = document.getElementById('sl-btn-spacing');
+                        spacingSlider.value = saved.spacing;
+                        document.getElementById('val-btn-spacing').textContent = saved.spacing + '%';
+                        wrapper.style.setProperty('--btn-spacing', saved.spacing + '%');
+
+                        // Restore Size
+                        const sizeSlider = document.getElementById('sl-btn-size');
+                        sizeSlider.value = saved.size;
+                        document.getElementById('val-btn-size').textContent = saved.size + '%';
+                        wrapper.style.setProperty('--btn-size', saved.size + '%');
+
+                        // Restore Encoder
+                        const encXSlider = document.getElementById('sl-enc-x');
+                        encXSlider.value = saved.encX;
+                        document.getElementById('val-enc-x').textContent = saved.encX + '%';
+                        wrapper.style.setProperty('--enc-x', saved.encX + '%');
+
+                    } catch (e) { console.error("Error restoring settings", e); }
+
+                    delete wrapper.dataset.savedSettings;
+                }
             }
 
             // Get current styles
@@ -2168,9 +2224,9 @@
             // The multiplier positions: -1.5, -0.5, 0.5, 1.5 for 4 buttons
             // Reset padding-bottom to 0 to override CSS class hack, rely on aspect-ratio for perfect square
             if (row === 'top') {
-                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,-50%); aspect-ratio:1/1; height:auto; padding-bottom:0; width:var(--btn-size);`;
+                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             } else {
-                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing)); transform:translate(-50%,-50%); aspect-ratio:1/1; height:auto; padding-bottom:0; width:var(--btn-size);`;
+                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             }
 
             const footswitch = document.createElement('div');

@@ -384,9 +384,9 @@ void handleSave() {
                 if (comboMsg) {
                     if(server.hasArg(String(id) + "_combo_label")) {
                         String newLabel = server.arg(String(id) + "_combo_label");
-                        if(strncmp(comboMsg->combo.label, newLabel.c_str(), 6) != 0) {
-                            strncpy(comboMsg->combo.label, newLabel.c_str(), 6);
-                            comboMsg->combo.label[5] = '\0';
+                        if(strncmp(comboMsg->label, newLabel.c_str(), 6) != 0) {
+                            strncpy(comboMsg->label, newLabel.c_str(), 6);
+                            comboMsg->label[5] = '\0';
                             changed = true;
                         }
                     }
@@ -655,11 +655,12 @@ void handleExport() {
                 // Action-specific fields
                 if (msg.action == ACTION_COMBO) {
                     msgObj["partner"] = msg.combo.partner;
-                    if (msg.combo.label[0]) {
-                        char labelCopy[7] = {0};
-                        strncpy(labelCopy, msg.combo.label, 6);
-                        msgObj["label"] = labelCopy;
-                    }
+                }
+                // Export label for ALL actions (not just COMBO)
+                if (msg.label[0]) {
+                    char labelCopy[7] = {0};
+                    strncpy(labelCopy, msg.label, 6);
+                    msgObj["label"] = labelCopy;
                 }
                 if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
                     msgObj["holdMs"] = msg.longPress.holdMs;
@@ -898,10 +899,11 @@ void handleImportUploadData() {
                             }
                             if (msg.action == ACTION_COMBO) {
                                 msg.combo.partner = mObj["partner"] | 0;
-                                const char* label = mObj["label"] | "";
-                                strncpy(msg.combo.label, label, 5);
-                                msg.combo.label[5] = '\0';
                             }
+                            // Parse label for ALL actions (not just COMBO)
+                            const char* label = mObj["label"] | "";
+                            strncpy(msg.label, label, 5);
+                            msg.label[5] = '\0';
                             if (msg.type == TAP_TEMPO) {
                                 msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
                                 msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
@@ -943,6 +945,8 @@ void handleImportUploadData() {
             if (sys.containsKey("ledPin")) systemConfig.ledPin = sys["ledPin"];
             if (sys.containsKey("ledsPerButton")) systemConfig.ledsPerButton = sys["ledsPerButton"];
             if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+            if (sys.containsKey("brightnessDim")) ledBrightnessDim = sys["brightnessDim"];
+            if (sys.containsKey("brightnessTap")) ledBrightnessTap = sys["brightnessTap"];
             
             Serial.printf("Before saveSystemSettings - Free heap: %d\n", ESP.getFreeHeap());
             saveSystemSettings();
@@ -1193,6 +1197,10 @@ String buildFullConfigJson() {
     json += systemConfig.apSSID;
     json += "\",\"brightness\":";
     json += String(ledBrightnessOn);
+    json += ",\"brightnessDim\":";
+    json += String(ledBrightnessDim);
+    json += ",\"brightnessTap\":";
+    json += String(ledBrightnessTap);
     json += "}}";
     
     return json;
@@ -1299,6 +1307,8 @@ bool processConfigChunk(const String& jsonStr, int chunkNum) {
             strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"] | "Chocotone", 23);
         }
         if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+        if (sys.containsKey("brightnessDim")) ledBrightnessDim = sys["brightnessDim"];
+        if (sys.containsKey("brightnessTap")) ledBrightnessTap = sys["brightnessTap"];
     }
     
     return true;
@@ -1327,6 +1337,21 @@ void handleSerialConfig() {
         if (c == '\n') {
             serialBuffer.trim();
             
+            // SET_PRESET - Change active preset from editor
+            if (serialBuffer.startsWith("SET_PRESET:")) {
+                int preset = serialBuffer.substring(11).toInt();
+                if (preset >= 0 && preset < 4) {
+                    currentPreset = preset;
+                    displayOLED();
+                    updateLeds();
+                    Serial.println("OK:PRESET_SET");
+                } else {
+                    Serial.println("ERR:INVALID_PRESET");
+                }
+                serialBuffer = "";
+                return;
+            }
+            
             // GET_CONFIG - Send current config as JSON
             if (serialBuffer == "GET_CONFIG") {
                 Serial.println("CONFIG_START");
@@ -1343,6 +1368,13 @@ void handleSerialConfig() {
                     Serial.print(presetNames[p]);
                     Serial.print("\",\"presetLedMode\":\"");
                     Serial.print(ledModeStr);
+                    
+                    // Export syncMode (NONE/SPM/GP5)
+                    const char* syncModeStr = (presetSyncMode[p] == SYNC_SPM) ? "SPM" : 
+                                              (presetSyncMode[p] == SYNC_GP5) ? "GP5" : "NONE";
+                    Serial.print("\",\"syncMode\":\"");
+                    Serial.print(syncModeStr);
+                    
                     Serial.print("\",\"buttons\":[");
                     
                     for (int b = 0; b < systemConfig.buttonCount; b++) {
@@ -1399,11 +1431,12 @@ void handleSerialConfig() {
                             if (msg.action == ACTION_COMBO) {
                                 Serial.print(",\"partner\":");
                                 Serial.print(msg.combo.partner);
-                                if (msg.combo.label[0]) {
-                                    Serial.print(",\"label\":\"");
-                                    Serial.print(msg.combo.label);
-                                    Serial.print("\"");
-                                }
+                            }
+                            // Export label for ALL actions
+                            if (msg.label[0]) {
+                                Serial.print(",\"label\":\"");
+                                Serial.print(msg.label);
+                                Serial.print("\"");
                             }
                             if (msg.type == TAP_TEMPO) {
                                 Serial.print(",\"rhythmPrev\":");
@@ -1463,6 +1496,10 @@ void handleSerialConfig() {
                 Serial.print(systemConfig.bleMode == 0 ? "CLIENT" : (systemConfig.bleMode == 1 ? "SERVER" : "DUAL"));
                 Serial.print("\",\"brightness\":");
                 Serial.print(ledBrightnessOn);
+                Serial.print(",\"brightnessDim\":");
+                Serial.print(ledBrightnessDim);
+                Serial.print(",\"brightnessTap\":");
+                Serial.print(ledBrightnessTap);
                 Serial.print("}}");
                 
                 Serial.println();
@@ -1558,10 +1595,11 @@ void handleSerialConfig() {
                                         }
                                         if (msg.action == ACTION_COMBO) {
                                             msg.combo.partner = mObj["partner"] | 0;
-                                            const char* label = mObj["label"] | "";
-                                            strncpy(msg.combo.label, label, 5);
-                                            msg.combo.label[5] = '\0';
                                         }
+                                        // Parse label for ALL actions
+                                        const char* label = mObj["label"] | "";
+                                        strncpy(msg.label, label, 5);
+                                        msg.label[5] = '\0';
                                         if (msg.type == TAP_TEMPO) {
                                             msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
                                             msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
@@ -1632,6 +1670,8 @@ void handleSerialConfig() {
                             else if (mode == "DUAL") systemConfig.bleMode = static_cast<BleMode>(2);
                         }
                         if (sys.containsKey("brightness")) ledBrightnessOn = sys["brightness"];
+                        if (sys.containsKey("brightnessDim")) ledBrightnessDim = sys["brightnessDim"];
+                        if (sys.containsKey("brightnessTap")) ledBrightnessTap = sys["brightnessTap"];
                         saveSystemSettings();
                         Serial.println("System config saved!");
                     }

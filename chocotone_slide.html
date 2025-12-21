@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chocotone Feature Slide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;900&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --brand-mint: #e5fff2;
+            --brand-cyan: #8ffdff;
+            --brand-lavender: #8c81df;
+            --border: rgba(255, 255, 255, 0.1);
+            --border-hover: rgba(140, 129, 223, 0.5);
+            --mouse-x: 50%;
+            --mouse-y: 50%;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-dark);
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(140, 129, 223, 0.08) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(143, 253, 255, 0.05) 0%, transparent 25%);
+        }
+
+        /* 16:9 Presentation Container */
+        .slide-container {
+            width: 95vw;
+            max-width: 1700px;
+            /* Limit max size for readability */
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, #111 0%, #000 100%);
+            border-radius: 24px;
+            padding: 2.5%;
+            /* Relative padding */
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 2%;
+            /* Gap between header and grid */
+        }
+
+        /* Glows */
+        .glow-blob {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-1 {
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, transparent 70%);
+            top: -15%;
+            right: -15%;
+        }
+
+        .glow-2 {
+            width: 40%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(143, 253, 255, 0.1) 0%, transparent 70%);
+            bottom: -10%;
+            left: -10%;
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2%;
+            flex: 0 0 25%;
+            /* Fixed height percentage of container */
+        }
+
+        .header-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 4%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 4vw, 5rem);
+            font-weight: 900;
+            letter-spacing: -4px;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .subtitle {
+            font-size: clamp(0.8rem, 1.2vw, 1.5rem);
+            color: #8ffdff;
+            letter-spacing: 2px;
+            margin-top: 2%;
+        }
+
+        .byline {
+            margin-top: auto;
+            color: #6b7280;
+            font-size: clamp(0.6rem, 0.8vw, 1rem);
+        }
+
+        /* Grid */
+        .controls-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 1.5%;
+            flex: 1;
+            /* Take remaining space */
+            min-height: 0;
+            /* Allow Flexbox verify shrinking */
+        }
+
+        .control-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-icon {
+            font-size: clamp(1.5rem, 2.5vw, 3rem);
+            margin-bottom: 5%;
+            color: #fff;
+        }
+
+        h3 {
+            font-size: clamp(0.9rem, 1.4vw, 1.8rem);
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4%;
+            white-space: nowrap;
+        }
+
+        p,
+        li {
+            font-size: clamp(0.65rem, 0.9vw, 1rem);
+            color: var(--text-muted);
+            line-height: 1.4;
+            list-style: none;
+            margin: 0;
+        }
+
+        ul {
+            padding-left: 0;
+            margin-top: 2%;
+        }
+
+        /* Specific Card Tweaks for visual balance */
+        .control-card-visual {
+            padding-right: 0;
+        }
+
+        /* Mouse Glow Script */
+        .control-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), rgba(255, 255, 255, 0.06), transparent 40%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+
+        .control-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Decorations (Mockups) */
+        .visual-element {
+            position: absolute;
+            top: 10%;
+            right: 5%;
+            width: 40%;
+            height: auto;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container" id="slide">
+        <div class="glow-blob glow-1"></div>
+        <div class="glow-blob glow-2"></div>
+
+        <header>
+            <div class="header-card">
+                <h1><span style="color: #e5fff2;">CHOCO</span><span style="color: #8c81df;">TONE</span></h1>
+                <div class="subtitle">OPEN MIDI CONTROLLER</div>
+                <div class="byline">Made by André Solis Albuquerque - 2025</div>
+            </div>
+            <div class="header-card" style="padding:0;">
+                <img src="images/chocotone_header.png" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+        </header>
+
+        <div class="controls-grid">
+            <!-- 1. Buttons -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #f472b6;">🎛️</div>
+                <h3>4-10 Progr. Buttons</h3>
+                <p>Configurable count. Actions: Press, Release, Long Press, Double Tap, Combo.</p>
+                <!-- Visual dots -->
+                <div
+                    style="position: absolute; top: 10%; right: 10%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; opacity:0.8;">
+                    <div
+                        style="width:8px; height:8px; background:#f472b6; border-radius:50%; box-shadow: 0 0 5px #f472b6;">
+                    </div>
+                    <div style="width:8px; height:8px; background:#333; border-radius:50%;"></div>
+                    <div
+                        style="width:8px; height:8px; background:#60a5fa; border-radius:50%; box-shadow: 0 0 5px #60a5fa;">
+                    </div>
+                    <div style="width:8px; height:8px; background:#333; border-radius:50%;"></div>
+                </div>
+            </div>
+
+            <!-- 2. BLE -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #60a5fa;">⚡</div>
+                <h3>BLE MIDI Dual</h3>
+                <p>CLIENT, SERVER, or DUAL. Connect to pedals AND accept DAW connections.</p>
+            </div>
+
+            <!-- 3. OLED -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #4ade80;">📟</div>
+                <h3>OLED Display</h3>
+                <p>128x64 px. Real-time status, presets, and menus.</p>
+                <!-- Mini pixel art mockup -->
+                <div
+                    style="position:absolute; top:10%; right:10%; font-family:'VT323'; color:#00ffff; font-size:10px; background:#000; padding:2px; border:1px solid #333; border-radius:4px;">
+                    <div>STOMP</div>
+                </div>
+            </div>
+
+            <!-- 4. Encoder -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #a78bfa;">🔄</div>
+                <h3>Rotary Encoder</h3>
+                <p>Intuitive navigation and precise parameter adjustment.</p>
+            </div>
+
+            <!-- 5. Presets -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #f472b6;">💾</div>
+                <h3>4 Presets</h3>
+                <p>Store configs for banks or stomp mode. Easy switching.</p>
+            </div>
+
+            <!-- 6. Battery -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #4ade80;">🔋</div>
+                <h3>Rechargeable</h3>
+                <p>Built-in battery support for portable operation.</p>
+            </div>
+
+            <!-- 7. Tap Tempo -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #fb923c;">🥁</div>
+                <h3>Tap Tempo</h3>
+                <p>Patterns: 1/4, 1/8, 1/8d, 1/2. Sync with LEDs.</p>
+            </div>
+
+            <!-- 8. Web Config -->
+            <div class="control-card">
+                <div class="control-icon" style="color: #a78bfa;">🌐</div>
+                <h3>Wireless Config</h3>
+                <p>Web editor at <strong>chocotone.local</strong>. Templates, CC picker, SysEx.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('mousemove', e => {
+            const cards = document.querySelectorAll('.control-card');
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body>
+
+</html>

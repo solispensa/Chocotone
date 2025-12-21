@@ -26,6 +26,7 @@ void saveSystemSettings() {
     prefs.putInt("s_font", buttonNameFontSize);
     prefs.putInt("s_ledOn", ledBrightnessOn);
     prefs.putInt("s_ledDim", ledBrightnessDim);
+    prefs.putInt("s_ledTap", ledBrightnessTap);
     prefs.putInt("s_debounce", buttonDebounce);
     prefs.putInt("s_rhythm", rhythmPattern);
     prefs.putInt("s_delay", currentDelayType);
@@ -66,6 +67,7 @@ void loadSystemSettings() {
     buttonNameFontSize = systemPrefs.getInt("s_font", 5);
     ledBrightnessOn = systemPrefs.getInt("s_ledOn", 220);
     ledBrightnessDim = systemPrefs.getInt("s_ledDim", 20);
+    ledBrightnessTap = systemPrefs.getInt("s_ledTap", 240);
     buttonDebounce = systemPrefs.getInt("s_debounce", 120);
     rhythmPattern = systemPrefs.getInt("s_rhythm", 0);
     if (rhythmPattern < 0 || rhythmPattern > 3) rhythmPattern = 0;

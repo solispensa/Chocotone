@@ -4,7 +4,7 @@
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width,initial-scale=1'>
-    <title>Chocotone MIDI Editor v2</title>
+    <title>Chocotone MIDI Editor</title>
     <style>
         /* Import Montserrat Font */
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
@@ -218,11 +218,15 @@
             background: var(--inp);
             border: 2px solid var(--brd);
             border-radius: 8px;
-            padding: 8px 4px;
-            text-align: center;
+            padding: 12px 14px;
+            text-align: left;
             cursor: pointer;
             transition: all 0.15s;
             overflow: hidden;
+            display: flex;
+            align-items: flex-start;
+            /* Align contents to top */
+            justify-content: space-between;
         }
 
         .btn-tile:hover {
@@ -236,36 +240,38 @@
         }
 
         .btn-tile .num {
-            font-size: 0.65rem;
+            font-size: 0.9rem;
+            /* Small Number (Base) */
+            font-weight: bold;
             color: var(--text-dim);
         }
 
         .btn-tile .name {
-            font-size: 0.8rem;
+            font-size: 1.2rem;
+            /* Big Label (Base) */
             font-weight: 600;
             margin: 2px 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal;
+            /* Wrap text */
+            line-height: 1.1;
         }
 
         .btn-tile .info {
-            font-size: 0.6rem;
+            font-size: 0.65rem;
             color: var(--text-dim);
-        }
-
-        .btn-tile .colors {
-            display: flex;
-            justify-content: center;
-            gap: 2px;
             margin-top: 4px;
         }
 
-        .btn-tile .colors .dot {
-            width: 10px;
-            height: 10px;
+        .btn-tile .color-dot {
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            border: 1px solid #fff3;
+            border: 2px solid #fff3;
+            flex-shrink: 0;
+            margin-left: 8px;
+            margin-top: 2px;
+            align-self: flex-start;
+            /* Top Right Aligned */
         }
 
         /* System Tile - Full width, outside cards */
@@ -295,7 +301,7 @@
 
         .sys-tile.active {
             border-color: var(--acc);
-            background: linear-gradient(135deg, #cc8a2e, #ffae3d);
+            background: linear-gradient(135deg, var(--acc-dim), var(--acc));
         }
 
         .sys-tile .icon {
@@ -453,6 +459,24 @@
             }
         }
     </style>
+    <style>
+        /* Mobile Layout Refinements */
+        @media (max-width: 600px) {
+            .btn-tile {
+                padding: 10px 12px;
+                /* Base styles now match mobile hierarchy mostly, just slight padding tweaks if needed */
+            }
+
+            .btn-tile .color-dot {
+                width: 16px;
+                height: 16px;
+                margin-top: -4px;
+                /* 10px pad - 4px margin = 6px visual space */
+                margin-right: -6px;
+                /* 12px pad - 6px margin = 6px visual space */
+            }
+        }
+    </style>
     <script src="devices_database.js"></script>
 </head>
 
@@ -480,6 +504,8 @@
         // DATA
         // ===============================================================
         var presetData = {
+            configName: "My Chocotone Config",
+            lastModified: "",
             presets: [
                 {
                     name: "STOMP", presetLedMode: "NORMAL", syncMode: "SPM", buttons: [
@@ -543,7 +569,9 @@
                 encoderA: 18,
                 encoderB: 19,
                 encoderBtn: 23,
-                bleMode: "CLIENT"
+                bleMode: "CLIENT",
+                brightness: 220,
+                brightnessDim: 20
             }
         };
 
@@ -711,6 +739,16 @@
             // ========== LEFT COLUMN ==========
             html += '<div class="col-left">';
 
+            // --- CONFIG PROFILE -------------------------------------------
+            html += '<div class="section" style="background:#1a1625;border:1px solid #6b21a8">';
+            html += '<div class="section-title" style="color:#a855f7">📋 Config Profile</div>';
+            html += '<div class="row">';
+            html += '<div class="field" style="flex:2"><label>Name</label><input type="text" value="' + (presetData.configName || 'My Config') + '" maxlength="40" onchange="presetData.configName=this.value"></div>';
+            html += '<div class="field" style="flex:1"><label>Modified</label><input type="text" value="' + (presetData.lastModified || 'Not saved') + '" readonly style="opacity:0.7;cursor:not-allowed"></div>';
+            html += '<div class="field" style="max-width:100px;align-self:flex-end"><button class="btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);width:100%;font-weight:bold" onclick="saveChanges()">💾 Save</button></div>';
+            html += '</div>';
+            html += '</div>';
+
             // --- PRESET CONFIG -------------------------------------------
             html += '<div class="section">';
             html += '<div class="section-title">Preset Configuration</div>';
@@ -718,7 +756,7 @@
             html += '<div class="field"><label>Preset</label><select onchange="chgPreset(this.value)">';
             for (var i = 0; i < 4; i++) html += '<option value="' + i + '"' + (i === p ? ' selected' : '') + '>' + presetData.presets[i].name + '</option>';
             html += '</select></div>';
-            html += '<div class="field"><label>Name</label><input type="text" value="' + preset.name + '" maxlength="20" onchange="preset.name=this.value"></div>';
+            html += '<div class="field"><label>Name</label><input type="text" value="' + preset.name + '" maxlength="20" onchange="chgPresetName(this.value)"></div>';
             html += '<div class="field"><label>LED Mode</label><select onchange="chgPresetLedMode(this.value)">';
             html += '<option value="NORMAL"' + (presetMode === 'NORMAL' ? ' selected' : '') + '>Normal</option>';
             html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
@@ -735,7 +773,7 @@
 
             // --- BUTTONS (2 ROWS) ----------------------------------------
             html += '<div class="section">';
-            html += '<div class="section-title">Buttons</div>';
+            html += '<div class="section-title" style="font-size:1.1rem">Buttons</div>';
             var btnCount = presetData.system.buttonCount || 8;
             var cols = Math.ceil(btnCount / 2); // 2 rows = half columns
             html += '<div class="btn-grid" style="grid-template-columns: repeat(' + cols + ', 1fr)">';
@@ -751,13 +789,13 @@
                 var isActive = (b === selectedBtn && !showSystem);
                 var msg1 = (bt.messages && bt.messages[0]) ? bt.messages[0] : { type: 'OFF', data1: 0, rgb: '#555' };
 
-                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px">';
-                html += '<div style="flex:1;min-width:0;text-align:left">';
-                html += '<div class="num">BTN ' + (b + 1) + '</div>';
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')">';
+                html += '<div style="flex:1;min-width:0">';
+                html += '<div class="num">#' + (b + 1) + '</div>';
                 html += '<div class="name">' + bt.name + '</div>';
                 html += '<div class="info">' + msg1.type + ' ' + msg1.data1 + '</div>';
                 html += '</div>';
-                html += '<div style="background:' + msg1.rgb + ';width:26px;height:26px;border-radius:50%;border:2px solid #fff3;flex-shrink:0;margin-left:12px"></div>';
+                html += '<div class="color-dot" style="background:' + msg1.rgb + '"></div>';
                 html += '</div>';
             }
             html += '</div>';
@@ -843,8 +881,11 @@
             html += '</div>';
             html += '</div>';
 
-            // Action Type
+            // Action Type + Label (for ALL action types)
             html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:var(--acc)">Type</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            html += '<div class="row" style="margin-bottom:8px">';
+            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
+            html += '</div>';
 
             // Conditional fields
             if (msg.action === 'COMBO') {
@@ -855,7 +896,6 @@
                     if (b !== selectedBtn) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
                 }
                 html += '</select></div>';
-                html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="Auto" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
                 html += '</div>';
             }
             else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
@@ -868,21 +908,24 @@
             html += '<div class="row">';
             html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
             html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
-            // D1 as CC Picker dropdown for CC type
-            if (msg.type === 'CC') {
-                html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
-            } else {
-                html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+            // D1/D2 hidden for TAP_TEMPO
+            if (msg.type !== 'TAP_TEMPO') {
+                // D1 as CC Picker dropdown for CC type
+                if (msg.type === 'CC') {
+                    html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                } else {
+                    html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                }
+                html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
             }
-            html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
             html += '</div>';
 
             if (msg.type === 'TAP_TEMPO') {
                 html += '<div class="row" style="margin-top:8px">';
-                html += '<div class="field"><label>R.Prev</label><input type="number" min="0" max="9" value="' + (msg.rhythmPrev || 0) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value))"></div>';
-                html += '<div class="field"><label>R.Next</label><input type="number" min="0" max="9" value="' + (msg.rhythmNext || 4) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value))"></div>';
-                html += '<div class="field"><label>Lock</label><input type="number" min="0" max="9" value="' + (msg.tapLock || 7) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
                 html += '</div>';
             }
 
@@ -937,7 +980,16 @@
             html += '<div class="field"><label>LED Pin</label><input type="number" min="0" max="39" value="' + sys.ledPin + '" onchange="updSys(\'ledPin\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>LEDs/Btn</label><input type="number" min="1" max="32" value="' + sys.ledsPerButton + '" onchange="updSys(\'ledsPerButton\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>LED Map</label><input type="text" value="' + sys.ledMap + '" onchange="updSys(\'ledMap\',this.value)"></div>';
-            html += '</div></div>';
+            html += '</div>';
+            html += '<div class="row">';
+
+            html += '<div class="field"><label style="font-size:11px">LED Bright On</label><input type="number" min="0" max="255" value="' + (sys.brightness || 220) + '" onchange="updSys(\'brightness\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Bright Dim</label><input type="number" min="0" max="255" value="' + (sys.brightnessDim || 20) + '" onchange="updSys(\'brightnessDim\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Tap Tempo</label><input type="number" min="0" max="255" value="' + (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) + '" onchange="updSys(\'brightnessTap\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '</div>';
+            var showWarning = (sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240;
+            html += '<div id="brightnessWarning" class="row" style="color:#fbbf24; font-size:12px;' + (showWarning ? '' : 'display:none;') + '">⚠️ LED too bright, use with caution</div>';
+            html += '</div>';
 
             html += '<div class="msg-box"><div class="msg-title">Encoder</div>';
             html += '<div class="row">';
@@ -948,6 +1000,32 @@
 
             html += '</div>';
             return html;
+        }
+
+
+        // Auto-label generator - matches firmware getButtonSummary() in UI_Display.cpp
+        // For notes, CC, PC: return empty so button label is used instead
+        function getAutoLabel(msg) {
+            switch (msg.type) {
+                case 'NOTE_MOMENTARY':
+                case 'NOTE_ON':
+                case 'NOTE_OFF':
+                case 'CC':
+                case 'PC':
+                case 'SYSEX':
+                    return '';  // Use button label
+                case 'TAP_TEMPO': return 'TAP';
+                case 'PRESET_UP': return '>';
+                case 'PRESET_DOWN': return '<';
+                case 'PRESET_1': return presetData.presets[0] ? presetData.presets[0].name : 'P1';
+                case 'PRESET_2': return presetData.presets[1] ? presetData.presets[1].name : 'P2';
+                case 'PRESET_3': return presetData.presets[2] ? presetData.presets[2].name : 'P3';
+                case 'PRESET_4': return presetData.presets[3] ? presetData.presets[3].name : 'P4';
+                case 'WIFI_TOGGLE': return 'WiFi';
+                case 'CLEAR_BLE_BONDS': return 'xBLE';
+                case 'OFF': return '';
+                default: return '';
+            }
         }
 
         function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
@@ -992,11 +1070,17 @@
             presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
             render();
         }
-        function chgPreset(idx) { presetData.currentPreset = parseInt(idx); selectedBtn = 0; render(); }
+        function chgPreset(idx) { presetData.currentPreset = parseInt(idx); selectedBtn = 0; render(); sendPresetToDevice(idx); }
         function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
+        function chgPresetName(newName) { presetData.presets[presetData.currentPreset].name = newName; }
         function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
         function selBtn(idx) { selectedBtn = idx; showSystem = false; render(); }
         function toggleSystem() { showSystem = !showSystem; render(); }
+        function checkBrightnessWarning() {
+            var sys = presetData.system;
+            var warn = document.getElementById('brightnessWarning');
+            if (warn) warn.style.display = ((sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 255) > 240) ? 'block' : 'none';
+        }
         function updSys(k, v) { presetData.system[k] = v; }
         function saveChanges() {
             // In offline mode, save means export to JSON area
@@ -1023,10 +1107,43 @@
             };
         }
 
-        function exportJSON() { document.getElementById('jsonArea').value = JSON.stringify(presetData, null, 2); }
-        function importJSON() { try { var data = JSON.parse(document.getElementById('jsonArea').value); if (data.presets) { presetData = data; selectedBtn = 0; showSystem = false; render(); alert('Imported!'); } else alert('Invalid format'); } catch (e) { alert('Error: ' + e.message); } }
+        function exportJSON() {
+            presetData.lastModified = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            document.getElementById('jsonArea').value = JSON.stringify(presetData, null, 2);
+            render(); // Update UI to show new timestamp
+        }
+        function importJSON() {
+            try {
+                var data = JSON.parse(document.getElementById('jsonArea').value);
+                if (data.presets) {
+                    presetData = data;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Imported!\n\nConfig: ' + (data.configName || 'Unnamed') + '\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                } else alert('Invalid format');
+            } catch (e) { alert('Error: ' + e.message); }
+        }
         function copyJSON() { exportJSON(); navigator.clipboard.writeText(document.getElementById('jsonArea').value); alert('Copied!'); }
-        function downloadJSON() { exportJSON(); var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chocotone_config.json'; a.click(); }
+        function downloadJSON() {
+            exportJSON();
+            var filename = (presetData.configName || 'chocotone_config').replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
+            var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+
+        // Send preset change to connected device
+        async function sendPresetToDevice(presetIdx) {
+            if (!serialWriter) return; // Not connected
+            try {
+                await serialWriter.write(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+            } catch (e) {
+                console.log('Preset sync error:', e);
+            }
+        }
 
         // ========== SYSEX PRESETS DATABASE (SPM) ==========
         var sysexPresets = {
@@ -1174,9 +1291,27 @@
         }
 
         async function disconnectUSB() {
-            if (serialReader) { await serialReader.cancel(); serialReader = null; }
-            if (serialWriter) { await serialWriter.close(); serialWriter = null; }
-            if (serialPort) { await serialPort.close(); serialPort = null; }
+            try {
+                if (serialReader) {
+                    try { await serialReader.cancel(); } catch (e) { console.log('Reader cancel:', e); }
+                    try { serialReader.releaseLock(); } catch (e) { console.log('Reader release:', e); }
+                    serialReader = null;
+                }
+                if (serialWriter) {
+                    try { serialWriter.releaseLock(); } catch (e) { console.log('Writer release:', e); }
+                    serialWriter = null;
+                }
+                if (serialPort) {
+                    try { await serialPort.close(); } catch (e) { console.log('Port close:', e); }
+                    serialPort = null;
+                }
+            } catch (e) {
+                console.error('Disconnect error:', e);
+            }
+            // Force null to ensure clean state
+            serialPort = null;
+            serialReader = null;
+            serialWriter = null;
             document.getElementById('usbStatus').textContent = 'Not connected';
             document.getElementById('usbStatus').style.color = '#71717a';
             document.getElementById('btnConnect').textContent = 'Connect USB';
@@ -1497,13 +1632,11 @@
             // USB Serial Card - Orange theme (uses CSS vars)
             html += '<div class="section conn-card-usb col-left" style="margin-bottom:0">';
             html += '<div class="section-title">🔌 USB Serial</div>';
-            html += '<div class="row" style="align-items:center">';
-            html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()">' + usbBtnText + '</button>';
-            html += '<span style="color:var(--cyan)">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></span>';
-            html += '</div>';
-            html += '<div class="actions" style="margin-top:10px">';
-            html += '<button class="btn success" onclick="readFromDevice()">Read</button>';
-            html += '<button class="btn warning" onclick="sendToDevice()">Send</button>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()" style="grid-column:1/span 2; width:100%">' + usbBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDevice()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDevice()" style="grid-column:2; width:100%">Send</button>';
             html += '</div>';
             html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge only</div>';
             html += '</div>';
@@ -1511,13 +1644,11 @@
             // Bluetooth Card - Cyan theme (uses CSS vars)
             html += '<div class="section conn-card-ble col-right" style="margin-bottom:0">';
             html += '<div class="section-title" style="color:var(--cyan)">📶 Bluetooth</div>';
-            html += '<div class="row" style="align-items:center">';
-            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000">' + bleBtnText + '</button>';
-            html += '<span style="color:var(--cyan)">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></span>';
-            html += '</div>';
-            html += '<div class="actions" style="margin-top:10px">';
-            html += '<button class="btn success" onclick="readFromDeviceBLE()">Read</button>';
-            html += '<button class="btn warning" onclick="sendToDeviceBLE()">Send</button>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000; grid-column:1/span 2; width:100%">' + bleBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDeviceBLE()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDeviceBLE()" style="grid-column:2; width:100%">Send</button>';
             html += '</div>';
             html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge desktop only</div>';
             html += '</div>';

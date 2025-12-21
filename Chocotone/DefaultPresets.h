@@ -66,7 +66,7 @@ void addCombo(ButtonConfig& btn, int8_t partner, MidiCommandType type) {
         msg.data1 = 0;
         msg.data2 = 0;
         msg.combo.partner = partner;
-        msg.combo.label[0] = '\0';
+        msg.label[0] = '\0';
     }
 }
 
