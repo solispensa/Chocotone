@@ -224,8 +224,8 @@
             transition: all 0.15s;
             overflow: hidden;
             display: flex;
-            align-items: flex-start;
-            /* Align contents to top */
+            align-items: center;
+            /* Desktop: vertically center contents */
             justify-content: space-between;
         }
 
@@ -269,9 +269,7 @@
             border: 2px solid #fff3;
             flex-shrink: 0;
             margin-left: 8px;
-            margin-top: 2px;
-            align-self: flex-start;
-            /* Top Right Aligned */
+            /* Desktop: vertically centered by parent's align-items: center */
         }
 
         /* System Tile - Full width, outside cards */
@@ -464,16 +462,19 @@
         @media (max-width: 600px) {
             .btn-tile {
                 padding: 10px 12px;
-                /* Base styles now match mobile hierarchy mostly, just slight padding tweaks if needed */
+                align-items: flex-start;
+                /* Mobile: align to top */
             }
 
             .btn-tile .color-dot {
                 width: 16px;
                 height: 16px;
                 margin-top: -4px;
-                /* 10px pad - 4px margin = 6px visual space */
+                /* Pull closer to top edge */
                 margin-right: -6px;
-                /* 12px pad - 6px margin = 6px visual space */
+                /* Pull closer to right edge */
+                align-self: flex-start;
+                /* Mobile: top-right aligned */
             }
         }
     </style>
@@ -740,8 +741,8 @@
             html += '<div class="col-left">';
 
             // --- CONFIG PROFILE -------------------------------------------
-            html += '<div class="section" style="background:#1a1625;border:1px solid #6b21a8">';
-            html += '<div class="section-title" style="color:#a855f7">📋 Config Profile</div>';
+            html += '<div class="section">';
+            html += '<div class="section-title">📋 Config Profile</div>';
             html += '<div class="row">';
             html += '<div class="field" style="flex:2"><label>Name</label><input type="text" value="' + (presetData.configName || 'My Config') + '" maxlength="40" onchange="presetData.configName=this.value"></div>';
             html += '<div class="field" style="flex:1"><label>Modified</label><input type="text" value="' + (presetData.lastModified || 'Not saved') + '" readonly style="opacity:0.7;cursor:not-allowed"></div>';

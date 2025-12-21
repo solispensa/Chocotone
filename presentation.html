@@ -388,6 +388,7 @@
         .controller-wrapper {
             /* Existing controller styling follows... */
             --chassis-ar: 51.5%;
+            --chassis-w: 400px;
             --chassis-rad: 40px;
             --oled-w: 23%;
             --oled-h: 25.5%;
@@ -405,6 +406,8 @@
         .chassis {
             position: relative;
             width: 100%;
+            max-width: var(--chassis-w);
+            margin: 0 auto;
             padding-bottom: var(--chassis-ar);
             background: #1a1a1a;
             border-radius: var(--chassis-rad);
@@ -1510,6 +1513,144 @@
             color: var(--text-muted);
             background: var(--bg-dark);
         }
+
+        /* --- NEW SLIDE LAYOUT STYLES (Ported from chocotone_slide.html) --- */
+        .slide-hero-container {
+            width: 100%;
+            max-width: 1600px;
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, #111 0%, #000 100%);
+            border-radius: 24px;
+            padding: 2.5%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5%;
+            margin: 0 auto;
+        }
+
+        .slide-header {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1%;
+            flex: 0 0 25%;
+            /* Fixed height percentage of container */
+        }
+
+        .slide-header-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            border-radius: 24px;
+            padding: 4% 7%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .slide-title {
+            font-size: clamp(2rem, 4cqi, 5rem);
+            /* using cqi for container query-like scaling if possible, or vw/percent */
+            font-size: clamp(2rem, 3.5vw, 4.5rem);
+            font-weight: 900;
+            letter-spacing: -6px;
+            line-height: 1;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .slide-subtitle {
+            font-size: clamp(0.8rem, 1.1vw, 1.5rem);
+            color: #8ffdff;
+            letter-spacing: 2px;
+            margin-top: 1.5%;
+        }
+
+        .slide-byline {
+            margin-top: auto;
+            color: #6b7280;
+            font-size: clamp(0.6rem, 0.75vw, 0.9rem);
+        }
+
+        .slide-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 2.4% 1%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .slide-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            border-radius: 20px;
+            padding: 8% 7%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s;
+        }
+
+        .slide-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+        }
+
+        .slide-card-icon {
+            font-size: clamp(1.5rem, 2.2vw, 3rem);
+            margin-bottom: 5%;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
+        }
+
+        .slide-card-title {
+            font-size: clamp(0.9rem, 1.2vw, 1.6rem);
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4%;
+            white-space: nowrap;
+        }
+
+        .slide-card-text {
+            font-size: clamp(0.65rem, 0.8vw, 0.95rem);
+            color: var(--text-muted);
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .slide-glow {
+            position: absolute;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .slide-glow-1 {
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, transparent 70%);
+            top: -15%;
+            right: -15%;
+        }
+
+        .slide-glow-2 {
+            width: 40%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(143, 253, 255, 0.1) 0%, transparent 70%);
+            bottom: -10%;
+            left: -10%;
+        }
     </style>
 </head>
 
@@ -1518,7 +1659,7 @@
     <nav>
         <div class="nav-logo">CHOCO<span>TONE</span></div>
         <div class="nav-links">
-            <a href="#overview">Overview</a>
+            <a href="#hero">Overview</a>
             <a href="#controls">Controls</a>
             <a href="#tap-tempo">Tap Tempo</a>
             <a href="#menu">Menu</a>
@@ -1527,88 +1668,70 @@
     </nav>
 
     <!-- HERO: CHOCOTONE FEATURE SLIDE -->
+    <!-- HERO: CHOCOTONE FEATURE SLIDE -->
     <section id="hero">
-        <div class="container" style="max-width: 1400px;">
-            <div
-                style="position: relative; padding: 40px; background: linear-gradient(135deg, #111 0%, #000 100%); border-radius: 24px; overflow: hidden; aspect-ratio: 16/9; width: 100%; height: auto; display: flex; flex-direction: column;">
+        <div class="container" style="max-width: 100%; display: flex; justify-content: center;">
+            <div class="slide-hero-container">
                 <!-- Background glows -->
-                <div
-                    style="position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(140, 129, 223, 0.15) 0%, rgba(0, 0, 0, 0) 70%); top: -200px; right: -200px; z-index: 0; pointer-events: none;">
-                </div>
-                <div
-                    style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(143, 253, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%); bottom: -100px; left: -100px; z-index: 0; pointer-events: none;">
-                </div>
+                <div class="slide-glow slide-glow-1"></div>
+                <div class="slide-glow slide-glow-2"></div>
 
                 <!-- Header -->
-                <header
-                    style="z-index: 1; position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 0 0 28%; margin-bottom: 20px;">
-                    <div
-                        style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; justify-content: center; backdrop-filter: blur(10px);">
-                        <h1 style="font-size: 72px; font-weight: 900; margin: 0; letter-spacing: -4px; line-height: 1;">
+                <header class="slide-header">
+                    <div class="slide-header-card">
+                        <h1 class="slide-title">
                             <span style="color: #e5fff2;">CHOCO</span><span style="color: #8c81df;">TONE</span>
                         </h1>
-                        <div
-                            style="font-size: 20px; color: #8ffdff; font-weight: 400; margin-top: 8px; letter-spacing: 2px;">
-                            OPEN MIDI CONTROLLER</div>
-                        <div style="margin-top: 16px; color: #6b7280; font-size: 14px;">Made by André Solis Albuquerque
-                            - 2025</div>
+                        <div class="slide-subtitle">OPEN MIDI CONTROLLER</div>
+                        <div class="slide-byline">Made by André Solis Albuquerque - 2025</div>
                     </div>
-                    <div
-                        style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; overflow: hidden; position: relative; backdrop-filter: blur(10px);">
+                    <div class="slide-header-card" style="padding:0;">
                         <img src="images/chocotone_header.png" alt="Chocotone Controller"
                             style="width: 100%; height: 100%; object-fit: cover; object-position: center;">
                     </div>
                 </header>
 
-                <!-- Bento Grid -->
-                <div
-                    style="display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 20px; z-index: 1; position: relative; flex: 1 1 auto;">
+                <!-- Grid -->
+                <div class="slide-grid">
                     <!-- Card 1: 8 Buttons -->
-                    <div class="control-card" style="position: relative;">
-                        <div class="control-icon" style="color: #f472b6;">🎛️</div>
-                        <h3
-                            style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff; white-space: nowrap;">
-                            4-10 Programmable Buttons</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Configurable button
-                            count with action-based messages: Press, Release, Long Press, Double Tap, and Combo.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #f472b6;">🎛️</div>
+                        <h3 class="slide-card-title">RGB Buttons</h3>
+                        <p class="slide-card-text">Fully configurable MIDI messages with RGB LED feedback for instant
+                            visual status.</p>
+                        <!-- Visual dots -->
                         <div
-                            style="position: absolute; top: 28px; right: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                            style="position: absolute; top: 10%; right: 10%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; opacity:0.8;">
                             <div
-                                style="width: 12px; height: 12px; border-radius: 50%; background: #f472b6; box-shadow: 0 0 8px #f472b6;">
+                                style="width:8px; height:8px; background:#f472b6; border-radius:50%; box-shadow: 0 0 5px #f472b6;">
                             </div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div style="width:8px; height:8px; background:#333; border-radius:50%;"></div>
                             <div
-                                style="width: 12px; height: 12px; border-radius: 50%; background: #60a5fa; box-shadow: 0 0 8px #60a5fa;">
+                                style="width:8px; height:8px; background:#60a5fa; border-radius:50%; box-shadow: 0 0 5px #60a5fa;">
                             </div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
+                            <div style="width:8px; height:8px; background:#333; border-radius:50%;"></div>
                             <div
-                                style="width: 12px; height: 12px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80;">
+                                style="width:8px; height:8px; background:#4ade80; border-radius:50%; box-shadow: 0 0 5px #4ade80;">
                             </div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #333;"></div>
-                            <div
-                                style="width: 12px; height: 12px; border-radius: 50%; background: #fb923c; box-shadow: 0 0 8px #fb923c;">
-                            </div>
+                            <div style="width:8px; height:8px; background:#333; border-radius:50%;"></div>
                         </div>
                     </div>
 
                     <!-- Card 2: BLE MIDI -->
-                    <div class="control-card">
-                        <div class="control-icon" style="color: #60a5fa;">⚡</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">BLE MIDI Dual
-                            Mode</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">CLIENT, SERVER, or DUAL
-                            mode.
-                            Connect to pedals AND accept DAW/app connections simultaneously.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #fbbf24;">⚡</div>
+                        <h3 class="slide-card-title">BLE MIDI</h3>
+                        <p class="slide-card-text">Wireless connectivity. Auto-connects to Sonicake Pocket Master &
+                            other BLE devices.</p>
                     </div>
 
                     <!-- Card 3: OLED Display -->
-                    <div class="control-card" style="position: relative;">
-                        <div class="control-icon" style="color: #4ade80;">📟</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">OLED Display
-                        </h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">128x64 pixel screen for
-                            real-time status, presets, and menu navigation.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #bef264;">📟</div>
+                        <h3 class="slide-card-title">OLED Display</h3>
+                        <p class="slide-card-text">128x64 pixel screen for real-time status, presets, and menu
+                            navigation.</p>
+                        <!-- Mini pixel art mockup simplified -->
                         <div
                             style="background: #000; border: 2px solid #222; border-radius: 6px; padding: 4px 6px; font-family: 'VT323', monospace; color: #00ffff; text-shadow: 0 0 2px rgba(0, 255, 255, 0.6); font-size: 12px; line-height: 1; display: flex; flex-direction: column; justify-content: space-between; height: 80px; width: 120px; position: absolute; top: 28px; right: 28px; box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05); letter-spacing: 0.5px;">
                             <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -1631,67 +1754,43 @@
                     </div>
 
                     <!-- Card 4: Rotary Encoder -->
-                    <div class="control-card">
-                        <div class="control-icon" style="color: #a78bfa;">🔄</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Rotary Encoder
-                        </h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Intuitive navigation
-                            and precise parameter adjustment with push-button.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #38bdf8;">🔄</div>
+                        <h3 class="slide-card-title">Rotary Encoder</h3>
+                        <p class="slide-card-text">Intuitive navigation and precise parameter adjustment with
+                            push-button.</p>
                     </div>
 
                     <!-- Card 5: 4 Presets -->
-                    <div class="control-card">
-                        <div class="control-icon" style="color: #f472b6;">💾</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">4 Presets</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Store different
-                            configurations for banks or stomp mode. Easy switching between setups.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #ddaebf;">💾</div> <!-- darker pink/grey -->
+                        <h3 class="slide-card-title">4 Presets</h3>
+                        <p class="slide-card-text">Store different configurations for banks or stomp mode. Easy
+                            switching between setups.</p>
                     </div>
 
                     <!-- Card 6: Rechargeable Battery -->
-                    <div class="control-card">
-                        <div class="control-icon" style="color: #4ade80;">🔋</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Rechargeable
-                            Battery</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Built-in rechargeable
-                            battery for portable operation without external power.</p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #4ade80;">🔋</div>
+                        <h3 class="slide-card-title">Rechargeable Battery</h3>
+                        <p class="slide-card-text">Built-in rechargeable battery for portable operation without external
+                            power.</p>
                     </div>
 
                     <!-- Card 7: Tap Tempo -->
-                    <div class="control-card" style="position: relative;">
-                        <div class="control-icon" style="color: #fb923c;">🥁</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Tap Tempo</h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Built-in tap tempo with
-                            multiple rhythm patterns:
-                        <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #9ca3af;">
-                            <li>1/4 (Quarter)</li>
-                            <li>1/8 (Eighth)</li>
-                            <li>1/8d (Dotted)</li>
-                            <li>1/2 (Half)</li>
-                        </ul>
-                        </p>
-                        <div
-                            style="background: #000; border: 2px solid #222; border-radius: 6px; padding: 4px 6px; font-family: 'VT323', monospace; color: #00ffff; text-shadow: 0 0 2px rgba(0, 255, 255, 0.6); font-size: 12px; line-height: 1; display: flex; flex-direction: column; justify-content: space-between; height: 80px; width: 120px; position: absolute; top: 28px; right: 28px; box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05); letter-spacing: 0.5px;">
-                            <div style="display: flex; justify-content: space-between; width: 100%;"><span>TAP
-                                    TEMPO</span><span>500ms</span></div>
-                            <div
-                                style="text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 2px 0;">
-                                <div
-                                    style="font-size: 20px; letter-spacing: 1px; margin-bottom: 0; transform: scaleY(0.9);">
-                                    120.0</div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; width: 100%;"><span>Pattern:
-                                    1/4</span><span>500ms</span></div>
-                        </div>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #fb923c;">🥁</div>
+                        <h3 class="slide-card-title">Tap Tempo</h3>
+                        <p class="slide-card-text">Built-in tap tempo with multiple rhythm patterns (1/4, 1/8, 1/8d,
+                            1/2).</p>
                     </div>
 
                     <!-- Card 8: Web Config -->
-                    <div class="control-card">
-                        <div class="control-icon" style="color: #a78bfa;">🌐</div>
-                        <h3 style="font-size: 24px; font-weight: 600; margin: 0 0 12px 0; color: #fff;">Wireless Config
-                        </h3>
-                        <p style="font-size: 16px; color: #9ca3af; line-height: 1.5; margin: 0;">Web editor at
-                            <strong>chocotone.local</strong> with device templates, CC picker, and SysEx editor.
-                        </p>
+                    <div class="slide-card">
+                        <div class="slide-card-icon" style="color: #60a5fa;">🌐</div>
+                        <h3 class="slide-card-title">Web App Editor</h3>
+                        <p class="slide-card-text">Use the app to configure mappings, name presets, and manage settings.
+                            Send to the controller via Bluetooth, WIFI or .JSON file.</p>
                     </div>
                 </div>
             </div>
@@ -1879,9 +1978,17 @@
                     <div class="editor-row"><span>Buttons #:</span> <input type="range" id="sl-btn-count" min="4"
                             max="10" step="2" value="8" onchange="updateButtonCount(this.value)"><span
                             class="slider-value" id="val-btn-count">8</span></div>
-                    <div class="editor-row"><span>Chassis H:</span> <input type="range" id="sl-ar" min="40" max="80"
+                    <div class="editor-row"><span>Rows #:</span>
+                        <select id="sel-btn-rows"
+                            onchange="updateButtonCount(document.getElementById('sl-btn-count').value)">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div class="editor-row"><span>Height:</span> <input type="range" id="sl-ar" min="20" max="80"
                             step="0.5"><span class="slider-value" id="val-ar"></span></div>
-                    <div class="editor-row"><span>Chassis W:</span> <input type="range" id="sl-w" min="400" max="1000"
+                    <div class="editor-row"><span>Width:</span> <input type="range" id="sl-w" min="400" max="1300"
                             step="10"><span class="slider-value" id="val-w"></span></div>
                     <div class="editor-row"><span>Corner R:</span> <input type="range" id="sl-rad" min="0" max="100"
                             step="1"><span class="slider-value" id="val-rad"></span></div>
@@ -1916,7 +2023,7 @@
                     <h4>Buttons</h4>
                     <div class="editor-row"><span>Size:</span> <input type="range" id="sl-btn-size" min="5" max="20"
                             step="0.5"><span class="slider-value" id="val-btn-size"></span></div>
-                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="50"
+                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="70"
                             step="0.5"><span class="slider-value" id="val-btn-y1"></span></div>
                     <div class="editor-row"><span>Btm Row:</span> <input type="range" id="sl-btn-y2" min="0" max="50"
                             step="0.5"><span class="slider-value" id="val-btn-y2"></span></div>
@@ -1925,7 +2032,7 @@
                     <h4>Encoder</h4>
                     <div class="editor-row"><span>Size:</span> <input type="range" id="sl-enc-size" min="5" max="20"
                             step="0.5"><span class="slider-value" id="val-enc-size"></span></div>
-                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="40"
+                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="90"
                             step="0.5"><span class="slider-value" id="val-enc-x"></span></div>
                     <div class="editor-row"><span>Center Y:</span> <input type="range" id="sl-enc-y" min="10" max="90"
                             step="0.5"><span class="slider-value" id="val-enc-y"></span></div>
@@ -2095,13 +2202,31 @@
 
             const chassis = document.querySelector('.chassis');
             const wrapper = document.querySelector('.controller-wrapper');
+            const rowCount = parseInt(document.getElementById('sel-btn-rows')?.value || 2);
 
             // Remove all existing button units
             chassis.querySelectorAll('.button-unit').forEach(b => b.remove());
 
-            // Symmetric layout: equal buttons top and bottom
-            const btmRowCount = count / 2;  // step=2 ensures even numbers
-            const topRowCount = count / 2;
+            // Distribute buttons across rows (bottom to top)
+            // For 1 row: all buttons on bottom
+            // For 2 rows: split evenly (btm first, then top)
+            // For 3 rows: split evenly (btm, mid, top)
+            let rowDistribution = [];
+            if (rowCount === 1) {
+                rowDistribution = [count]; // all on bottom
+            } else if (rowCount === 2) {
+                const btm = Math.ceil(count / 2);
+                const top = count - btm;
+                rowDistribution = [btm, top]; // bottom, top
+            } else if (rowCount === 3) {
+                const perRow = Math.floor(count / 3);
+                const remainder = count % 3;
+                // Distribute remainder starting from bottom
+                const btm = perRow + (remainder >= 1 ? 1 : 0);
+                const mid = perRow + (remainder >= 2 ? 1 : 0);
+                const top = perRow;
+                rowDistribution = [btm, mid, top]; // bottom, middle, top
+            }
 
             // SAFETY: For 10 buttons, ensure layout fits by clamping values.
             // Restore original user values when returning to < 10.
@@ -2186,22 +2311,25 @@
                 return mults;
             }
 
-            // Top row buttons (higher numbered: topRowCount+1 to count)
-            const topMults = getMultipliers(topRowCount);
-            for (let i = 0; i < topRowCount; i++) {
-                const btnNum = btmRowCount + i + 1;  // Sequential: btm+1, btm+2, ...
-                const mult = topMults[i];
-                const btn = createButtonElement(btnNum, 'top', mult, btnStyle, ledStyle);
-                chassis.appendChild(btn);
-            }
+            // Row positioning: top (default), mid (center), btm (bottom)
+            // For 3 rows: top = --btn-y-top, mid = 50%, btm = --btn-y-btm
+            // For 2 rows: top = --btn-y-top, btm = --btn-y-btm
+            // For 1 row: btm = --btn-y-btm
+            const rowPositions = rowCount === 3 ? ['btm', 'mid', 'top'] :
+                rowCount === 2 ? ['btm', 'top'] : ['btm'];
 
-            // Bottom row buttons (lower numbered: 1 to btmRowCount)
-            const btmMults = getMultipliers(btmRowCount);
-            for (let i = 0; i < btmRowCount; i++) {
-                const btnNum = i + 1;  // Sequential: 1, 2, 3, ...
-                const mult = btmMults[i];
-                const btn = createButtonElement(btnNum, 'btm', mult, btnStyle, ledStyle);
-                chassis.appendChild(btn);
+            let btnNum = 1;
+            for (let r = 0; r < rowDistribution.length; r++) {
+                const numInRow = rowDistribution[r];
+                const rowPos = rowPositions[r];
+                const mults = getMultipliers(numInRow);
+
+                for (let i = 0; i < numInRow; i++) {
+                    const mult = mults[i];
+                    const btn = createButtonElement(btnNum, rowPos, mult, btnStyle, ledStyle);
+                    chassis.appendChild(btn);
+                    btnNum++;
+                }
             }
 
             // Update presets with correct button count
@@ -2222,9 +2350,13 @@
 
             // Use same formula as CSS: left: calc(50% + multiplier * var(--btn-spacing))
             // The multiplier positions: -1.5, -0.5, 0.5, 1.5 for 4 buttons
-            // Reset padding-bottom to 0 to override CSS class hack, rely on aspect-ratio for perfect square
+            // The CSS class .button-unit already has transform: translate(-50%, -50%) for centering
+            // Need to set bottom:auto for top/mid rows to override static CSS rules for #btn-1 through #btn-4
             if (row === 'top') {
-                btn.style.cssText = `position:absolute; top:var(--btn-y-top); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+                btn.style.cssText = `position:absolute; top:var(--btn-y-top); bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+            } else if (row === 'mid') {
+                // top:50% + the existing translate(-50%,-50%) centers the button vertically
+                btn.style.cssText = `position:absolute; top:50%; bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             } else {
                 btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             }
@@ -3188,9 +3320,9 @@
     <!-- WEB CONFIG -->
     <section id="web" style="background: radial-gradient(circle at center, #222 0%, #111 100%);">
         <div class="container" style="text-align: center;">
-            <h2>Web Configuration</h2>
+            <h2>Web App Editor</h2>
             <img src="images/chocotone_editor_1v2.png" alt="Web Editor"
-                style="max-width: 800px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
+                style="max-width: 1200px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
 
             <h3 style="color:var(--accent); margin-bottom: 3rem;">Three Ways to Configure</h3>
 
@@ -3205,7 +3337,7 @@
                 <div class="control-card">
                     <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
                     <h3 class="text-cyan">USB Serial</h3>
-                    <p>Connect via USB and use the offline editor's Serial connection. No
+                    <p>Connect via USB and use the Web App Editor's Serial connection. No
                         WiFi needed!</p>
                 </div>
                 <div class="control-card">
@@ -3216,7 +3348,7 @@
                 </div>
             </div>
 
-            <p style="color: #888; font-size: 0.9rem;">Use the offline editor (<code>offline_editor_v2.html</code>) for
+            <p style="color: #888; font-size: 0.9rem;">Use the Web App Editor (<code>offline_editor_v2.html</code>) for
                 full access to all configuration options including JSON import/export.</p>
         </div>
     </section>
