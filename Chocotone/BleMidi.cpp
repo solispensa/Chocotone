@@ -1089,7 +1089,7 @@ void processBleConfigCommand(const String& cmd) {
         sendBleConfigResponse("PONG");
     }
     else if (cmd == "GET_VERSION") {
-        sendBleConfigResponse("Chocotone v1.0");
+        sendBleConfigResponse("Chocotone v1.4");
     }
     else {
         Serial.printf("BLE Config: Unknown command: %s\n", cmd.c_str());

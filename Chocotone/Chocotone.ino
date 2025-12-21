@@ -25,7 +25,7 @@ void setup() {
     display.clearDisplay();
     display.setTextColor(SSD1306_WHITE);
     
-    // === Chocotone v1.2 Loading Screen ===
+    // === Chocotone v1.4 Loading Screen ===
     int16_t x1, y1;
     uint16_t w, h;
     
@@ -55,7 +55,7 @@ void setup() {
     display.setTextColor(SSD1306_BLACK);
     display.setTextSize(1);
     display.setCursor(96, 48);
-    display.print(F("v1.2"));
+    display.print(F("v1.4"));
     display.setTextColor(SSD1306_WHITE);  // Reset
     
     display.display();
