@@ -208,6 +208,8 @@ extern bool isWifiOn;
 
 extern int currentPreset;
 extern char presetNames[4][21];
+extern char configProfileName[32];   // Config profile name (editor metadata)
+extern char configLastModified[24];  // Last modified timestamp (editor metadata)
 extern ButtonConfig buttonConfigs[4][MAX_BUTTONS];
 extern GlobalSpecialAction globalSpecialActions[MAX_BUTTONS];
 

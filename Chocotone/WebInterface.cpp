@@ -1356,8 +1356,12 @@ void handleSerialConfig() {
             if (serialBuffer == "GET_CONFIG") {
                 Serial.println("CONFIG_START");
                 
-                // Send config JSON  
-                Serial.print("{\"version\":3,\"presets\":[");
+                // Send config JSON with metadata
+                Serial.print("{\"version\":3,\"configName\":\"");
+                Serial.print(configProfileName);
+                Serial.print("\",\"lastModified\":\"");
+                Serial.print(configLastModified);
+                Serial.print("\",\"presets\":[");
                 for (int p = 0; p < 4; p++) {
                     if (p > 0) Serial.print(",");
                     
@@ -1536,30 +1540,52 @@ void handleSerialConfig() {
                     Serial.print("JSON_ERROR:");
                     Serial.println(error.c_str());
                 } else {
+                    // Parse config metadata (editor fields)
+                    const char* cfgName = doc["configName"] | "";
+                    if (strlen(cfgName) > 0) {
+                        strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
+                        configProfileName[sizeof(configProfileName) - 1] = '\0';
+                    }
+                    const char* cfgModified = doc["lastModified"] | "";
+                    if (strlen(cfgModified) > 0) {
+                        strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
+                        configLastModified[sizeof(configLastModified) - 1] = '\0';
+                    }
+                    
                     // Parse presets (reuse logic from web import)
                     JsonArray presets = doc["presets"];
                     if (!presets.isNull()) {
                         Serial.println("Parsing presets...");
+                        Serial.printf("  Found %d presets in JSON\n", presets.size());
                         for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
                             JsonObject pObj = presets[p];
                             strncpy(presetNames[p], pObj["name"] | "Preset", 20);
                             presetNames[p][20] = '\0';
+                            Serial.printf("  Preset %d: name='%s'\n", p, presetNames[p]);
                             
                             const char* pmStr = pObj["presetLedMode"] | "NORMAL";
                             if (strcmp(pmStr, "SELECTION") == 0) presetLedModes[p] = PRESET_LED_SELECTION;
                             else if (strcmp(pmStr, "HYBRID") == 0) presetLedModes[p] = PRESET_LED_HYBRID;
                             else presetLedModes[p] = PRESET_LED_NORMAL;
                             
+                            // Parse syncMode (NONE/SPM/GP5)
+                            const char* syncStr = pObj["syncMode"] | "NONE";
+                            if (strcmp(syncStr, "SPM") == 0) presetSyncMode[p] = SYNC_SPM;
+                            else if (strcmp(syncStr, "GP5") == 0) presetSyncMode[p] = SYNC_GP5;
+                            else presetSyncMode[p] = SYNC_NONE;
+                            
                             JsonArray buttons = pObj["buttons"];
                             if (buttons.isNull()) continue;
                             
                             int btnCount = min((int)buttons.size(), (int)systemConfig.buttonCount);
+                            Serial.printf("    Buttons: %d in JSON, parsing %d\n", buttons.size(), btnCount);
                             for (int b = 0; b < btnCount; b++) {
                                 JsonObject bObj = buttons[b];
                                 ButtonConfig& cfg = buttonConfigs[p][b];
                                 
                                 strncpy(cfg.name, bObj["name"] | "BTN", 20);
                                 cfg.name[20] = '\0';
+                                Serial.printf("    Button %d: name='%s'\n", b, cfg.name);
                                 
                                 const char* lmStr = bObj["ledMode"] | "MOMENTARY";
                                 cfg.ledMode = (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;

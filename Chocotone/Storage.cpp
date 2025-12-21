@@ -115,167 +115,146 @@ void loadSystemSettings() {
 }
 
 // ============================================
-// PRESETS (v2 with expanded ButtonConfig)
+// PRESETS - SPIFFS Storage (v4)
+// NVS has ~20KB limit, not enough for 16KB preset data
+// SPIFFS has 1MB available in the Huge APP partition
 // ============================================
 
+#include <SPIFFS.h>
+
+#define PRESETS_FILE "/presets.bin"
+
 void savePresets() {
-    Serial.println("Saving Presets (v3 action-based)...");
+    Serial.println("Saving Presets (SPIFFS storage)...");
     
-    yield();  // Let WDT breathe before starting
-    
-    // Use a FRESH LOCAL Preferences object to avoid global state issues
-    Preferences prefs;
-    if (!prefs.begin(PRESETS_NAMESPACE, false)) {
-        Serial.println("ERROR: Failed to open presets namespace for saving!");
+    // Initialize SPIFFS if needed
+    if (!SPIFFS.begin(true)) {
+        Serial.println("ERROR: SPIFFS mount failed!");
         return;
     }
     
-    // CRITICAL: Remove old blob first to ensure fresh write
-    // This fixes the issue where putBytes returns 0 when overwriting same-size data
-    prefs.remove("presets");
-    yield();
-    
-    // Save config version
-    prefs.putInt(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
-    
-    // Save button count to help with migration
-    prefs.putInt("btnCount", systemConfig.buttonCount);
-    
-    yield();  // Yield before large blob write
-    
-    // Save presets as blob WITH ERROR CHECKING
-    Serial.printf("Saving presets blob (%d bytes)...\n", sizeof(buttonConfigs));
-    size_t written = prefs.putBytes("presets", buttonConfigs, sizeof(buttonConfigs));
-    if (written != sizeof(buttonConfigs)) {
-        Serial.printf("ERROR: Only wrote %d of %d bytes!\n", written, sizeof(buttonConfigs));
-    } else {
-        Serial.printf("OK: Wrote %d bytes\n", written);
+    // Open file for writing
+    File file = SPIFFS.open(PRESETS_FILE, FILE_WRITE);
+    if (!file) {
+        Serial.println("ERROR: Failed to open presets file for writing!");
+        return;
     }
     
-    yield();  // Yield between writes
+    // Write version marker
+    uint8_t version = CURRENT_CONFIG_VERSION;
+    file.write(&version, 1);
     
-    prefs.putBytes("presetNames", presetNames, sizeof(presetNames));
-    prefs.putBytes("ledModes", presetLedModes, sizeof(presetLedModes));
-    prefs.putBytes("syncSpm", presetSyncMode, sizeof(presetSyncMode));  // Sync mode settings (NONE/SPM/GP5)
+    // Write all button configs (4 presets × 10 buttons)
+    size_t written = file.write((uint8_t*)buttonConfigs, sizeof(buttonConfigs));
+    Serial.printf("  buttonConfigs: %d/%d bytes\n", written, sizeof(buttonConfigs));
     
-    yield();
+    // Write preset names
+    written = file.write((uint8_t*)presetNames, sizeof(presetNames));
+    Serial.printf("  presetNames: %d/%d bytes\n", written, sizeof(presetNames));
     
-    // Save global special actions (hold/combo)
-    prefs.putBytes("specials", globalSpecialActions, sizeof(globalSpecialActions));
+    // Write LED modes
+    written = file.write((uint8_t*)presetLedModes, sizeof(presetLedModes));
+    Serial.printf("  ledModes: %d/%d bytes\n", written, sizeof(presetLedModes));
     
-    // CRITICAL: Close to commit
-    prefs.end();
+    // Write sync modes
+    written = file.write((uint8_t*)presetSyncMode, sizeof(presetSyncMode));
+    Serial.printf("  syncModes: %d/%d bytes\n", written, sizeof(presetSyncMode));
     
-    yield();
-    delay(100);  // Let NVS commit
+    // Write global special actions
+    written = file.write((uint8_t*)globalSpecialActions, sizeof(globalSpecialActions));
+    Serial.printf("  specials: %d/%d bytes\n", written, sizeof(globalSpecialActions));
     
-    // Verify with a fresh read-only session
-    Preferences verifyPrefs;
-    verifyPrefs.begin(PRESETS_NAMESPACE, true);
-    size_t finalCheck = verifyPrefs.getBytesLength("presets");
-    verifyPrefs.end();
+    // Write config metadata (editor fields)
+    file.write((uint8_t*)configProfileName, sizeof(configProfileName));
+    file.write((uint8_t*)configLastModified, sizeof(configLastModified));
+    Serial.printf("  metadata: configName='%s'\n", configProfileName);
     
-    Serial.printf("Final check: %d bytes in NVS\n", finalCheck);
-    if (finalCheck == sizeof(buttonConfigs)) {
-        Serial.println("Presets Saved - SUCCESS");
-    } else {
-        Serial.printf("ERROR: NVS persistence failed! Expected %d, got %d\n", sizeof(buttonConfigs), finalCheck);
-    }
+    size_t totalSize = file.size();
+    file.close();
+    
+    Serial.printf("Presets Saved - %d bytes total\n", totalSize);
 }
 
 void loadPresets() {
-    systemPrefs.begin(PRESETS_NAMESPACE, true);
+    Serial.println("Loading Presets (SPIFFS storage)...");
     
-    int version = systemPrefs.getInt(CONFIG_VERSION_KEY, 1);
-    size_t len = systemPrefs.getBytesLength("presets");
-    
-    Serial.printf("Loading Presets (v%d, blob size=%d, expected=%d)...\n", 
-                  version, len, sizeof(buttonConfigs));
-    
-    if (version >= 2 && len == sizeof(buttonConfigs)) {
-        // v2 format matches current struct size
-        Serial.println("✓ Size match - loading from NVS...");
-        systemPrefs.getBytes("presets", buttonConfigs, len);
-        
-        size_t lenNames = systemPrefs.getBytesLength("presetNames");
-        if (lenNames == sizeof(presetNames)) {
-            systemPrefs.getBytes("presetNames", presetNames, lenNames);
-        }
-        
-        size_t lenModes = systemPrefs.getBytesLength("ledModes");
-        if (lenModes == sizeof(presetLedModes)) {
-            systemPrefs.getBytes("ledModes", presetLedModes, lenModes);
-        }
-        
-        // Load sync mode settings
-        size_t lenSync = systemPrefs.getBytesLength("syncSpm");
-        if (lenSync == sizeof(presetSyncMode)) {
-            systemPrefs.getBytes("syncSpm", presetSyncMode, lenSync);
-            Serial.printf("Sync Mode: P1=%d P2=%d P3=%d P4=%d\n", 
-                presetSyncMode[0], presetSyncMode[1], presetSyncMode[2], presetSyncMode[3]);
-        }
-        
-        // Load global special actions
-        size_t lenSpecials = systemPrefs.getBytesLength("specials");
-        Serial.printf("Loading specials: stored=%d, expected=%d\n", lenSpecials, sizeof(globalSpecialActions));
-        if (lenSpecials == sizeof(globalSpecialActions)) {
-            systemPrefs.getBytes("specials", globalSpecialActions, lenSpecials);
-            Serial.println("✓ Special actions loaded");
-            // Debug: print first button's combo status
-            Serial.printf("  Button 0 hasCombo: %s\n", globalSpecialActions[0].hasCombo ? "YES" : "NO");
-        } else {
-            // Size mismatch (struct changed) - initialize hasCombo to false for safety
-            Serial.printf("Special actions size mismatch (%d vs %d) - using defaults\n", lenSpecials, sizeof(globalSpecialActions));
-            for (int i = 0; i < MAX_BUTTONS; i++) {
-                globalSpecialActions[i].hasCombo = false;
-            }
-        }
-        
-        systemPrefs.end();
-        Serial.println("✓ Presets Loaded (v3 Action-Based Format).");
+    // Initialize SPIFFS
+    if (!SPIFFS.begin(true)) {
+        Serial.println("ERROR: SPIFFS mount failed!");
+        loadFactoryPresets();
         return;
     }
     
-    // Size mismatch or old version - try migration or defaults
-    Serial.printf("⚠ SIZE MISMATCH! Saved=%d, Expected=%d, Diff=%d\n", len, sizeof(buttonConfigs), (int)len - (int)sizeof(buttonConfigs));
-    Serial.println("Falling back to factory defaults (THIS OVERWRITES YOUR CHANGES!)");
-    systemPrefs.end();
+    // Check if file exists
+    if (!SPIFFS.exists(PRESETS_FILE)) {
+        Serial.println("No presets file found - loading factory defaults");
+        loadFactoryPresets();
+        savePresets();  // Save defaults to SPIFFS
+        return;
+    }
     
-    // Try loading v1 legacy format
-    Serial.println("Attempting v1 migration or fallback...");
+    // Open file for reading
+    File file = SPIFFS.open(PRESETS_FILE, FILE_READ);
+    if (!file) {
+        Serial.println("ERROR: Failed to open presets file!");
+        loadFactoryPresets();
+        return;
+    }
     
-    Preferences legacyPrefs;
-    legacyPrefs.begin("midi-presets", true);
-    bool foundLegacyData = false;
+    // Read version marker
+    uint8_t version = 0;
+    file.read(&version, 1);
+    Serial.printf("  File version: %d\n", version);
     
-    for (int p = 0; p < 4; p++) {
-        String presetNameKey = "pName" + String(p);
-        if (legacyPrefs.isKey(presetNameKey.c_str())) {
-            String name = legacyPrefs.getString(presetNameKey.c_str(), "");
-            if (name.length() > 0) {
-                strncpy(presetNames[p], name.c_str(), 20);
-                presetNames[p][20] = '\0';
-                foundLegacyData = true;
-            }
+    if (version < CURRENT_CONFIG_VERSION) {
+        Serial.println("  Old version - loading defaults and migrating");
+        file.close();
+        loadFactoryPresets();
+        savePresets();
+        return;
+    }
+    
+    // Read button configs
+    size_t read = file.read((uint8_t*)buttonConfigs, sizeof(buttonConfigs));
+    Serial.printf("  buttonConfigs: %d/%d bytes\n", read, sizeof(buttonConfigs));
+    if (read != sizeof(buttonConfigs)) {
+        Serial.println("  ERROR: Size mismatch - using defaults");
+        file.close();
+        loadFactoryPresets();
+        return;
+    }
+    
+    // Read preset names
+    file.read((uint8_t*)presetNames, sizeof(presetNames));
+    
+    // Read LED modes
+    file.read((uint8_t*)presetLedModes, sizeof(presetLedModes));
+    
+    // Read sync modes
+    file.read((uint8_t*)presetSyncMode, sizeof(presetSyncMode));
+    Serial.printf("  Sync Mode: P1=%d P2=%d P3=%d P4=%d\n", 
+        presetSyncMode[0], presetSyncMode[1], presetSyncMode[2], presetSyncMode[3]);
+    
+    // Read global special actions
+    size_t specialsRead = file.read((uint8_t*)globalSpecialActions, sizeof(globalSpecialActions));
+    if (specialsRead == sizeof(globalSpecialActions)) {
+        Serial.println("  ✓ Special actions loaded");
+    } else {
+        Serial.println("  Special actions missing - using defaults");
+        for (int i = 0; i < MAX_BUTTONS; i++) {
+            globalSpecialActions[i].hasCombo = false;
         }
     }
-    legacyPrefs.end();
     
-    if (!foundLegacyData) {
-        // No legacy data - load factory defaults
-        Serial.println("⚠ No compatible presets. Loading Factory Defaults.");
-        loadFactoryPresets();
-    } else {
-        Serial.println("✓ Migrated preset names from v1.");
-        // Note: v1 ButtonConfig was different size, can't migrate button data
-        // Factory defaults will be used for button configs
-        loadFactoryPresets();
+    // Read config metadata (editor fields) - optional, may not exist in old files
+    size_t metadataRead = file.read((uint8_t*)configProfileName, sizeof(configProfileName));
+    if (metadataRead == sizeof(configProfileName)) {
+        file.read((uint8_t*)configLastModified, sizeof(configLastModified));
+        Serial.printf("  metadata: configName='%s'\n", configProfileName);
     }
     
-    // initializeGlobalOverrides(); // Removed - function no longer exists
-    
-    // Save in v2 format
-    savePresets();
+    file.close();
+    Serial.println("✓ Presets Loaded from SPIFFS");
 }
 
 // initializeGlobalOverrides() removed - globalOverrides no longer used

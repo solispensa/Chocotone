@@ -833,6 +833,12 @@
             html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
             html += '</div></div>';
 
+            // --- Serial Log ------------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Serial Log <button class="btn secondary" style="float:right;padding:2px 8px;font-size:0.7rem" onclick="document.getElementById(\'serialLog\').value=\'\'">Clear</button></div>';
+            html += '<textarea class="json-area" id="serialLog" readonly style="height:100px;font-family:monospace;font-size:0.75rem;background:#1a1a1a" placeholder="Firmware messages will appear here..."></textarea>';
+            html += '</div>';
+
             html += '</div>'; // Close RIGHT COLUMN
 
             html += '</div>'; // Close two-col-layout
@@ -1120,11 +1126,17 @@
             try {
                 var data = JSON.parse(document.getElementById('jsonArea').value);
                 if (data.presets) {
+                    // Preserve configName and lastModified
+                    var savedConfigName = presetData.configName;
+                    var savedLastModified = presetData.lastModified;
                     presetData = data;
+                    // Restore if not present in imported data
+                    if (!data.configName) presetData.configName = savedConfigName;
+                    if (!data.lastModified) presetData.lastModified = savedLastModified;
                     selectedBtn = 0;
                     showSystem = false;
                     render();
-                    alert('Imported!\n\nConfig: ' + (data.configName || 'Unnamed') + '\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                    alert('Imported!\n\nConfig: ' + (presetData.configName || 'Unnamed') + '\nLast Modified: ' + (presetData.lastModified || 'Unknown'));
                 } else alert('Invalid format');
             } catch (e) { alert('Error: ' + e.message); }
         }
@@ -1369,6 +1381,15 @@
             serialBuffer = lines.pop(); // Keep incomplete line
             for (var line of lines) {
                 line = line.trim();
+                if (!line) continue;
+
+                // Log all messages to Serial Log area
+                var logArea = document.getElementById('serialLog');
+                if (logArea && !expectingConfig) {
+                    logArea.value += line + '\n';
+                    logArea.scrollTop = logArea.scrollHeight;
+                }
+
                 if (line === 'CONFIG_START') {
                     expectingConfig = true;
                     configJson = '';
@@ -1378,7 +1399,9 @@
                         var data = JSON.parse(configJson);
                         console.log('Received config:', data);
                         if (data.presets) {
-                            // Merge with existing structure to preserve required fields
+                            // Use config metadata from device if present
+                            if (data.configName) presetData.configName = data.configName;
+                            if (data.lastModified) presetData.lastModified = data.lastModified;
                             presetData.presets = data.presets;
                             if (data.system) {
                                 // Merge system properties

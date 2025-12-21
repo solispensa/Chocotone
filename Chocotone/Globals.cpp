@@ -56,6 +56,8 @@ GlobalSpecialAction globalSpecialActions[MAX_BUTTONS] = {};
 
 int currentPreset = 0;
 char presetNames[4][21] = {"Preset 1", "Preset 2", "Preset 3", "Preset 4"};
+char configProfileName[32] = "My Chocotone Config";  // Editor metadata
+char configLastModified[24] = "";                     // Editor metadata
 ButtonConfig buttonConfigs[4][MAX_BUTTONS];  // Zero-initialized
 
 // ============================================
