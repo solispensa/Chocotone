@@ -1008,19 +1008,32 @@ void applySpmStateToButtons() {
 
 void sendBleConfigResponse(const String& response) {
     if (pConfigTxCharacteristic != nullptr) {
-        // Web Bluetooth negotiates higher MTU (usually 512), but use safe value
-        // for maximum compatibility. 180 bytes with delay works reliably.
+        // Use smaller chunks and longer delays to prevent browser notification loss
         int len = response.length();
-        int chunkSize = 180;  // Safe chunk size for negotiated BLE MTU
+        int chunkSize = 128;  // Smaller chunk size for better reliability
+        int totalChunks = (len + chunkSize - 1) / chunkSize;
         
-        Serial.printf("BLE Config: Sending %d bytes in %d chunks...\n", len, (len + chunkSize - 1) / chunkSize);
+        Serial.printf("BLE Config: Sending %d bytes in %d chunks...\n", len, totalChunks);
         
         for (int i = 0; i < len; i += chunkSize) {
             String chunk = response.substring(i, min(i + chunkSize, len));
             pConfigTxCharacteristic->setValue(chunk.c_str());
             pConfigTxCharacteristic->notify();
-            delay(15);  // Delay between chunks for reliable transfer
+            delay(80);  // 80ms delay - browser BLE stack needs time to process
+            yield();    // Feed watchdog and allow other tasks
+            
+            // Extra yield every 10 chunks to prevent watchdog issues
+            if ((i / chunkSize) % 10 == 9) {
+                delay(20);
+                yield();
+            }
         }
+        
+        // Send end marker to signal transfer complete
+        delay(100);  // Extra delay before end marker
+        pConfigTxCharacteristic->setValue("__CONFIG_END__");
+        pConfigTxCharacteristic->notify();
+        
         Serial.printf("BLE Config: Sent response (%d bytes)\n", len);
     }
 }
@@ -1030,42 +1043,89 @@ extern String buildFullConfigJson();
 extern bool processConfigChunk(const String& chunk, int chunkNum);
 extern void finalizeConfigUpload();
 
-// Static variables for chunked config upload
+// Static variables for chunked config upload (browser -> device)
 static String bleConfigUploadBuffer = "";
 static int bleConfigChunkCount = 0;
 static bool bleConfigUploadActive = false;
+
+// Static variables for chunked config download (device -> browser)
+static String bleConfigDownloadBuffer = "";
+static int bleConfigTotalChunks = 0;
+static const int BLE_CHUNK_SIZE = 128;
+
+// Helper function to send a single BLE response
+void sendBleSingleResponse(const String& response) {
+    if (pConfigTxCharacteristic != nullptr) {
+        pConfigTxCharacteristic->setValue(response.c_str());
+        pConfigTxCharacteristic->notify();
+        delay(10);  // Small delay for notification
+    }
+}
 
 void processBleConfigCommand(const String& cmd) {
     Serial.printf("BLE Config Command: %s\n", cmd.substring(0, 50).c_str());
     
     if (cmd == "GET_CONFIG") {
-        // Return full configuration as JSON
-        String configJson = buildFullConfigJson();
-        sendBleConfigResponse(configJson);
-        Serial.println("BLE Config: Sent full config");
+        // Build config JSON and store for chunk requests
+        bleConfigDownloadBuffer = buildFullConfigJson();
+        bleConfigTotalChunks = (bleConfigDownloadBuffer.length() + BLE_CHUNK_SIZE - 1) / BLE_CHUNK_SIZE;
+        
+        // Send config info (size and chunk count)
+        String info = "CONFIG_INFO:" + String(bleConfigDownloadBuffer.length()) + ":" + String(bleConfigTotalChunks);
+        sendBleSingleResponse(info);
+        Serial.printf("BLE Config: Prepared %d bytes in %d chunks\n", bleConfigDownloadBuffer.length(), bleConfigTotalChunks);
+    }
+    else if (cmd.startsWith("GET_CHUNK:")) {
+        // Browser is requesting a specific chunk
+        int chunkNum = cmd.substring(10).toInt();
+        
+        if (bleConfigDownloadBuffer.length() == 0) {
+            sendBleSingleResponse("ERROR:No config prepared");
+            return;
+        }
+        
+        if (chunkNum < 0 || chunkNum >= bleConfigTotalChunks) {
+            sendBleSingleResponse("ERROR:Invalid chunk number");
+            return;
+        }
+        
+        // Extract the requested chunk
+        int startPos = chunkNum * BLE_CHUNK_SIZE;
+        int endPos = min(startPos + BLE_CHUNK_SIZE, (int)bleConfigDownloadBuffer.length());
+        String chunkData = bleConfigDownloadBuffer.substring(startPos, endPos);
+        
+        // Send chunk with header
+        String response = "CHUNK:" + String(chunkNum) + ":" + chunkData;
+        sendBleSingleResponse(response);
+        
+        // Clear buffer after last chunk to free memory
+        if (chunkNum == bleConfigTotalChunks - 1) {
+            Serial.println("BLE Config: All chunks sent, clearing buffer");
+            bleConfigDownloadBuffer = "";
+        }
     }
     else if (cmd == "SET_CONFIG_START") {
         // Start chunked config upload
         bleConfigUploadBuffer = "";
         bleConfigChunkCount = 0;
         bleConfigUploadActive = true;
-        sendBleConfigResponse("CONFIG_READY");
+        sendBleSingleResponse("CONFIG_READY");
         Serial.println("BLE Config: Upload started");
     }
     else if (cmd.startsWith("SET_CONFIG_CHUNK:")) {
         if (!bleConfigUploadActive) {
-            sendBleConfigResponse("ERROR:Upload not started");
+            sendBleSingleResponse("ERROR:Upload not started");
             return;
         }
         // Extract chunk data after the colon
         String chunkData = cmd.substring(17);  // Skip "SET_CONFIG_CHUNK:"
         bleConfigUploadBuffer += chunkData;
         bleConfigChunkCount++;
-        sendBleConfigResponse("CHUNK_OK:" + String(bleConfigChunkCount));
+        sendBleSingleResponse("CHUNK_OK:" + String(bleConfigChunkCount));
     }
     else if (cmd == "SET_CONFIG_END") {
         if (!bleConfigUploadActive) {
-            sendBleConfigResponse("ERROR:Upload not started");
+            sendBleSingleResponse("ERROR:Upload not started");
             return;
         }
         // Process the complete config
@@ -1076,23 +1136,24 @@ void processBleConfigCommand(const String& cmd) {
         // Process using the same logic as serial upload
         if (processConfigChunk(bleConfigUploadBuffer, 0)) {
             finalizeConfigUpload();
-            sendBleConfigResponse("CONFIG_SAVED");
+            sendBleSingleResponse("CONFIG_SAVED");
             Serial.println("BLE Config: Upload complete, saved to NVS");
         } else {
-            sendBleConfigResponse("ERROR:Parse failed");
+            sendBleSingleResponse("ERROR:Parse failed");
             Serial.println("BLE Config: Parse error");
         }
         bleConfigUploadBuffer = "";
         bleConfigChunkCount = 0;
     }
     else if (cmd == "PING") {
-        sendBleConfigResponse("PONG");
+        sendBleSingleResponse("PONG");
     }
     else if (cmd == "GET_VERSION") {
-        sendBleConfigResponse("Chocotone v1.4");
+        sendBleSingleResponse("Chocotone v1.4");
     }
     else {
         Serial.printf("BLE Config: Unknown command: %s\n", cmd.c_str());
-        sendBleConfigResponse("ERROR:Unknown command");
+        sendBleSingleResponse("ERROR:Unknown command");
     }
 }
+

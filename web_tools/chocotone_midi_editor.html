@@ -585,6 +585,35 @@
         }
         fillEmptyPresets();
 
+        // Normalize config data received from device (remap field names)
+        // Firmware uses: color, partner (in combo)
+        // Editor uses: rgb, partner
+        function normalizeConfigData(data) {
+            if (!data || !data.presets) return data;
+            for (var p = 0; p < data.presets.length; p++) {
+                var preset = data.presets[p];
+                if (!preset.buttons) continue;
+                for (var b = 0; b < preset.buttons.length; b++) {
+                    var btn = preset.buttons[b];
+                    if (!btn.messages) continue;
+                    for (var m = 0; m < btn.messages.length; m++) {
+                        var msg = btn.messages[m];
+                        // Remap 'color' to 'rgb'
+                        if (msg.color && !msg.rgb) {
+                            msg.rgb = msg.color;
+                            delete msg.color;
+                        }
+                        // Ensure defaults for missing fields
+                        if (!msg.rgb) msg.rgb = '#bb86fc';
+                        if (!msg.label) msg.label = '';
+                        if (msg.partner === undefined) msg.partner = 0;
+                    }
+                }
+            }
+            return data;
+        }
+
+
         // ===============================================================
         // OPEN MIDI FUNCTIONS
         // ===============================================================
@@ -1397,6 +1426,7 @@
                     expectingConfig = false;
                     try {
                         var data = JSON.parse(configJson);
+                        normalizeConfigData(data);  // Remap color→rgb
                         console.log('Received config:', data);
                         if (data.presets) {
                             // Use config metadata from device if present
@@ -1559,51 +1589,42 @@
             else connectBLE();
         }
 
+        // BLE response handler - simplified for request-acknowledge protocol
+        var bleResponseResolve = null;
+        var bleResponseTimeout = null;
+
         function handleBleNotification(event) {
             var value = new TextDecoder().decode(event.target.value);
-            console.log('BLE received:', value.substring(0, 100));
-            bleBuffer += value;
-            processBleData();
+            console.log('BLE response:', value.substring(0, 100));
+
+            // Clear timeout and resolve promise
+            if (bleResponseTimeout) {
+                clearTimeout(bleResponseTimeout);
+                bleResponseTimeout = null;
+            }
+            if (bleResponseResolve) {
+                bleResponseResolve(value);
+                bleResponseResolve = null;
+            }
         }
 
-        function processBleData() {
-            // Check for complete JSON (starts with { and ends with })
-            if (bleBuffer.startsWith('{') && bleBuffer.includes('}}')) {
-                // Find end of JSON
-                var depth = 0, end = -1;
-                for (var i = 0; i < bleBuffer.length; i++) {
-                    if (bleBuffer[i] === '{') depth++;
-                    if (bleBuffer[i] === '}') depth--;
-                    if (depth === 0) { end = i; break; }
+        // Send command and wait for response
+        async function sendBleCommand(cmd, timeoutMs = 3000) {
+            return new Promise(async (resolve, reject) => {
+                bleResponseResolve = resolve;
+                bleResponseTimeout = setTimeout(() => {
+                    bleResponseResolve = null;
+                    reject(new Error('BLE timeout waiting for: ' + cmd));
+                }, timeoutMs);
+
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode(cmd + '\n'));
+                } catch (e) {
+                    clearTimeout(bleResponseTimeout);
+                    bleResponseResolve = null;
+                    reject(e);
                 }
-                if (end > 0) {
-                    var json = bleBuffer.substring(0, end + 1);
-                    bleBuffer = bleBuffer.substring(end + 1);
-                    try {
-                        var data = JSON.parse(json);
-                        console.log('BLE received config:', data);
-                        if (data.presets) {
-                            presetData.presets = data.presets;
-                            if (data.system) {
-                                Object.assign(presetData.system, data.system);
-                            }
-                            presetData.currentPreset = data.currentPreset || 0;
-                            selectedBtn = 0;
-                            showSystem = false;
-                            render();
-                            alert('Config loaded from device via Bluetooth!');
-                        }
-                    } catch (e) {
-                        console.error('BLE JSON parse error:', e);
-                    }
-                }
-            } else if (bleBuffer.includes('CONFIG_SAVED')) {
-                bleBuffer = '';
-                alert('Config saved to device via Bluetooth!');
-            } else if (bleBuffer.includes('CHUNK_OK')) {
-                // Chunk acknowledged, clear buffer
-                bleBuffer = '';
-            }
+            });
         }
 
         async function readFromDeviceBLE() {
@@ -1611,11 +1632,87 @@
                 alert('Bluetooth not connected. Please connect first.');
                 return;
             }
+
             try {
-                console.log('Sending GET_CONFIG via BLE...');
-                bleBuffer = '';
-                await bleRxChar.writeValue(new TextEncoder().encode('GET_CONFIG\n'));
-                console.log('GET_CONFIG sent');
+                console.log('BLE Read: Starting request-acknowledge transfer...');
+
+                // Step 1: Request config info
+                var infoResponse = await sendBleCommand('GET_CONFIG', 5000);
+                console.log('BLE Read: Got info:', infoResponse);
+
+                if (!infoResponse.startsWith('CONFIG_INFO:')) {
+                    throw new Error('Unexpected response: ' + infoResponse);
+                }
+
+                // Parse: CONFIG_INFO:8203:65
+                var parts = infoResponse.split(':');
+                var totalBytes = parseInt(parts[1]);
+                var totalChunks = parseInt(parts[2]);
+                console.log('BLE Read: Expecting ' + totalBytes + ' bytes in ' + totalChunks + ' chunks');
+
+                // Step 2: Request each chunk
+                var jsonBuffer = '';
+                for (var i = 0; i < totalChunks; i++) {
+                    var chunkResponse = await sendBleCommand('GET_CHUNK:' + i, 3000);
+
+                    // Parse: CHUNK:N:data
+                    if (!chunkResponse.startsWith('CHUNK:')) {
+                        throw new Error('Invalid chunk response: ' + chunkResponse);
+                    }
+
+                    // Extract data after "CHUNK:N:"
+                    var colonIdx = chunkResponse.indexOf(':', 6);  // Find second colon
+                    var chunkData = chunkResponse.substring(colonIdx + 1);
+                    jsonBuffer += chunkData;
+
+                    // Progress logging every 10 chunks
+                    if (i % 10 === 0 || i === totalChunks - 1) {
+                        console.log('BLE Read: Chunk ' + (i + 1) + '/' + totalChunks + ' (' + jsonBuffer.length + ' bytes)');
+                    }
+
+                    // Small delay between chunk requests
+                    await sleep(20);
+                }
+
+                console.log('BLE Read: All chunks received, total: ' + jsonBuffer.length + ' bytes');
+
+                // Step 3: Parse JSON
+                var data = JSON.parse(jsonBuffer);
+                normalizeConfigData(data);  // Remap color→rgb
+                console.log('BLE received config:', data);
+
+                if (data.presets) {
+                    // Use config metadata from device if present
+                    if (data.configName) presetData.configName = data.configName;
+                    if (data.lastModified) presetData.lastModified = data.lastModified;
+                    presetData.presets = data.presets;
+                    if (data.system) {
+                        // Merge system properties individually
+                        if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                        if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                        if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                        if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                        if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
+                        if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                        if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                        if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                        if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                        if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                        if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                        if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
+                        if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                        if (data.system.brightnessDim !== undefined) presetData.system.brightnessDim = data.system.brightnessDim;
+                        if (data.system.brightnessTap !== undefined) presetData.system.brightnessTap = data.system.brightnessTap;
+                    }
+                    presetData.currentPreset = data.currentPreset || 0;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Config loaded from device via Bluetooth!');
+                } else {
+                    alert('BLE Error: No presets found in config');
+                }
+
             } catch (e) {
                 console.error('BLE Read error:', e);
                 alert('BLE Read error: ' + e.message);
@@ -1635,15 +1732,23 @@
                 console.log('BLE Send: Starting upload of ' + json.length + ' bytes in ' + totalChunks + ' chunks');
 
                 // Start upload
-                await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_START\n'));
-                await sleep(200);
+                var startResponse = await sendBleCommand('SET_CONFIG_START', 3000);
+                console.log('BLE Send: Start response:', startResponse);
 
-                // Send chunks with progress
+                if (startResponse !== 'CONFIG_READY') {
+                    throw new Error('Device not ready: ' + startResponse);
+                }
+
+                // Send chunks
                 for (var i = 0; i < json.length; i += CHUNK_SIZE) {
                     var chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
                     var chunk = json.substring(i, i + CHUNK_SIZE);
-                    await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
-                    await sleep(80);  // Longer delay for reliable receive
+
+                    var chunkResponse = await sendBleCommand('SET_CONFIG_CHUNK:' + chunk, 3000);
+
+                    if (!chunkResponse.startsWith('CHUNK_OK:')) {
+                        throw new Error('Chunk error: ' + chunkResponse);
+                    }
 
                     if (chunkNum % 10 === 0) {
                         console.log('BLE Send: Chunk ' + chunkNum + '/' + totalChunks);
@@ -1651,9 +1756,15 @@
                 }
 
                 // End upload
-                await sleep(100);
-                await bleRxChar.writeValue(new TextEncoder().encode('SET_CONFIG_END\n'));
-                console.log('BLE Send: Upload complete');
+                var endResponse = await sendBleCommand('SET_CONFIG_END', 10000);
+                console.log('BLE Send: End response:', endResponse);
+
+                if (endResponse === 'CONFIG_SAVED') {
+                    alert('Config saved to device via Bluetooth!');
+                } else {
+                    throw new Error('Save failed: ' + endResponse);
+                }
+
             } catch (e) {
                 console.error('BLE Send error:', e);
                 alert('BLE Send error: ' + e.message);

@@ -70,6 +70,26 @@ MidiCommandType parseCommandType(String s){if(s=="NOTE_MOMENTARY")return NOTE_MO
 void rgbToHex(char* buffer, size_t size, const byte rgb[3]) { snprintf(buffer, size, "#%02x%02x%02x", rgb[0], rgb[1], rgb[2]); }
 void hexToRgb(const String& hex, byte rgb[3]) { long c = strtol(hex.substring(1).c_str(), NULL, 16); rgb[0]=(c>>16)&0xFF; rgb[1]=(c>>8)&0xFF; rgb[2]=c&0xFF; }
 
+String escapeJson(const String& s) {
+    String res = "";
+    for (size_t i = 0; i < s.length(); i++) {
+        char c = s[i];
+        if (c == '"') res += "\\\"";
+        else if (c == '\\') res += "\\\\";
+        else if (c == '\b') res += "\\b";
+        else if (c == '\f') res += "\\f";
+        else if (c == '\n') res += "\\n";
+        else if (c == '\r') res += "\\r";
+        else if (c == '\t') res += "\\t";
+        else if (c < 32) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), "\\u%04x", c);
+            res += buf;
+        } else res += c;
+    }
+    return res;
+}
+
 // Find an action by type in ButtonConfig.messages[] (returns nullptr if not found)
 ActionMessage* findAction(const ButtonConfig& cfg, ActionType actionType) {
     for (int i = 0; i < cfg.messageCount && i < MAX_ACTIONS_PER_BUTTON; i++) {
@@ -595,7 +615,11 @@ void handleExport() {
     String chunkBuffer = "";
     chunkBuffer.reserve(2048);
 
-    server.sendContent("{\"version\":3,\"presets\":[");
+    server.sendContent("{\"version\":3,\"configName\":\"");
+    server.sendContent(configProfileName);
+    server.sendContent("\",\"lastModified\":\"");
+    server.sendContent(configLastModified);
+    server.sendContent("\",\"presets\":[");
 
     for (int p = 0; p < 4; p++) {
         if (p > 0) server.sendContent(",");
@@ -830,6 +854,18 @@ void handleImportUploadData() {
                          error.c_str(), uploadBufferLen);
             }
             return;
+        }
+        
+        // Parse config metadata (editor fields)
+        const char* cfgName = doc["configName"] | "";
+        if (strlen(cfgName) > 0) {
+            strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
+            configProfileName[sizeof(configProfileName) - 1] = '\0';
+        }
+        const char* cfgModified = doc["lastModified"] | "";
+        if (strlen(cfgModified) > 0) {
+            strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
+            configLastModified[sizeof(configLastModified) - 1] = '\0';
         }
         
         // Parse presets
@@ -1149,7 +1185,11 @@ void setup_web_server() {
 
 String buildFullConfigJson() {
     // Build full config JSON in memory (Warning: uses significant heap!)
-    String json = "{\"version\":3,\"presets\":[";
+    String json = "{\"version\":3,\"configName\":\"";
+    json += escapeJson(configProfileName);
+    json += "\",\"lastModified\":\"";
+    json += escapeJson(configLastModified);
+    json += "\",\"presets\":[";
     
     for (int p = 0; p < 4; p++) {
         if (p > 0) json += ",";
@@ -1160,7 +1200,7 @@ String buildFullConfigJson() {
                                    (presetSyncMode[p] == SYNC_GP5) ? "GP5" : "NONE";
         
         json += "{\"name\":\"";
-        json += presetNames[p];
+        json += escapeJson(presetNames[p]);
         json += "\",\"presetLedMode\":\"";
         json += ledModeStr;
         json += "\",\"syncMode\":\"";
@@ -1172,7 +1212,7 @@ String buildFullConfigJson() {
             const ButtonConfig& cfg = buttonConfigs[p][b];
             
             json += "{\"name\":\"";
-            json += cfg.name;
+            json += escapeJson(cfg.name);
             json += "\",\"ledMode\":\"";
             json += (cfg.ledMode == LED_TOGGLE) ? "TOGGLE" : "MOMENTARY";
             json += "\",\"inSelectionGroup\":";
@@ -1190,6 +1230,8 @@ String buildFullConfigJson() {
                     case ACTION_RELEASE: actionName = "RELEASE"; break;
                     case ACTION_2ND_RELEASE: actionName = "2ND_RELEASE"; break;
                     case ACTION_LONG_PRESS: actionName = "LONG_PRESS"; break;
+                    case ACTION_2ND_LONG_PRESS: actionName = "2ND_LONG_PRESS"; break;
+                    case ACTION_DOUBLE_TAP: actionName = "DOUBLE_TAP"; break;
                     default: actionName = "NO_ACTION"; break;
                 }
                 
@@ -1206,9 +1248,40 @@ String buildFullConfigJson() {
                 json += String(msg.data1);
                 json += ",\"data2\":";
                 json += String(msg.data2);
-                json += ",\"color\":\"";
+                json += ",\"rgb\":\"";
                 json += hexColor;
-                json += "\"}";
+                json += "\",\"label\":\"";
+                json += escapeJson(msg.label);
+                json += "\",\"partner\":";
+                json += String(msg.combo.partner);
+                
+                if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
+                    json += ",\"holdMs\":";
+                    json += String(msg.longPress.holdMs);
+                }
+                
+                // Tap Tempo fields
+                if (msg.type == TAP_TEMPO) {
+                    json += ",\"rhythmPrev\":";
+                    json += String(msg.tapTempo.rhythmPrev);
+                    json += ",\"rhythmNext\":";
+                    json += String(msg.tapTempo.rhythmNext);
+                    json += ",\"tapLock\":";
+                    json += String(msg.tapTempo.tapLock);
+                }
+                
+                // Sysex fields
+                if (msg.type == SYSEX && msg.sysex.length > 0) {
+                    json += ",\"sysex\":\"";
+                    for (int s = 0; s < msg.sysex.length; s++) {
+                        char hx[3];
+                        sprintf(hx, "%02x", msg.sysex.data[s]);
+                        json += hx;
+                    }
+                    json += "\"";
+                }
+                
+                json += "}";
             }
             json += "]}";
         }
@@ -1249,6 +1322,18 @@ bool processConfigChunk(const String& jsonStr, int chunkNum) {
     if (error) {
         Serial.printf("JSON parse error: %s\n", error.c_str());
         return false;
+    }
+    
+    // Parse config metadata (editor fields)
+    const char* cfgName = doc["configName"] | "";
+    if (strlen(cfgName) > 0) {
+        strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
+        configProfileName[sizeof(configProfileName) - 1] = '\0';
+    }
+    const char* cfgModified = doc["lastModified"] | "";
+    if (strlen(cfgModified) > 0) {
+        strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
+        configLastModified[sizeof(configLastModified) - 1] = '\0';
     }
     
     // Process presets
@@ -1304,6 +1389,10 @@ bool processConfigChunk(const String& jsonStr, int chunkNum) {
                             if (strcmp(actStr, "PRESS") == 0) msg.action = ACTION_PRESS;
                             else if (strcmp(actStr, "2ND_PRESS") == 0) msg.action = ACTION_2ND_PRESS;
                             else if (strcmp(actStr, "RELEASE") == 0) msg.action = ACTION_RELEASE;
+                            else if (strcmp(actStr, "2ND_RELEASE") == 0) msg.action = ACTION_2ND_RELEASE;
+                            else if (strcmp(actStr, "LONG_PRESS") == 0) msg.action = ACTION_LONG_PRESS;
+                            else if (strcmp(actStr, "2ND_LONG_PRESS") == 0) msg.action = ACTION_2ND_LONG_PRESS;
+                            else if (strcmp(actStr, "DOUBLE_TAP") == 0) msg.action = ACTION_DOUBLE_TAP;
                             else msg.action = ACTION_PRESS;
                             
                             // MIDI type
@@ -1317,6 +1406,36 @@ bool processConfigChunk(const String& jsonStr, int chunkNum) {
                             // Color - web editor uses "rgb", check both
                             const char* colorStr = mObj["rgb"] | (mObj["color"] | "#bb86fc");
                             hexToRgb(String(colorStr), msg.rgb);
+                            
+                            // Metadata and Extended fields
+                            const char* labelStr = mObj["label"] | "";
+                            strncpy(msg.label, labelStr, 5);
+                            msg.label[5] = '\0';
+                            
+                            msg.combo.partner = mObj["partner"] | 255;
+                            
+                            if (msg.action == ACTION_LONG_PRESS || msg.action == ACTION_2ND_LONG_PRESS) {
+                                msg.longPress.holdMs = mObj["holdMs"] | 500;
+                            }
+                            
+                            // Tap Tempo
+                            if (msg.type == TAP_TEMPO) {
+                                msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 255;
+                                msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 255;
+                                msg.tapTempo.tapLock = mObj["tapLock"] | 255;
+                            }
+                            
+                            // SysEx
+                            if (msg.type == SYSEX && mObj.containsKey("sysex")) {
+                                const char* hex = mObj["sysex"];
+                                int len = strlen(hex) / 2;
+                                if (len > 32) len = 32;
+                                msg.sysex.length = len;
+                                for (int i = 0; i < len; i++) {
+                                    char byteStr[3] = { hex[i*2], hex[i*2+1], '\0' };
+                                    msg.sysex.data[i] = (uint8_t)strtol(byteStr, NULL, 16);
+                                }
+                            }
                             
                             cfg.messageCount++;
                         }
