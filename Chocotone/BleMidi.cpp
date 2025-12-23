@@ -669,71 +669,104 @@ void processBufferedSysex() {
     
     // =========================================================
     // GP5 SYSEX DETECTION
-    // GP-5 responses have nibble-encoded data after the header
-    // Structure: F0 [CRC_HI] [CRC_LO] [chunks] [len] [type] [payload] F7
-    // Responses have type byte 0x02
+    // GP-5 preset dump comes in 5 chunks of ~212 bytes each.
+    // We need to accumulate all chunks and parse the combined data.
+    // Effect state bytes are at offsets 140, 141, 143 in combined data.
+    // Reference: GP5EditorBT.html handleNotification()
     // =========================================================
     if (presetSyncMode[currentPreset] == SYNC_GP5) {
-        // Try to parse as GP5 SysEx (skip 80 80 BLE header)
-        uint8_t payload[256];
-        size_t payloadLen = 0;
+        // Static buffers for multi-chunk accumulation
+        static uint8_t gp5PresetData[1024];  // Combined preset data
+        static size_t gp5PresetDataLen = 0;
+        static uint8_t lastChunkIndex = 0xFF;
         
-        if (gp5_parse_sysex(sysexBuffer + 2, sysexLen - 2, payload, &payloadLen)) {
-            Serial.printf("GP5: Parsed SysEx payload (%d bytes)\n", payloadLen);
+        // Check for 212-byte preset dump packets
+        // Pattern from reference: bytes[5]==0, bytes[6]==5 for preset info chunks
+        // bytes[7]/bytes[8] = chunk index (high nibble / low nibble)
+        if (sysexLen >= 150 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05) {
+            uint8_t chunkIndex = sysexBuffer[7] * 16 + sysexBuffer[8];
             
-            // Check function code (first byte of decoded payload)
-            if (payloadLen > 0) {
-                uint8_t funcCode = payload[0];
-                Serial.printf("GP5: Function code = 0x%02X\n", funcCode);
-                
-                // FUNC_PRESET_PARAMS (0x41) - contains effect states
-                if (funcCode == 0x41 && payloadLen >= 70) {
-                    Serial.println("GP5: Processing preset parameters response...");
-                    
-                    // Effect states are stored as bit flags
-                    // Offset based on TonexOneController analysis
-                    size_t stateOffset = 68;  // Approximate offset in decoded payload
-                    
-                    if (payloadLen > stateOffset + 1) {
-                        uint8_t states1 = payload[stateOffset];
-                        uint8_t states2 = payload[stateOffset + 1];
-                        
-                        // Decode to effect states array
-                        extern bool effectStates[10];  // From DeviceProfiles
-                        effectStates[0] = (states1 & 0x01) != 0;  // NR
-                        effectStates[1] = (states1 & 0x02) != 0;  // PRE/FX1
-                        effectStates[2] = (states1 & 0x04) != 0;  // DST/DRV
-                        effectStates[3] = (states1 & 0x08) != 0;  // AMP
-                        effectStates[4] = (states1 & 0x10) != 0;  // CAB/IR
-                        effectStates[5] = (states1 & 0x20) != 0;  // EQ
-                        effectStates[6] = (states1 & 0x40) != 0;  // MOD/FX2
-                        effectStates[7] = (states1 & 0x80) != 0;  // DLY
-                        effectStates[8] = (states2 & 0x01) != 0;  // RVB
-                        effectStates[9] = (states2 & 0x02) != 0;  // NS
-                        
-                        Serial.println("GP5 State Decoded:");
-                        Serial.printf("  NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d MOD=%d DLY=%d RVB=%d NS=%d\n",
-                            effectStates[0], effectStates[1], effectStates[2], effectStates[3],
-                            effectStates[4], effectStates[5], effectStates[6], effectStates[7],
-                            effectStates[8], effectStates[9]);
-                        
-                        // Apply to button states
-                        applyGp5StateToButtons();
-                    }
-                    return;
-                }
-                
-                // FUNC_PRESET_CHANGED (0x1B) - preset was changed on device
-                if (funcCode == 0x1B) {
-                    Serial.println("GP5: Preset changed on device - requesting new state");
-                    delay(50);
-                    requestPresetState();
-                    return;
-                }
+            Serial.printf("GP5: Preset info chunk %d received (%d bytes)\n", chunkIndex, sysexLen);
+            
+            // Extract data portion (skip BLE header 80 80, SysEx F0, and chunk header)
+            // Reference: bytes.slice(0,211).slice(11) means bytes 11-210
+            size_t dataStart = 11;  // Skip header bytes
+            size_t dataLen = sysexLen - dataStart - 1;  // Exclude F7 end
+            
+            // Reset accumulator on first chunk
+            if (chunkIndex == 0) {
+                gp5PresetDataLen = 0;
             }
+            
+            // Accumulate data
+            if (gp5PresetDataLen + dataLen < sizeof(gp5PresetData)) {
+                memcpy(gp5PresetData + gp5PresetDataLen, sysexBuffer + dataStart, dataLen);
+                gp5PresetDataLen += dataLen;
+                lastChunkIndex = chunkIndex;
+            }
+            
+            // Check for final chunk (148 bytes instead of 212, or chunk index 04)
+            // Reference: bytes[7]==0, bytes[8]==4 and length==148 is the last chunk
+            bool isFinalChunk = (sysexLen < 160 && sysexBuffer[7] == 0x00 && sysexBuffer[8] == 0x04);
+            
+            if (isFinalChunk && gp5PresetDataLen >= 144) {
+                Serial.printf("GP5: Final chunk received - total data: %d bytes\n", gp5PresetDataLen);
+                
+                // Parse effect states from accumulated data
+                // Effect state bits from GP5EditorBT.html:
+                // data[140]: bit 0=CAB, bit 1=EQ, bit 2=MOD, bit 3=DLY
+                // data[141]: bit 0=NR, bit 1=PRE, bit 2=DST, bit 3=AMP
+                // data[143]: bit 0=RVB, bit 1=NS
+                
+                extern bool effectStates[10];  // From Globals
+                
+                uint8_t data140 = gp5PresetData[140];
+                uint8_t data141 = gp5PresetData[141];
+                uint8_t data143 = gp5PresetData[143];
+                
+                Serial.printf("GP5: State bytes - [140]=0x%02X [141]=0x%02X [143]=0x%02X\n",
+                    data140, data141, data143);
+                
+                // Decode effect states (order matches GP5EffectBlock enum)
+                effectStates[0] = (data141 & (1 << 0)) != 0;  // NR
+                effectStates[1] = (data141 & (1 << 1)) != 0;  // PRE
+                effectStates[2] = (data141 & (1 << 2)) != 0;  // DST
+                effectStates[3] = (data141 & (1 << 3)) != 0;  // AMP
+                effectStates[4] = (data140 & (1 << 0)) != 0;  // CAB
+                effectStates[5] = (data140 & (1 << 1)) != 0;  // EQ
+                effectStates[6] = (data140 & (1 << 2)) != 0;  // MOD
+                effectStates[7] = (data140 & (1 << 3)) != 0;  // DLY
+                effectStates[8] = (data143 & (1 << 0)) != 0;  // RVB
+                effectStates[9] = (data143 & (1 << 1)) != 0;  // NS
+                
+                Serial.println("GP5 State Decoded:");
+                Serial.printf("  NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d MOD=%d DLY=%d RVB=%d NS=%d\n",
+                    effectStates[0], effectStates[1], effectStates[2], effectStates[3],
+                    effectStates[4], effectStates[5], effectStates[6], effectStates[7],
+                    effectStates[8], effectStates[9]);
+                
+                // Apply to button states
+                applyGp5StateToButtons();
+                
+                // Reset for next request
+                gp5PresetDataLen = 0;
+            }
+            return;  // Processed GP5 chunk
         }
-        // If GP5 parse failed, fall through to SPM parsing (might be wrong device)
+        
+        // Check for preset changed notification
+        // Reference: bytes[11]==1, bytes[12]==2, bytes[13]==4, bytes[14]==3
+        if (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
+            sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x03) {
+            Serial.println("GP5: Preset changed on device - requesting new state");
+            delay(50);
+            gp5_request_current_preset();
+            return;
+        }
+        
+        // If no GP5 pattern matched, fall through to SPM parsing
     }
+
     
     // SPM sends 5 packets for a preset dump. Only the FIRST packet (sequence 0) contains
     // the module enable states. Bytes 7-8 contain the packet sequence number:

@@ -221,4 +221,20 @@ void gp5_set_effect_state(GP5EffectBlock block, bool enabled);
  */
 void gp5_select_preset(uint8_t presetNum);
 
+/**
+ * Request current preset number from GP-5
+ * Triggers a response with the active preset index
+ */
+void gp5_request_current_preset_number();
+
+/**
+ * Parse effect states from preset data response
+ * 
+ * @param data Combined preset data from multi-chunk response
+ * @param len Length of data
+ * @param effectStates Output array of 10 effect states (GP5_BLOCK_COUNT)
+ * @return true if parsing succeeded
+ */
+bool gp5_parse_preset_effect_states(const uint8_t* data, size_t len, bool effectStates[GP5_BLOCK_COUNT]);
+
 #endif // GP5_PROTOCOL_H

@@ -233,6 +233,8 @@ bool gp5_parse_sysex(const uint8_t* input, size_t inputLen, uint8_t* payload, si
 /**
  * Request current preset state
  * Sends command that triggers FUNC_PRESET_PARAMS (0x41) response
+ * 
+ * Raw command from GP5EditorBT.html: 8080F0 000900010000000201020401 F7
  */
 void gp5_request_current_preset() {
     if (!clientConnected || !pRemoteCharacteristic) {
@@ -240,26 +242,25 @@ void gp5_request_current_preset() {
         return;
     }
     
-    // Command to request current preset parameters
-    // Based on GP5EditorBT.html sync sequence
-    uint8_t payload[] = { 0x02, 0x01 };  // Request preset params command
+    // Exact command from GP5EditorBT.html to request preset parameters
+    // sendSysex("8080f0000900010000000201020401f7")
+    static const uint8_t cmd[] = {
+        0x80, 0x80,                             // BLE MIDI header
+        0xF0,                                   // SysEx start
+        0x00, 0x09, 0x00, 0x01, 0x00, 0x00,     // Chunk info
+        0x00, 0x02, 0x01, 0x02, 0x04, 0x01,     // Request preset params command
+        0xF7                                    // SysEx end
+    };
     
-    uint8_t sysex[64];
-    size_t len = gp5_build_sysex(sysex, payload, sizeof(payload), GP5SysEx::MSG_TYPE_COMMAND);
+    pRemoteCharacteristic->writeValue((uint8_t*)cmd, sizeof(cmd), false);
     
-    // Wrap in BLE MIDI packet
-    uint8_t blePkt[66];
-    blePkt[0] = 0x80;
-    blePkt[1] = 0x80;
-    memcpy(blePkt + 2, sysex, len);
-    
-    pRemoteCharacteristic->writeValue(blePkt, len + 2, false);
-    
-    Serial.println("GP5: Requested current preset");
+    Serial.println("GP5: Requested current preset (raw SysEx)");
 }
 
 /**
  * Request all preset names (100 presets)
+ * 
+ * Raw command from GP5EditorBT.html: 8080F0 000E00010000000201020400 F7
  */
 void gp5_request_preset_list() {
     if (!clientConnected || !pRemoteCharacteristic) {
@@ -267,25 +268,25 @@ void gp5_request_preset_list() {
         return;
     }
     
-    // Command to request preset names
-    uint8_t payload[] = { 0x01, 0x01 };  // Request preset list command
+    // Exact command from GP5EditorBT.html to request patch names
+    // sendSysex("8080F0000E00010000000201020400F7")
+    static const uint8_t cmd[] = {
+        0x80, 0x80,                             // BLE MIDI header
+        0xF0,                                   // SysEx start
+        0x00, 0x0E, 0x00, 0x01, 0x00, 0x00,     // Chunk info
+        0x00, 0x02, 0x01, 0x02, 0x04, 0x00,     // Request preset list command
+        0xF7                                    // SysEx end
+    };
     
-    uint8_t sysex[64];
-    size_t len = gp5_build_sysex(sysex, payload, sizeof(payload), GP5SysEx::MSG_TYPE_COMMAND);
+    pRemoteCharacteristic->writeValue((uint8_t*)cmd, sizeof(cmd), false);
     
-    // Wrap in BLE MIDI packet
-    uint8_t blePkt[66];
-    blePkt[0] = 0x80;
-    blePkt[1] = 0x80;
-    memcpy(blePkt + 2, sysex, len);
-    
-    pRemoteCharacteristic->writeValue(blePkt, len + 2, false);
-    
-    Serial.println("GP5: Requested preset list");
+    Serial.println("GP5: Requested preset list (raw SysEx)");
 }
 
 /**
  * Request global settings
+ * 
+ * Raw command from GP5EditorBT.html: 8080F0 0B0900010000000201020100 F7
  */
 void gp5_request_globals() {
     if (!clientConnected || !pRemoteCharacteristic) {
@@ -293,21 +294,19 @@ void gp5_request_globals() {
         return;
     }
     
-    // Command to request global parameters
-    uint8_t payload[] = { 0x03, 0x01 };  // Request globals command
+    // Exact command from GP5EditorBT.html to request global parameters
+    // sendSysex("8080f00b0900010000000201020100f7")
+    static const uint8_t cmd[] = {
+        0x80, 0x80,                             // BLE MIDI header
+        0xF0,                                   // SysEx start
+        0x0B, 0x09, 0x00, 0x01, 0x00, 0x00,     // Chunk info
+        0x00, 0x02, 0x01, 0x02, 0x01, 0x00,     // Request globals command
+        0xF7                                    // SysEx end
+    };
     
-    uint8_t sysex[64];
-    size_t len = gp5_build_sysex(sysex, payload, sizeof(payload), GP5SysEx::MSG_TYPE_COMMAND);
+    pRemoteCharacteristic->writeValue((uint8_t*)cmd, sizeof(cmd), false);
     
-    // Wrap in BLE MIDI packet
-    uint8_t blePkt[66];
-    blePkt[0] = 0x80;
-    blePkt[1] = 0x80;
-    memcpy(blePkt + 2, sysex, len);
-    
-    pRemoteCharacteristic->writeValue(blePkt, len + 2, false);
-    
-    Serial.println("GP5: Requested globals");
+    Serial.println("GP5: Requested globals (raw SysEx)");
 }
 
 /**
@@ -340,4 +339,77 @@ void gp5_select_preset(uint8_t presetNum) {
     sendMidiCC(systemConfig.midiChannel, GP5MidiCC::PRESET_SELECT, presetNum);
     
     Serial.printf("GP5: Selected preset %d\n", presetNum);
+}
+
+/**
+ * Request current preset number
+ * 
+ * Raw command from GP5EditorBT.html: 8080F0 000700010000000201020403 F7
+ */
+void gp5_request_current_preset_number() {
+    if (!clientConnected || !pRemoteCharacteristic) {
+        Serial.println("GP5: Cannot request preset number - not connected");
+        return;
+    }
+    
+    // Exact command from GP5EditorBT.html to request current preset number
+    // sendSysex("8080f0000700010000000201020403f7")
+    static const uint8_t cmd[] = {
+        0x80, 0x80,                             // BLE MIDI header
+        0xF0,                                   // SysEx start
+        0x00, 0x07, 0x00, 0x01, 0x00, 0x00,     // Chunk info
+        0x00, 0x02, 0x01, 0x02, 0x04, 0x03,     // Request current preset number
+        0xF7                                    // SysEx end
+    };
+    
+    pRemoteCharacteristic->writeValue((uint8_t*)cmd, sizeof(cmd), false);
+    
+    Serial.println("GP5: Requested current preset number (raw SysEx)");
+}
+
+/**
+ * Parse effect states from preset data response
+ * 
+ * Effect state bits are located at specific byte offsets in the combined
+ * preset data response (after reassembling multi-chunk messages):
+ * 
+ * data[140]: bit 0=CAB, bit 1=EQ, bit 2=MOD, bit 3=DLY
+ * data[141]: bit 0=NR, bit 1=PRE, bit 2=DST, bit 3=AMP
+ * data[143]: bit 0=RVB, bit 1=NS
+ * 
+ * @param data Combined preset data from multi-chunk response
+ * @param len Length of data
+ * @param effectStates Output array of 10 effect states (GP5_BLOCK_COUNT)
+ * @return true if parsing succeeded
+ */
+bool gp5_parse_preset_effect_states(const uint8_t* data, size_t len, bool effectStates[GP5_BLOCK_COUNT]) {
+    // Need at least 144 bytes to access effect state bits
+    if (len < 144) {
+        Serial.printf("GP5: Preset data too short (%d bytes, need 144)\n", len);
+        return false;
+    }
+    
+    // Extract effect states from bit flags
+    // From GP5EditorBT.html handleNotification parsing logic
+    effectStates[GP5_BLOCK_NR]  = (data[141] & (1 << 0)) != 0;
+    effectStates[GP5_BLOCK_PRE] = (data[141] & (1 << 1)) != 0;
+    effectStates[GP5_BLOCK_DST] = (data[141] & (1 << 2)) != 0;
+    effectStates[GP5_BLOCK_AMP] = (data[141] & (1 << 3)) != 0;
+    effectStates[GP5_BLOCK_CAB] = (data[140] & (1 << 0)) != 0;
+    effectStates[GP5_BLOCK_EQ]  = (data[140] & (1 << 1)) != 0;
+    effectStates[GP5_BLOCK_MOD] = (data[140] & (1 << 2)) != 0;
+    effectStates[GP5_BLOCK_DLY] = (data[140] & (1 << 3)) != 0;
+    effectStates[GP5_BLOCK_RVB] = (data[143] & (1 << 0)) != 0;
+    effectStates[GP5_BLOCK_NS]  = (data[143] & (1 << 1)) != 0;
+    
+    Serial.print("GP5: Parsed effect states: ");
+    const char* blockNames[] = {"NR", "PRE", "DST", "AMP", "CAB", "EQ", "MOD", "DLY", "RVB", "NS"};
+    for (int i = 0; i < GP5_BLOCK_COUNT; i++) {
+        if (effectStates[i]) {
+            Serial.printf("%s ", blockNames[i]);
+        }
+    }
+    Serial.println();
+    
+    return true;
 }
