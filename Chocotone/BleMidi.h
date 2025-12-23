@@ -27,6 +27,7 @@ void clearBLEBonds();
 void checkForSysex();
 void requestPresetState();
 void applySpmStateToButtons();  // Apply received SPM state to button toggles
+void applyGp5StateToButtons();  // Apply received GP5 state to button toggles
 
 // Mode helpers
 inline bool isBleClientEnabled() {

@@ -9,6 +9,7 @@
 #include <BLE2902.h>
 #include "esp_gap_ble_api.h"
 #include "delay_time_sysex.h"
+#include "GP5Protocol.h"
 
 #define MIDI_SERVICE_UUID        "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
@@ -666,6 +667,74 @@ void processBufferedSysex() {
         return;
     }
     
+    // =========================================================
+    // GP5 SYSEX DETECTION
+    // GP-5 responses have nibble-encoded data after the header
+    // Structure: F0 [CRC_HI] [CRC_LO] [chunks] [len] [type] [payload] F7
+    // Responses have type byte 0x02
+    // =========================================================
+    if (presetSyncMode[currentPreset] == SYNC_GP5) {
+        // Try to parse as GP5 SysEx (skip 80 80 BLE header)
+        uint8_t payload[256];
+        size_t payloadLen = 0;
+        
+        if (gp5_parse_sysex(sysexBuffer + 2, sysexLen - 2, payload, &payloadLen)) {
+            Serial.printf("GP5: Parsed SysEx payload (%d bytes)\n", payloadLen);
+            
+            // Check function code (first byte of decoded payload)
+            if (payloadLen > 0) {
+                uint8_t funcCode = payload[0];
+                Serial.printf("GP5: Function code = 0x%02X\n", funcCode);
+                
+                // FUNC_PRESET_PARAMS (0x41) - contains effect states
+                if (funcCode == 0x41 && payloadLen >= 70) {
+                    Serial.println("GP5: Processing preset parameters response...");
+                    
+                    // Effect states are stored as bit flags
+                    // Offset based on TonexOneController analysis
+                    size_t stateOffset = 68;  // Approximate offset in decoded payload
+                    
+                    if (payloadLen > stateOffset + 1) {
+                        uint8_t states1 = payload[stateOffset];
+                        uint8_t states2 = payload[stateOffset + 1];
+                        
+                        // Decode to effect states array
+                        extern bool effectStates[10];  // From DeviceProfiles
+                        effectStates[0] = (states1 & 0x01) != 0;  // NR
+                        effectStates[1] = (states1 & 0x02) != 0;  // PRE/FX1
+                        effectStates[2] = (states1 & 0x04) != 0;  // DST/DRV
+                        effectStates[3] = (states1 & 0x08) != 0;  // AMP
+                        effectStates[4] = (states1 & 0x10) != 0;  // CAB/IR
+                        effectStates[5] = (states1 & 0x20) != 0;  // EQ
+                        effectStates[6] = (states1 & 0x40) != 0;  // MOD/FX2
+                        effectStates[7] = (states1 & 0x80) != 0;  // DLY
+                        effectStates[8] = (states2 & 0x01) != 0;  // RVB
+                        effectStates[9] = (states2 & 0x02) != 0;  // NS
+                        
+                        Serial.println("GP5 State Decoded:");
+                        Serial.printf("  NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d MOD=%d DLY=%d RVB=%d NS=%d\n",
+                            effectStates[0], effectStates[1], effectStates[2], effectStates[3],
+                            effectStates[4], effectStates[5], effectStates[6], effectStates[7],
+                            effectStates[8], effectStates[9]);
+                        
+                        // Apply to button states
+                        applyGp5StateToButtons();
+                    }
+                    return;
+                }
+                
+                // FUNC_PRESET_CHANGED (0x1B) - preset was changed on device
+                if (funcCode == 0x1B) {
+                    Serial.println("GP5: Preset changed on device - requesting new state");
+                    delay(50);
+                    requestPresetState();
+                    return;
+                }
+            }
+        }
+        // If GP5 parse failed, fall through to SPM parsing (might be wrong device)
+    }
+    
     // SPM sends 5 packets for a preset dump. Only the FIRST packet (sequence 0) contains
     // the module enable states. Bytes 7-8 contain the packet sequence number:
     // Packet 0: 00 05 00 00 - sequence 00 (contains states - PROCESS THIS ONE)
@@ -922,7 +991,7 @@ static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, ui
 
 void requestPresetState() {
     if (!clientConnected || !pRemoteCharacteristic) {
-        Serial.println("SPM: Cannot request state - not connected");
+        Serial.println("Cannot request state - not connected");
         return;
     }
     
@@ -930,20 +999,27 @@ void requestPresetState() {
     if (millis() - lastSpmStateRequest < 500) {
         return;
     }
-    
-    // SysEx request for current preset state (from pocketedit.html analysis)
-    // This requests the SPM to send its current preset dump
-    uint8_t requestState[] = {
-        0x80, 0x80,  // BLE MIDI timestamp header
-        0xF0,        // SysEx start
-        0x00, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00,  // Header
-        0x02, 0x01, 0x02, 0x04, 0x01,              // Request preset dump command
-        0xF7         // SysEx end
-    };
-    
-    pRemoteCharacteristic->writeValue(requestState, sizeof(requestState), false);
     lastSpmStateRequest = millis();
-    Serial.println("→ SPM: Requested preset state");
+    
+    // Route to appropriate device based on sync mode
+    PresetSyncMode syncMode = presetSyncMode[currentPreset];
+    
+    if (syncMode == SYNC_GP5) {
+        // GP-5 sync - use GP5 protocol
+        gp5_request_current_preset();
+        Serial.println("→ GP5: Requested preset state");
+    } else if (syncMode == SYNC_SPM) {
+        // SPM sync - use SPM SysEx
+        uint8_t requestState[] = {
+            0x80, 0x80,  // BLE MIDI timestamp header
+            0xF0,        // SysEx start
+            0x00, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00,  // Header
+            0x02, 0x01, 0x02, 0x04, 0x01,              // Request preset dump command
+            0xF7         // SysEx end
+        };
+        pRemoteCharacteristic->writeValue(requestState, sizeof(requestState), false);
+        Serial.println("→ SPM: Requested preset state");
+    }
 }
 
 void applySpmStateToButtons() {
@@ -1000,6 +1076,63 @@ void applySpmStateToButtons() {
     updateLeds();
     
     Serial.println("SPM Sync: State applied successfully");
+}
+
+// Apply GP5 effect states to button LED states
+void applyGp5StateToButtons() {
+    if (presetSyncMode[currentPreset] != SYNC_GP5) {
+        return;  // GP5 sync not enabled for this preset
+    }
+    
+    Serial.println("GP5 Sync: Applying state to buttons...");
+    
+    // GP5 CC number to effect index mapping:
+    // CC 0 = NR (index 0)
+    // CC 1 = PRE/FX1 (index 1)
+    // CC 2 = DST/DRV (index 2)
+    // CC 3 = AMP (index 3)
+    // CC 4 = CAB/IR (index 4)
+    // CC 5 = EQ (index 5)
+    // CC 6 = MOD/FX2 (index 6)
+    // CC 7 = DLY (index 7)
+    // CC 8 = RVB (index 8)
+    // CC 9 = NS (index 9)
+    
+    for (int btn = 0; btn < systemConfig.buttonCount; btn++) {
+        ButtonConfig& config = buttonConfigs[currentPreset][btn];
+        
+        // Skip buttons that don't have 2ND_PRESS (not toggle buttons)
+        if (!hasAction(config, ACTION_2ND_PRESS)) {
+            continue;
+        }
+        
+        // Find the PRESS action to check if it's a CC for an effect
+        ActionMessage* pressAction = findAction(config, ACTION_PRESS);
+        if (!pressAction || pressAction->type != CC) {
+            continue;
+        }
+        
+        // Check if this CC is in range 0-9 (GP5 effect toggles)
+        uint8_t ccNum = pressAction->data1;
+        if (ccNum <= 9) {
+            bool effectIsOn = effectStates[ccNum];
+            
+            // Set button state:
+            // If effect is ON, next press should turn it OFF (send 2ND_PRESS action)
+            // So isAlternate = true means "we're in the ON state, next press sends OFF"
+            config.isAlternate = effectIsOn;
+            ledToggleState[btn] = effectIsOn;
+            
+            Serial.printf("  BTN %d (%s): CC%d -> Effect[%d] = %s\n", 
+                btn, config.name, ccNum, ccNum, effectIsOn ? "ON" : "OFF");
+        }
+    }
+    
+    // Update LEDs to reflect new state
+    extern void updateLeds();  // From UI_Display.cpp
+    updateLeds();
+    
+    Serial.println("GP5 Sync: State applied successfully");
 }
 
 // ============================================
