@@ -1069,7 +1069,30 @@
         function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
         function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
 
-        function chgPreset(v) { presetData.currentPreset = parseInt(v); selectedBtn = 0; showSystem = false; render(); fetch('/preset?p=' + v).catch(e => { }); if (serialWriter) { serialWriter.write(new TextEncoder().encode('SET_PRESET:' + v + '\n')).catch(e => { }); } }
+        function chgPreset(v) {
+            presetData.currentPreset = parseInt(v);
+            selectedBtn = 0;
+            showSystem = false;
+            render();
+
+            // WiFi: fire and forget
+            fetch('/preset?p=' + v).catch(function (e) { });
+
+            // Serial: send if connected
+            if (serialWriter) {
+                serialWriter.write(new TextEncoder().encode('SET_PRESET:' + v + '\n')).catch(function (e) { });
+            }
+
+            // BLE: send if connected
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                console.log('BLE: Sending SET_PRESET:' + v);
+                bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + v + '\n'))
+                    .then(function () { console.log('BLE: SET_PRESET sent successfully'); })
+                    .catch(function (e) { console.error('BLE SET_PRESET error:', e); });
+            } else {
+                console.log('BLE: Not connected (bleRxChar:', !!bleRxChar, 'bleDevice:', !!bleDevice, 'connected:', bleDevice ? bleDevice.gatt.connected : false, ')');
+            }
+        }
         function chgPresetLedMode(v) { presetData.presets[presetData.currentPreset].presetLedMode = v; render(); }
         function selBtn(b) { selectedBtn = b; showSystem = false; render(); }
         function toggleSystem() { showSystem = !showSystem; render(); }
@@ -1108,7 +1131,7 @@
             presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
             render();
         }
-        function chgPreset(idx) { presetData.currentPreset = parseInt(idx); selectedBtn = 0; render(); sendPresetToDevice(idx); }
+        // chgPreset is now defined earlier in the file with full BLE support
         function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
         function chgPresetName(newName) { presetData.presets[presetData.currentPreset].name = newName; }
         function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
@@ -1206,11 +1229,22 @@
 
         // Send preset change to connected device
         async function sendPresetToDevice(presetIdx) {
-            if (!serialWriter) return; // Not connected
-            try {
-                await serialWriter.write(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
-            } catch (e) {
-                console.log('Preset sync error:', e);
+            // Serial
+            if (serialWriter) {
+                try {
+                    await serialWriter.write(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                } catch (e) {
+                    console.log('Serial preset sync error:', e);
+                }
+            }
+            // BLE
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                    console.log('BLE: Preset ' + presetIdx + ' sent');
+                } catch (e) {
+                    console.log('BLE preset sync error:', e);
+                }
             }
         }
 

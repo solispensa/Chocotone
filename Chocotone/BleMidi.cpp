@@ -1038,10 +1038,16 @@ void sendBleConfigResponse(const String& response) {
     }
 }
 
+
 // External declarations for config functions (from WebInterface.cpp)
 extern String buildFullConfigJson();
 extern bool processConfigChunk(const String& chunk, int chunkNum);
 extern void finalizeConfigUpload();
+
+// External declarations for preset/UI functions (from Globals.cpp and UI_Display.cpp)
+extern int currentPreset;
+extern void displayOLED();
+extern void updateLeds();
 
 // Static variables for chunked config upload (browser -> device)
 static String bleConfigUploadBuffer = "";
@@ -1144,6 +1150,19 @@ void processBleConfigCommand(const String& cmd) {
         }
         bleConfigUploadBuffer = "";
         bleConfigChunkCount = 0;
+    }
+    else if (cmd.startsWith("SET_PRESET:")) {
+        // Change active preset from editor
+        int preset = cmd.substring(11).toInt();
+        if (preset >= 0 && preset < 4) {
+            currentPreset = preset;
+            displayOLED();
+            updateLeds();
+            sendBleSingleResponse("OK:PRESET_SET");
+            Serial.printf("BLE Config: Preset changed to %d\n", preset);
+        } else {
+            sendBleSingleResponse("ERROR:Invalid preset");
+        }
     }
     else if (cmd == "PING") {
         sendBleSingleResponse("PONG");
