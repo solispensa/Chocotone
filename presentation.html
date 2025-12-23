@@ -1844,6 +1844,10 @@
                     <strong>⏱️ Encoder Hold:</strong> Menu |
                     <strong>🖱️↕️ Encoder Scroll:</strong> Navigate
                 </span>
+                <br><br>
+                <button id="btn-ble-connect" class="btn-primary" onclick="BLEMIDI.connect()">
+                    <span class="status-dot" id="ble-status-dot"></span> Connect BLE MIDI
+                </button>
             </p>
 
             <div class="controller-wrapper">
@@ -2088,12 +2092,173 @@
                     <button onclick="copyConfig()" style="width:100%; margin-top:10px; cursor:pointer;">📋 Copy
                         Config</button>
                     <div id="copy-msg">Copied!</div>
+                    <button onclick="document.getElementById('sl-import-input').click()"
+                        style="width:100%; margin-top:10px; cursor:pointer;">📂 Load Config</button>
+                    <input type="file" id="sl-import-input" style="display: none;" onchange="importConfig(this)">
                 </div>
             </div>
     </section>
 
     <!-- LOGIC -->
     <script>
+        // --- BLE MIDI LOGIC ---
+        const BLEMIDI = {
+            device: null,
+            server: null,
+            characteristic: null,
+            isConnected: false,
+
+            // Standard BLE MIDI Service & Characteristic UUIDs
+            SERVICE_UUID: "03b80e5a-ede8-4b33-a751-6ce34ec4c700",
+            CHARACTERISTIC_UUID: "7772e5db-3868-4112-a1a9-f2669d106bf3",
+
+            async connect() {
+                if (this.isConnected) {
+                    this.disconnect();
+                    return;
+                }
+
+                try {
+                    console.log('Requesting Bluetooth Device...');
+                    this.device = await navigator.bluetooth.requestDevice({
+                        filters: [{ services: [this.SERVICE_UUID] }]
+                    });
+
+                    this.device.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
+
+                    console.log('Connecting to GATT Server...');
+                    this.server = await this.device.gatt.connect();
+
+                    console.log('Getting Service...');
+                    const service = await this.server.getPrimaryService(this.SERVICE_UUID);
+
+                    console.log('Getting Characteristic...');
+                    this.characteristic = await service.getCharacteristic(this.CHARACTERISTIC_UUID);
+
+                    // IMPORTANT: Enable Notifications to establish full MIDI link
+                    // Many devices (like iOS or specific pedals) require this to "accept" the connection
+                    console.log('Starting Notifications...');
+                    await this.characteristic.startNotifications();
+                    this.characteristic.addEventListener('characteristicvaluechanged', (event) => {
+                        // Handle incoming MIDI if needed
+                        console.log('Incoming MIDI:', event.target.value);
+                    });
+
+                    this.isConnected = true;
+                    this.updateUI();
+                    console.log('BLE MIDI Connected & Active');
+
+                } catch (error) {
+                    console.log('Argh! ' + error);
+                    alert('Connection failed: ' + error);
+                }
+            },
+
+            disconnect() {
+                if (this.device && this.device.gatt.connected) {
+                    this.device.gatt.disconnect();
+                }
+            },
+
+            onDisconnected() {
+                console.log('Device disconnected');
+                this.isConnected = false;
+                this.device = null;
+                this.server = null;
+                this.characteristic = null;
+                this.updateUI();
+            },
+
+            updateUI() {
+                const btn = document.getElementById('btn-ble-connect');
+                const dot = document.getElementById('ble-status-dot');
+                if (this.isConnected) {
+                    btn.innerHTML = '<span class="status-dot connected" id="ble-status-dot"></span> Disconnect BLE';
+                    btn.style.background = 'linear-gradient(135deg, #cc2c2c, #880000)';
+                } else {
+                    btn.innerHTML = '<span class="status-dot" id="ble-status-dot"></span> Connect BLE MIDI';
+                    btn.style.background = ''; // reset to default class style
+                }
+            },
+
+            // Queue for serializing GATT writes
+            _msgQueue: [],
+            _isSending: false,
+
+            sendPacket(midiData) {
+                if (!this.isConnected || !this.characteristic) {
+                    console.warn('BLE Not Connected');
+                    return;
+                }
+
+                // Add to queue
+                this._msgQueue.push(midiData);
+                // Sanity check: prevent infinite queue
+                if (this._msgQueue.length > 20) {
+                    console.warn('BLE Queue full, dropping old packets');
+                    this._msgQueue.shift();
+                }
+
+                this._processQueue();
+            },
+
+            async _processQueue() {
+                if (this._isSending || this._msgQueue.length === 0) return;
+
+                this._isSending = true;
+
+                try {
+                    while (this._msgQueue.length > 0) {
+                        const midiData = this._msgQueue.shift();
+
+                        // BLE MIDI Packet: Header (0x80) + Timestamp (0x80) + Data
+                        const packet = new Uint8Array([0x80, 0x80, ...midiData]);
+                        console.log(`[BLE SEND] ${Array.from(packet).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')} (Q: ${this._msgQueue.length})`);
+
+                        await this.characteristic.writeValueWithoutResponse(packet);
+
+                        // THOTTLE: Small delay to ensure stack clears and pedal processes
+                        await new Promise(r => setTimeout(r, 20));
+                    }
+                } catch (error) {
+                    console.error('BLE Write Error:', error);
+                    // Do NOT alert on single packet failure, it interrupts flow
+                    const oledStatus = document.querySelector('.oled-status');
+                    if (oledStatus) {
+                        oledStatus.textContent = "BLE BUSY";
+                        oledStatus.style.color = "orange";
+                    }
+                } finally {
+                    this._isSending = false;
+                    // Check if more arrived while processing
+                    if (this._msgQueue.length > 0) this._processQueue();
+                }
+            },
+
+            sendCC(channel, controller, value) {
+                // Status byte for CC: 0xB0 | (channel - 1)
+                const status = 0xB0 | ((channel - 1) & 0x0F);
+                this.sendPacket([status, controller & 0x7F, value & 0x7F]);
+            },
+
+            sendPC(channel, program) {
+                // Status for PC: 0xC0 | (channel - 1)
+                const status = 0xC0 | ((channel - 1) & 0x0F);
+                this.sendPacket([status, program & 0x7F]);
+            },
+
+            sendNoteOn(channel, note, velocity) {
+                const status = 0x90 | ((channel - 1) & 0x0F);
+                this.sendPacket([status, note & 0x7F, velocity & 0x7F]);
+            },
+
+            sendNoteOff(channel, note) {
+                // Note off or Note on with vel 0
+                const status = 0x80 | ((channel - 1) & 0x0F);
+                this.sendPacket([status, note & 0x7F, 0]);
+            }
+        };
+
         // --- EDITOR LOGIC ---
         const wrapper = document.querySelector('.controller-wrapper');
 
@@ -2107,61 +2272,114 @@
         const PRESET_LED_NORMAL = 'NORMAL';
         const PRESET_LED_SELECTION = 'SELECTION';
 
+        // Message Types
+        const CC = 'CC';
+        const PC = 'PC';
+        const NOTE = 'NOTE';
+        const TAP_TEMPO = 'TAP_TEMPO';
+
         const defaultPresets = [
             {
                 name: "STOMP",
                 ledMode: PRESET_LED_NORMAL,
                 buttons: [
-                    { name: "NR", color: [0xFF, 0xFF, 0xFF], ledMode: LED_TOGGLE },
-                    { name: "FX1", color: [0x3F, 0x67, 0xFF], ledMode: LED_TOGGLE },
-                    { name: "DRV", color: [0xFC, 0x2C, 0x00], ledMode: LED_TOGGLE },
-                    { name: "TAP", color: [0xFF, 0xFF, 0xFF], ledMode: LED_MOMENTARY },
-                    { name: "EQ", color: [0x0A, 0xF5, 0x00], ledMode: LED_TOGGLE },
-                    { name: "FX2", color: [0x11, 0xF3, 0xFF], ledMode: LED_TOGGLE },
-                    { name: "DLY", color: [0x33, 0x2A, 0xFF], ledMode: LED_TOGGLE },
-                    { name: "RVB", color: [0x84, 0x00, 0xF7], ledMode: LED_TOGGLE }
+                    {
+                        name: "NR", color: [0xFF, 0xFF, 0xFF], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 43, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 43, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "FX1", color: [0x3F, 0x67, 0xFF], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 44, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 44, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "DRV", color: [0xFC, 0x2C, 0x00], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 45, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 45, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "TAP", color: [0xFF, 0xFF, 0xFF], ledMode: LED_MOMENTARY,
+                        messages: [
+                            { action: 'PRESS', type: TAP_TEMPO, ch: 1, val1: 0, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "EQ", color: [0x0A, 0xF5, 0x00], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 48, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 48, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "FX2", color: [0x11, 0xF3, 0xFF], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 49, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 49, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "DLY", color: [0x33, 0x2A, 0xFF], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 50, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 50, val2: 0 }
+                        ]
+                    },
+                    {
+                        name: "RVB", color: [0x84, 0x00, 0xF7], ledMode: LED_TOGGLE,
+                        messages: [
+                            { action: 'PRESS', type: CC, ch: 1, val1: 51, val2: 127 },
+                            { action: '2ND_PRESS', type: CC, ch: 1, val1: 51, val2: 0 }
+                        ]
+                    }
                 ]
             },
             {
                 name: "BANKS 1-8",
                 ledMode: PRESET_LED_SELECTION,
                 buttons: [
-                    { name: "B1", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B2", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B3", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B4", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B5", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
-                    { name: "B6", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
-                    { name: "B7", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
-                    { name: "B8", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION }
+                    { name: "B1", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 1 }] },
+                    { name: "B2", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 2 }] },
+                    { name: "B3", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 3 }] },
+                    { name: "B4", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 4 }] },
+                    { name: "B5", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 5 }] },
+                    { name: "B6", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 6 }] },
+                    { name: "B7", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 7 }] },
+                    { name: "B8", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 8 }] }
                 ]
             },
             {
                 name: "BANKS 9-16",
                 ledMode: PRESET_LED_SELECTION,
                 buttons: [
-                    { name: "B9", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B10", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B11", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B12", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B13", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B14", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B15", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
-                    { name: "B16", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION }
+                    { name: "B9", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 9 }] },
+                    { name: "B10", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 10 }] },
+                    { name: "B11", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 11 }] },
+                    { name: "B12", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 12 }] },
+                    { name: "B13", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 13 }] },
+                    { name: "B14", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 14 }] },
+                    { name: "B15", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 15 }] },
+                    { name: "B16", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 16 }] }
                 ]
             },
             {
                 name: "Note",
                 ledMode: PRESET_LED_SELECTION,
                 buttons: [
-                    { name: "1st", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "2nd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "3rd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "4th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "5th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "6th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "7th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
-                    { name: "8up", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY }
+                    { name: "1st", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 40 }] },
+                    { name: "2nd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 41 }] },
+                    { name: "3rd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 42 }] },
+                    { name: "4th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 43 }] },
+                    { name: "5th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 44 }] },
+                    { name: "6th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 45 }] },
+                    { name: "7th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 46 }] },
+                    { name: "8up", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY, messages: [{ action: 'PRESS', type: CC, ch: 1, val1: 1, val2: 47 }] }
                 ]
             }
         ];
@@ -2239,34 +2457,59 @@
         // ==========================================
         // BUTTON CLICK HANDLING
         // ==========================================
-        function handleButtonClick(btnIndex) {
-            const preset = defaultPresets[currentPreset];
-            const btn = preset.buttons[btnIndex];
-            if (!btn) return;
+        // handleButtonClick REMOVED (Duplicate logic)
+        // Active logic: handleButtonMouseDown (bottom of file)
 
-            if (btn.ledMode === LED_TOGGLE) {
-                // Toggle state
-                ledToggleState[btnIndex] = !ledToggleState[btnIndex];
-            } else if (btn.ledMode === LED_SELECTION) {
-                // Selection mode - only this one lit
-                selectionState = btnIndex;
-            } else if (btn.ledMode === LED_MOMENTARY) {
-                // Momentary - handled by mousedown/mouseup
+        let oledRevertTimer = null; // Store timer globally
+
+        // Helper to deduplicate sending logic
+        function sendMidiMessage(msg) {
+            if (msg) {
+                // Normalize keys (support val1/val2 AND data1/data2)
+                const v1 = (msg.val1 !== undefined) ? msg.val1 : msg.data1;
+                const v2 = (msg.val2 !== undefined) ? msg.val2 : msg.data2;
+
+                // Human readable debug
+                const typeStr = (msg.type === CC) ? 'CC' : (msg.type === PC) ? 'PC' : (msg.type === TAP_TEMPO) ? 'TAP' : 'UNKNOWN';
+
+                // VISUAL FEEDBACK ON OLED
+                const oledStatus = document.querySelector('.oled-status');
+                if (oledStatus) {
+                    oledStatus.textContent = `${typeStr} #${msg.ch} : ${v1}/${v2}`;
+                    oledStatus.style.color = '#00ff00';
+
+                    // Clear existing timer to prevent premature reset
+                    if (oledRevertTimer) clearTimeout(oledRevertTimer);
+
+                    // Revert after 1s
+                    oledRevertTimer = setTimeout(() => {
+                        // Use global presets if available or clear
+                        if (oledStatus) {
+                            oledStatus.textContent = "READY";
+                            oledStatus.style.color = '';
+                        }
+                    }, 1000);
+                }
+
+                console.log(`%c[MIDI COMMAND] ${typeStr} | Ch: ${msg.ch} | Val1: ${v1} | Val2: ${v2}`, 'color: #00ff00; font-weight: bold;');
+
+                if (!BLEMIDI.isConnected) {
+                    console.warn('%c[BLE] Device not connected. Command not sent.', 'color: orange;');
+                    if (oledStatus) oledStatus.style.color = 'orange';
+                }
+
+                if (msg.type === CC) {
+                    BLEMIDI.sendCC(msg.ch, v1, v2);
+                } else if (msg.type === PC) {
+                    BLEMIDI.sendPC(msg.ch, v2 || v1); // PC often uses data1
+                } else if (msg.type === TAP_TEMPO) {
+                    // Start: handled in logic. Stop: maybe logic?
+                }
             }
-
-            updateLeds();
-            updateOLED();
         }
 
-        function handleButtonDown(btnIndex) {
-            const preset = defaultPresets[currentPreset];
-            const btn = preset.buttons[btnIndex];
-            if (!btn) return;
+        // handleButtonDown REMOVED (Duplicate logic)
 
-            if (btn.ledMode === LED_MOMENTARY) {
-                setLedColor(btnIndex, true);
-            }
-        }
 
         function handleButtonUp(btnIndex) {
             const preset = defaultPresets[currentPreset];
@@ -2275,6 +2518,17 @@
 
             if (btn.ledMode === LED_MOMENTARY) {
                 setLedColor(btnIndex, false);
+
+                // Send Release Message if strictly momentary and needed?
+                // Usually for Momentary CC switches: Press=127, Release=0
+                // Our data structure for Note preset has PRESS defined.
+                // Does it have RELEASE? Not explicitly in our simplified array.
+                // But for momentary behavior, we usually want Note Off or CC 0.
+
+                const pressMsg = btn.messages?.find(m => m.action === 'PRESS');
+                if (pressMsg && pressMsg.type === CC) {
+                    BLEMIDI.sendCC(pressMsg.ch, pressMsg.val1, 0); // Send 0 on release
+                }
             }
         }
 
@@ -2408,6 +2662,9 @@
         document.addEventListener('DOMContentLoaded', function () {
             updateStyle('led', 'led-strip');
             updateStyle('screen', 'screen-amoled');
+            // Init Screen Color state
+            state.screenColor = document.getElementById('col-screen').value;
+            applyScreenColor(state.screenColor);
         });
 
         function updateColor(target, color) {
@@ -2438,6 +2695,7 @@
                 // Store screen color for persistence
                 state.screenColor = color;
                 applyScreenColor(color);
+                render();
             }
         }
 
@@ -2847,27 +3105,88 @@
             }
         }
 
+        // ==========================================
+        // IMPORT CONFIGURATION
+        // ==========================================
+        function importConfig(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    console.log("Importing Config:", config);
+
+                    // 1. Update System Settings (Button Count usually)
+                    if (config.system && config.system.buttonCount) {
+                        const count = config.system.buttonCount;
+                        document.getElementById('sl-btn-count').value = count;
+                        document.getElementById('val-btn-count').textContent = count;
+                        updateButtonCount(count);
+                    }
+
+                    // 2. Update Presets
+                    if (config.presets && Array.isArray(config.presets)) {
+                        config.presets.forEach((impPreset, idx) => {
+                            if (idx < presets.length) {
+                                const intPreset = presets[idx];
+                                intPreset.name = impPreset.name;
+                                intPreset.ledMode = impPreset.ledMode;
+
+                                if (impPreset.buttons && Array.isArray(impPreset.buttons)) {
+                                    impPreset.buttons.forEach((impBtn, bIdx) => {
+                                        if (bIdx < intPreset.buttons.length) {
+                                            const intBtn = intPreset.buttons[bIdx];
+                                            intBtn.n = impBtn.name;
+                                            if (Array.isArray(impBtn.color)) intBtn.rgb = impBtn.color;
+                                            intBtn.ledMode = impBtn.ledMode;
+
+                                            // Robust Message Logic
+                                            if (impBtn.messages && Array.isArray(impBtn.messages)) {
+                                                intBtn.messages = impBtn.messages;
+                                            }
+
+                                            intBtn.isAlternate = (impBtn.ledMode === 'toggle');
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                        alert("Configuration Loaded!");
+                        updateLeds();
+                        render();
+                    }
+                } catch (err) {
+                    console.error("Import Error:", err);
+                    alert("Error loading config: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
         function copyConfig() {
-            let css = '/* FINAL LAYOUT CONFIG */';
-            for (const [v, [id, unit]] of Object.entries(inputMap)) {
-                let val = document.getElementById(id).value;
-                css += `\n${v}: ${val}${unit};`;
-            }
-
-            // Add component styles comments
-            css += '\n\n/* COMPONENT SELECTIONS */';
-            css += '\n/* Button: ' + document.getElementById('sel-btn-fmt').value + ' */';
-            css += '\n/* LED: ' + document.getElementById('sel-led-fmt').value + ' */';
-            css += '\n/* Encoder: ' + document.getElementById('sel-enc-model').value + ' */';
-            css += '\n/* Screw: ' + document.getElementById('sel-screw-model').value + ' */';
-            css += '\n/* Screen: ' + document.getElementById('sel-screen-model').value + ' */';
-
-            navigator.clipboard.writeText(css).then(() => {
+            const configText = JSON.stringify({
+                system: { buttonCount: parseInt(document.getElementById('sl-btn-count').value) },
+                presets: presets.map(p => ({
+                    name: p.name,
+                    ledMode: p.ledMode,
+                    buttons: p.buttons.map(b => ({
+                        name: b.n,
+                        color: b.rgb,
+                        ledMode: b.ledMode,
+                        messages: b.messages
+                    }))
+                }))
+            }, null, 2);
+            navigator.clipboard.writeText(configText).then(() => {
                 const msg = document.getElementById('copy-msg');
-                msg.style.display = 'block';
-                setTimeout(() => msg.style.display = 'none', 2000);
+                msg.style.opacity = 1;
+                setTimeout(() => msg.style.opacity = 0, 2000);
             });
         }
+
 
         // --- VIRTUAL CONTROLLER LOGIC ---
         const oledContent = document.getElementById('oled-content');
@@ -2887,56 +3206,56 @@
             {
                 name: 'STOMP',
                 buttons: [
-                    { n: 'NR', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', isAlternate: true },  // Button 1
-                    { n: 'FX1', rgb: [0x3F, 0x67, 0xFF], type: 'CC', isAlternate: true },  // Button 2
-                    { n: 'DRV', rgb: [0xFC, 0x2C, 0x00], type: 'CC', isAlternate: true },  // Button 3
-                    { n: 'TAP', rgb: [0xFF, 0xFF, 0xFF], type: 'TAP_TEMPO' },              // Button 4
-                    { n: 'EQ', rgb: [0x0A, 0xF5, 0x00], type: 'CC', isAlternate: true },  // Button 5
-                    { n: 'FX2', rgb: [0x11, 0xF3, 0xFF], type: 'CC', isAlternate: true },  // Button 6
-                    { n: 'DLY', rgb: [0x33, 0x2A, 0xFF], type: 'CC', isAlternate: true },  // Button 7
-                    { n: 'RVB', rgb: [0x84, 0x00, 0xF7], type: 'CC', isAlternate: true }   // Button 8
+                    { n: 'NR', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 43, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 43, val2: 0 }] },
+                    { n: 'FX1', rgb: [0x3F, 0x67, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 44, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 44, val2: 0 }] },
+                    { n: 'DRV', rgb: [0xFC, 0x2C, 0x00], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 45, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 45, val2: 0 }] },
+                    { n: 'TAP', rgb: [0xFF, 0xFF, 0xFF], type: 'TAP_TEMPO', messages: [{ action: 'PRESS', type: 'TAP_TEMPO', ch: 1, val1: 0, val2: 0 }] },
+                    { n: 'EQ', rgb: [0x0A, 0xF5, 0x00], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 48, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 48, val2: 0 }] },
+                    { n: 'FX2', rgb: [0x11, 0xF3, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 49, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 49, val2: 0 }] },
+                    { n: 'DLY', rgb: [0x33, 0x2A, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 50, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 50, val2: 0 }] },
+                    { n: 'RVB', rgb: [0x84, 0x00, 0xF7], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 51, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 51, val2: 0 }] }
                 ]
             },
             // Preset 1: BANKS 1-8
             {
                 name: 'BANKS 1-8',
                 buttons: [
-                    { n: 'B1', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
-                    { n: 'B2', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
-                    { n: 'B3', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
-                    { n: 'B4', rgb: [0xFF, 0xFF, 0xFF], type: 'CC' },
-                    { n: 'B5', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
-                    { n: 'B6', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
-                    { n: 'B7', rgb: [0x0A, 0xF5, 0x00], type: 'CC' },
-                    { n: 'B8', rgb: [0x0A, 0xF5, 0x00], type: 'CC' }
+                    { n: 'B1', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 1 }] },
+                    { n: 'B2', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 2 }] },
+                    { n: 'B3', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 3 }] },
+                    { n: 'B4', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 4 }] },
+                    { n: 'B5', rgb: [0x0A, 0xF5, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 5 }] },
+                    { n: 'B6', rgb: [0x0A, 0xF5, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 6 }] },
+                    { n: 'B7', rgb: [0x0A, 0xF5, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 7 }] },
+                    { n: 'B8', rgb: [0x0A, 0xF5, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 8 }] }
                 ]
             },
             // Preset 2: BANKS 9-16
             {
                 name: 'BANKS 9-16',
                 buttons: [
-                    { n: 'B9', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
-                    { n: 'B10', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
-                    { n: 'B11', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
-                    { n: 'B12', rgb: [0x11, 0xF3, 0xFF], type: 'CC' },
-                    { n: 'B13', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
-                    { n: 'B14', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
-                    { n: 'B15', rgb: [0xAA, 0x00, 0xFF], type: 'CC' },
-                    { n: 'B16', rgb: [0xAA, 0x00, 0xFF], type: 'CC' }
+                    { n: 'B9', rgb: [0x11, 0xF3, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 9 }] },
+                    { n: 'B10', rgb: [0x11, 0xF3, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 10 }] },
+                    { n: 'B11', rgb: [0x11, 0xF3, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 11 }] },
+                    { n: 'B12', rgb: [0x11, 0xF3, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 12 }] },
+                    { n: 'B13', rgb: [0xAA, 0x00, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 13 }] },
+                    { n: 'B14', rgb: [0xAA, 0x00, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 14 }] },
+                    { n: 'B15', rgb: [0xAA, 0x00, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 15 }] },
+                    { n: 'B16', rgb: [0xAA, 0x00, 0xFF], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 16 }] }
                 ]
             },
             // Preset 3: Note
             {
                 name: 'Note',
                 buttons: [
-                    { n: '1st', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '2nd', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '3rd', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '4th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '5th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '6th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '7th', rgb: [0xFD, 0x00, 0x00], type: 'CC' },
-                    { n: '8up', rgb: [0xFD, 0x00, 0x00], type: 'CC' }
+                    { n: '1st', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 40 }] },
+                    { n: '2nd', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 41 }] },
+                    { n: '3rd', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 42 }] },
+                    { n: '4th', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 43 }] },
+                    { n: '5th', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 44 }] },
+                    { n: '6th', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 45 }] },
+                    { n: '7th', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 46 }] },
+                    { n: '8up', rgb: [0xFD, 0x00, 0x00], type: 'CC', messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 1, val2: 47 }] }
                 ]
             }
         ];
@@ -3141,6 +3460,21 @@
         }
 
         function renderPresetMode() {
+            // Check for Message Overlay (Button Name / Action)
+            if (state.buttonNameToShow && Date.now() < state.buttonNameDisplayUntil) {
+                const domColor = document.getElementById('col-screen') ? document.getElementById('col-screen').value : '#00FFFF';
+                const sc = state.screenColor || domColor;
+                oledContent.innerHTML = `
+                    <div style="display:flex; justify-content:center; align-items:center; height:100%; font-size:2em; font-weight:bold; text-align:center; color:${sc}; text-shadow:0 0 3px ${sc};">
+                        ${state.buttonNameToShow}
+                    </div>
+                `;
+                // Apply font settings creates standard scaling, which is fine.
+                applyFontSettings();
+                updateLeds();
+                return;
+            }
+
             const p = presets[state.presetIndex];
             const btnCount = p.buttons.length;
             const btmRowCount = Math.floor(btnCount / 2);
@@ -3334,56 +3668,70 @@
             const btnConfig = p.buttons[btnLogicIndex];
             if (!btnConfig) return;
 
-            // Check for TAP_TEMPO
-            if (btnConfig.type === 'TAP_TEMPO') {
-                handleTapTempo();
+            // 1. Check for TAP TEMPO Action
+            const pressAction = btnConfig.messages ? btnConfig.messages.find(m => m.action === 'PRESS') : null;
+            if (pressAction && pressAction.type === 'TAP_TEMPO') {
+                handleTapTempo(btnLogicIndex);
+                // Also set button name for tap?
+                state.buttonNameToShow = "TAP";
+                state.buttonNameDisplayUntil = Date.now() + 500;
+                render();
                 return;
             }
 
-            // Tap tempo mode special buttons
+            // 2. Handle Tap Mode Shortcuts (Lock, Prev, Next)
             if (state.inTapTempoMode) {
-                // Button 1 (index 0) = PREV pattern
-                if (btnLogicIndex === 0) {
-                    state.rhythmPattern = (state.rhythmPattern - 1 + 4) % 4;
-                    state.buttonNameToShow = rhythmNames[state.rhythmPattern];
-                    state.buttonNameDisplayUntil = Date.now() + 500;
-                    if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
-                    render();
-                    return;
-                }
-                // Button 5 (index 4) = NEXT pattern
-                if (btnLogicIndex === 4) {
-                    state.rhythmPattern = (state.rhythmPattern + 1) % 4;
-                    state.buttonNameToShow = rhythmNames[state.rhythmPattern];
-                    state.buttonNameDisplayUntil = Date.now() + 500;
-                    if (!state.tapModeLocked) state.tapModeTimeout = Date.now() + 3000;
-                    render();
-                    return;
-                }
-                // Button 8 (index 7) = LOCK toggle
-                if (btnLogicIndex === 7) {
+                // Check if this button is mapped to Lock (RVB / Button 8 / Index 7)
+                if (btnConfig.n === 'RVB' || btnLogicIndex === 7) {
+                    // Toggle Lock
                     state.tapModeLocked = !state.tapModeLocked;
-                    if (!state.tapModeLocked) {
-                        state.inTapTempoMode = false;
-                    } else {
-                        state.buttonNameToShow = 'LOCKED';
-                        state.buttonNameDisplayUntil = Date.now() + 500;
-                    }
+                    state.buttonNameToShow = state.tapModeLocked ? "LOCKED" : "UNLOCKED";
+                    state.buttonNameDisplayUntil = Date.now() + 1000;
+                    if (state.tapModeLocked) state.tapModeTimeout = 0;
+                    else state.tapModeTimeout = Date.now() + 3000;
+
                     render();
                     return;
                 }
             }
 
-            // Regular button press
-            if (btnConfig.isAlternate) {
-                // Toggle buttons (like STOMP effects) - stay on/off
-                state.buttonActive[btnLogicIndex] = !state.buttonActive[btnLogicIndex];
-            } else {
-                // Momentary buttons (like BANKS) - light up briefly
+            // 3. Normal / Toggle State Logic
+            if (btnConfig.ledMode === 'momentary') {
                 state.buttonActive[btnLogicIndex] = true;
+                updateLeds();
+            } else if (btnConfig.ledMode === 'selection') {
+                state.selectionState = btnLogicIndex;
+            } else {
+                // Toggle mode
+                if (btnConfig.isAlternate) {
+                    state.buttonActive[btnLogicIndex] = !state.buttonActive[btnLogicIndex];
+                } else {
+                    state.buttonActive[btnLogicIndex] = !state.buttonActive[btnLogicIndex];
+                }
             }
+
+            // 4. Send MIDI
+            if (btnConfig.messages) {
+                let msgToSend = null;
+                // Determine which message (PRESS vs 2ND_PRESS)
+                if (btnConfig.ledMode === 'toggle' || (btnConfig.isAlternate && btnConfig.ledMode !== 'momentary')) {
+                    const isGoingOn = state.buttonActive[btnLogicIndex];
+                    msgToSend = isGoingOn
+                        ? btnConfig.messages.find(m => m.action === 'PRESS')
+                        : btnConfig.messages.find(m => m.action === '2ND_PRESS');
+                } else {
+                    msgToSend = btnConfig.messages.find(m => m.action === 'PRESS');
+                }
+
+                if (msgToSend) {
+                    sendMidiMessage(msgToSend);
+                }
+            }
+
+            // 5. Visual Feedback (OLED Name)
             state.buttonNameToShow = btnConfig.n;
             state.buttonNameDisplayUntil = Date.now() + 500;
+
             render();
         }
 
@@ -3404,18 +3752,24 @@
         }
 
         // Initialize button handlers
+        // Initialize button handlers
         function initializeButtonHandlers() {
             document.querySelectorAll('.button-unit').forEach((unit) => {
                 const btnId = parseInt(unit.id.replace('btn-', ''));
                 // Convert button ID to logic index (1-based to 0-based)
                 const btnLogicIndex = btnId - 1;
 
+                // Check if listener is already attached? No easy way.
+                // Rely on updateButtonCount recreating the element, 
+                // OR ensure this is only called once per element creation.
+                // Since this function is called by updateButtonCount, we do NOT need to call it globally.
+
                 unit.addEventListener('mousedown', () => handleButtonMouseDown(btnLogicIndex));
                 unit.addEventListener('mouseup', () => handleButtonMouseUp(btnLogicIndex));
                 unit.addEventListener('mouseleave', () => handleButtonMouseUp(btnLogicIndex));
             });
         }
-        initializeButtonHandlers();
+        // initializeButtonHandlers(); // REMOVED: Caused double-binding because updateButtonCount also calls it.
 
         // Encoder handling
         let encTimer = null;
@@ -3698,7 +4052,7 @@
                 </div>
                 <div class="menu-item">
                     <div class="menu-title">Factory Reset</div>
-                    <p>Wipes all settings and presets back to default. <strong style="color:#ff6b6b;">Cannot be
+                    <p>Wipes all settings and presets back to default. <strong>Cannot be
                             undone!</strong></p>
                 </div>
             </div>
