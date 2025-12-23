@@ -383,6 +383,52 @@
             color: var(--brand-mint);
         }
 
+        /* Buttons & Badges */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--brand-lavender), var(--brand-lavender-dim));
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(140, 129, 223, 0.4);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Montserrat', sans-serif;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(140, 129, 223, 0.6);
+            background: linear-gradient(135deg, var(--brand-lavender), #9d94ea);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #444;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background: #4ade80;
+            box-shadow: 0 0 10px #4ade80, 0 0 20px #4ade80;
+        }
+
         /* VIRTUAL CONTROLLER OVERRIDES */
         /* Keep existing controller vars but adjust container max-width if needed */
         .controller-wrapper {
@@ -1700,6 +1746,7 @@
             <a href="#tap-tempo">Tap Tempo</a>
             <a href="#menu">Menu</a>
             <a href="#web">Config</a>
+            <a href="#virtual-controller">Virtual Chocotone</a>
         </div>
     </nav>
 
@@ -2095,6 +2142,16 @@
                     <button onclick="document.getElementById('sl-import-input').click()"
                         style="width:100%; margin-top:10px; cursor:pointer;">📂 Load Config</button>
                     <input type="file" id="sl-import-input" style="display: none;" onchange="importConfig(this)">
+                    <h4>SPM Sync</h4>
+                    <div class="editor-row">
+                        <span>Mode:</span>
+                        <select id="sel-sync-mode" onchange="setSyncMode(this.value)">
+                            <option value="NONE">None</option>
+                            <option value="SPM">SPM</option>
+                        </select>
+                    </div>
+                    <button id="btn-spm-request" onclick="requestSpmPresetState()"
+                        style="width:100%; margin-top:5px; cursor:pointer; display:none;">🔄 Request State</button>
                 </div>
             </div>
     </section>
@@ -2140,13 +2197,29 @@
                     console.log('Starting Notifications...');
                     await this.characteristic.startNotifications();
                     this.characteristic.addEventListener('characteristicvaluechanged', (event) => {
-                        // Handle incoming MIDI if needed
-                        console.log('Incoming MIDI:', event.target.value);
+                        // Handle incoming MIDI
+                        const data = new Uint8Array(event.target.value.buffer);
+                        console.log(`[BLE RECV] ${Array.from(data).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
+                        // Check for SysEx (starts with 80 80 F0) and route to SPM parser
+                        if (data.length > 3 && data[0] === 0x80 && data[1] === 0x80 && data[2] === 0xF0) {
+                            if (typeof parseSpmResponse === 'function') {
+                                parseSpmResponse(data);
+                            }
+                        }
                     });
 
                     this.isConnected = true;
                     this.updateUI();
                     console.log('BLE MIDI Connected & Active');
+
+                    // AUTO-DETECT POCKET MASTER
+                    if (this.device.name === "Pocket Master BLE") {
+                        console.log("Pocket Master BLE detected! Enabling SPM Sync automatically.");
+                        setSyncMode('SPM');
+                        // Update the dropdown UI to reflect the change
+                        const syncSel = document.getElementById('sel-sync-mode');
+                        if (syncSel) syncSel.value = 'SPM';
+                    }
 
                 } catch (error) {
                     console.log('Argh! ' + error);
@@ -2172,9 +2245,10 @@
             updateUI() {
                 const btn = document.getElementById('btn-ble-connect');
                 const dot = document.getElementById('ble-status-dot');
-                if (this.isConnected) {
-                    btn.innerHTML = '<span class="status-dot connected" id="ble-status-dot"></span> Disconnect BLE';
-                    btn.style.background = 'linear-gradient(135deg, #cc2c2c, #880000)';
+                if (this.isConnected && this.device) {
+                    btn.innerHTML = `<span class="status-dot connected" id="ble-status-dot"></span> Connected to ${this.device.name}`;
+                    // Remove red background override so it uses default .btn-primary style
+                    btn.style.background = '';
                 } else {
                     btn.innerHTML = '<span class="status-dot" id="ble-status-dot"></span> Connect BLE MIDI';
                     btn.style.background = ''; // reset to default class style
@@ -2256,8 +2330,239 @@
                 // Note off or Note on with vel 0
                 const status = 0x80 | ((channel - 1) & 0x0F);
                 this.sendPacket([status, note & 0x7F, 0]);
+            },
+
+            // SysEx for SPM communication
+            sendSysex(data) {
+                if (!this.isConnected || !this.characteristic) {
+                    console.warn('BLE Not Connected - Cannot send SysEx');
+                    return;
+                }
+                // SysEx is sent as-is with BLE MIDI header
+                const packet = new Uint8Array([0x80, 0x80, ...data]);
+                console.log(`[BLE SYSEX] ${Array.from(packet).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
+                this.characteristic.writeValueWithoutResponse(packet);
+            },
+
+            // Setup notification handler for incoming data
+            async setupNotifications() {
+                if (!this.characteristic) return;
+                try {
+                    await this.characteristic.startNotifications();
+                    this.characteristic.addEventListener('characteristicvaluechanged', (event) => {
+                        const data = new Uint8Array(event.target.value.buffer);
+                        console.log(`[BLE RECV] ${Array.from(data).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')}`);
+                        // Check for SysEx (starts with 80 80 F0)
+                        if (data.length > 3 && data[0] === 0x80 && data[1] === 0x80 && data[2] === 0xF0) {
+                            parseSpmResponse(data);
+                        }
+                    });
+                    console.log('BLE Notifications enabled');
+                } catch (error) {
+                    console.error('Failed to setup notifications:', error);
+                }
             }
         };
+
+        // ============================================
+        // SPM SYNC PROTOCOL FUNCTIONS
+        // ============================================
+
+        function requestSpmPresetState() {
+            if (!BLEMIDI.isConnected) {
+                console.warn('Cannot request SPM state - not connected');
+                return;
+            }
+
+            // Debounce - don't request too frequently
+            const now = Date.now();
+            if (now - state.lastSpmStateRequest < 500) {
+                return;
+            }
+            state.lastSpmStateRequest = now;
+
+            // SPM Request Preset Dump command
+            const request = [0xF0, 0x00, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02, 0x04, 0x01, 0xF7];
+            BLEMIDI.sendSysex(request);
+            console.log('SPM: Requested preset state');
+
+            const oledStatus = document.querySelector('.oled-status');
+            if (oledStatus) {
+                oledStatus.textContent = "SPM SYNC...";
+                oledStatus.style.color = "#ffff00";
+            }
+        }
+
+        function parseSpmResponse(data) {
+            // Only process if sync mode is SPM
+            if (state.syncMode !== 'SPM') return;
+
+            console.log(`SPM Response: ${data.length} bytes`);
+
+            // Check for 212+ byte preset dump with header 00 05 00 00
+            if (data.length >= 200 && data[5] === 0x00 && data[6] === 0x05 &&
+                data[7] === 0x00 && data[8] === 0x00) {
+
+                console.log('SPM: First preset dump packet - processing states...');
+
+                // Search for 0A 00 00 00 chain marker from END
+                let chainMarkerPos = -1;
+                for (let i = data.length - 5; i >= 10; i--) {
+                    if (data[i] === 0x0A && data[i + 1] === 0x00 && data[i + 2] === 0x00 && data[i + 3] === 0x00) {
+                        chainMarkerPos = i;
+                        break;
+                    }
+                }
+
+                if (chainMarkerPos >= 0) {
+                    // Calculate payload position (payload starts at raw[5])
+                    const chainByteIndex = chainMarkerPos - 5;
+                    console.log(`SPM: Chain marker at raw[${chainMarkerPos}], payload[${chainByteIndex}]`);
+
+                    // State bytes relative to chain marker
+                    const nibble1Pos = chainMarkerPos - 13 + 5 - 5; // Adjust for header
+                    const nibble2Pos = chainMarkerPos - 12 + 5 - 5;
+                    const globalStatePos = chainMarkerPos - 10 + 5 - 5;
+
+                    // Simplify: use raw positions matching C++ logic
+                    const n1Pos = chainByteIndex - 13 + 5;
+                    const n2Pos = chainByteIndex - 12 + 5;
+                    const gsPos = chainByteIndex - 10 + 5;
+
+                    if (n1Pos >= 5 && gsPos < data.length) {
+                        const nibble1Byte = data[n1Pos];
+                        const nibble2Byte = data[n2Pos];
+                        const globalStateByte = data[gsPos];
+
+                        console.log(`SPM: Raw values - nibble1=0x${nibble1Byte.toString(16)} nibble2=0x${nibble2Byte.toString(16)} globalState=0x${globalStateByte.toString(16)}`);
+
+                        // Decode bitmask (low nibble of each byte)
+                        const lowNibble1 = nibble1Byte & 0x0F;
+                        const lowNibble2 = nibble2Byte & 0x0F;
+                        const mainBitmask = (lowNibble1 << 4) | lowNibble2;
+
+                        console.log(`SPM: Bitmask = 0x${mainBitmask.toString(16)} (${mainBitmask.toString(2).padStart(8, '0')})`);
+
+                        // RVB and Clone mode from globalStateByte
+                        const isRvbOn = (globalStateByte & 0x01) !== 0;
+                        const isCloneMode = (globalStateByte & 0x02) !== 0;
+
+                        // Decode effect states
+                        state.spmEffectStates[0] = (mainBitmask & (1 << 0)) !== 0;  // NR
+                        state.spmEffectStates[1] = (mainBitmask & (1 << 1)) !== 0;  // FX1
+                        state.spmEffectStates[2] = (mainBitmask & (1 << 2)) !== 0;  // DRV
+                        state.spmEffectStates[3] = (mainBitmask & (1 << 3)) !== 0;  // AMP
+                        state.spmEffectStates[4] = (mainBitmask & (1 << 4)) !== 0;  // IR
+                        state.spmEffectStates[5] = (mainBitmask & (1 << 5)) !== 0;  // EQ
+                        state.spmEffectStates[6] = (mainBitmask & (1 << 6)) !== 0;  // FX2
+                        state.spmEffectStates[7] = (mainBitmask & (1 << 7)) !== 0;  // DLY
+                        state.spmEffectStates[8] = isRvbOn;                          // RVB
+
+                        // If Clone mode, IR is always ON
+                        if (isCloneMode) {
+                            state.spmEffectStates[4] = true;
+                        }
+
+                        state.spmStateReceived = true;
+
+                        console.log('SPM State:', state.spmEffectStates.map((s, i) =>
+                            ['NR', 'FX1', 'DRV', 'AMP', 'IR', 'EQ', 'FX2', 'DLY', 'RVB'][i] + '=' + (s ? 'ON' : 'OFF')).join(' '));
+
+                        // Apply to buttons
+                        applySpmStateToButtons();
+                    }
+                }
+                return; // Processed preset dump
+            }
+
+            // Check for PRESET CHANGE notification (24 bytes with 06 01 02 04 03 pattern)
+            // Pattern: bytes[10-14] = 06 01 02 04 03
+            if (data.length >= 20 && data.length <= 30) {
+                if (data[10] === 0x06 && data[11] === 0x01 && data[12] === 0x02 &&
+                    data[13] === 0x04 && data[14] === 0x03) {
+                    const presetNum = data[16] || 0;
+                    console.log(`SPM: Preset changed on device! New preset: ${presetNum}`);
+
+                    const oledStatus = document.querySelector('.oled-status');
+                    if (oledStatus) {
+                        oledStatus.textContent = `SPM P${presetNum}`;
+                        oledStatus.style.color = "#ffff00";
+                    }
+
+                    // Auto-request fresh state after short delay
+                    setTimeout(() => {
+                        requestSpmPresetState();
+                    }, 100);
+                    return;
+                }
+            }
+        }
+
+        function applySpmStateToButtons() {
+            if (state.syncMode !== 'SPM') return;
+
+            console.log('SPM Sync: Applying state to buttons...');
+
+            const p = presets[state.presetIndex];
+
+            // CC number to effect index mapping (43-51 -> 0-8)
+            p.buttons.forEach((btn, idx) => {
+                // Only process toggle buttons (those with 2ND_PRESS action)
+                if (!btn.messages) return;
+                const has2ndPress = btn.messages.some(m => m.action === '2ND_PRESS');
+                if (!has2ndPress) return;
+
+                const pressAction = btn.messages.find(m => m.action === 'PRESS');
+                if (!pressAction || pressAction.type !== CC) return;
+
+                // Check if CC is in range 43-51
+                const ccNum = pressAction.val1 || pressAction.data1;
+                if (ccNum >= 43 && ccNum <= 51) {
+                    const effectIndex = ccNum - 43;
+                    const effectIsOn = state.spmEffectStates[effectIndex];
+
+                    // Update button state
+                    state.buttonActive[idx] = effectIsOn;
+                    btn.isAlternate = effectIsOn;
+
+                    console.log(`  BTN ${idx} (${btn.n}): CC${ccNum} -> Effect[${effectIndex}] = ${effectIsOn ? 'ON' : 'OFF'}`);
+                }
+            });
+
+            // Update LEDs and display
+            updateLeds();
+            render();
+
+            const oledStatus = document.querySelector('.oled-status');
+            if (oledStatus) {
+                oledStatus.textContent = "SPM SYNCED";
+                oledStatus.style.color = "#00ff00";
+                setTimeout(() => {
+                    if (oledStatus.textContent === "SPM SYNCED") {
+                        oledStatus.textContent = "";
+                        oledStatus.style.color = "";
+                    }
+                }, 2000);
+            }
+
+            console.log('SPM Sync: State applied successfully');
+        }
+
+        function setSyncMode(mode) {
+            state.syncMode = mode;
+            console.log('Sync Mode set to:', mode);
+
+            // Show/hide Request State button
+            const btn = document.getElementById('btn-spm-request');
+            if (btn) {
+                btn.style.display = mode === 'SPM' ? 'block' : 'none';
+            }
+
+            // If SPM and connected, request state immediately
+            if (mode === 'SPM' && BLEMIDI.isConnected) {
+                requestSpmPresetState();
+            }
+        }
 
         // --- EDITOR LOGIC ---
         const wrapper = document.querySelector('.controller-wrapper');
@@ -3308,7 +3613,13 @@
             lastTapBlinkTime: 0,
 
             // Last MIDI sent
-            lastSentMidi: ''
+            lastSentMidi: '',
+
+            // SYNC SPM State
+            syncMode: 'SPM', // 'NONE', 'SPM', 'GP5' - Default to SPM
+            spmEffectStates: [false, false, false, false, false, false, false, false, false], // NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB
+            spmStateReceived: false,
+            lastSpmStateRequest: 0
         };
 
         // ============================================
@@ -4066,14 +4377,15 @@
             <img src="images/chocotone_editor_1v2.png" alt="Web Editor"
                 style="max-width: 1200px; width:100%; border-radius:12px; margin-bottom: 2rem; border:1px solid #444;">
 
-            <h3 style="color:var(--accent); margin-bottom: 3rem;">Three Ways to Configure</h3>
+            <h3 style="color:var(--accent); margin-bottom: 3rem;">Four Ways to Configure</h3>
 
             <div class="controls-grid" style="text-align: left; max-width: 1200px; margin: 0 auto 3rem auto;">
                 <div class="control-card">
                     <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">🌐</div>
-                    <h3 class="text-accent">WiFi Editor</h3>
+                    <h3 class="text-accent">WiFi Loader</h3>
                     <p>Connect to WiFi AP <strong>CHOCOTONE</strong> (password:
-                        <code>12345678</code>), then open <code>192.168.4.1</code>
+                        <code>12345678</code>). Use this to <strong>Import/Export</strong> your full configuration as a
+                        <code>.json</code> file.
                     </p>
                 </div>
                 <div class="control-card">
@@ -4083,14 +4395,19 @@
                         WiFi needed!</p>
                 </div>
                 <div class="control-card">
-                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
-                    <h3 class="text-mint">Bluetooth</h3>
-                    <p>Pair via Web Bluetooth in Chrome for wireless configuration without
-                        WiFi.</p>
+                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">📡</div>
+                    <h3 class="text-mint">BT Serial</h3>
+                    <p>Connect via Bluetooth Serial (SPP) for a wireless connection identical to USB Serial.</p>
+                </div>
+                <div class="control-card">
+                    <div class="control-icon" style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+                    <h3 class="text-accent">BLE Config</h3>
+                    <p>Lightweight configuration via Web Bluetooth (BLE). Perfect for quick adjustments on mobile.</p>
                 </div>
             </div>
 
-            <p style="color: #888; font-size: 0.9rem;">Use the Web App Editor (<code>offline_editor_v2.html</code>) for
+            <p style="color: #888; font-size: 0.9rem;">Use the Web App Editor (<code>chocotone_midi_editor.html</code>)
+                for
                 full access to all configuration options including JSON import/export.</p>
         </div>
     </section>
