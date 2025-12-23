@@ -1002,7 +1002,7 @@ void requestPresetState() {
     lastSpmStateRequest = millis();
     
     // Route to appropriate device based on sync mode
-    PresetSyncMode syncMode = presetSyncMode[currentPreset];
+    SyncMode syncMode = presetSyncMode[currentPreset];
     
     if (syncMode == SYNC_GP5) {
         // GP-5 sync - use GP5 protocol
