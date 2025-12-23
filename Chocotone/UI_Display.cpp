@@ -130,23 +130,40 @@ void displayOLED() {
     display.setCursor((SCREEN_WIDTH - w) / 2, 32);
     display.print(bpmStr);
 
-    // BLE Connection Status + WiFi/BT Status
+    // Status Line - Show connection mode and state
     display.setCursor(0, 44);
-    display.printf("BLE:%c", clientConnected?'Y':'N');
-    display.setCursor(80, 44);
-    if (isBtSerialOn) {
-        display.print("BT:Y");
+    if (isWifiOn) {
+        // WiFi config mode - centered message
+        const char* wifiMsg = "- WIFI CONFIG -";
+        display.getTextBounds(wifiMsg, 0, 0, &x1, &y1, &w, &h);
+        display.setCursor((SCREEN_WIDTH - w) / 2, 44);
+        display.print(wifiMsg);
+    } else if (isBtSerialOn) {
+        // BT Serial config mode - centered message
+        const char* btMsg = "- BL Serial -";
+        display.getTextBounds(btMsg, 0, 0, &x1, &y1, &w, &h);
+        display.setCursor((SCREEN_WIDTH - w) / 2, 44);
+        display.print(btMsg);
     } else {
-        display.printf("WiFi:%c", isWifiOn?'Y':'N');
+        // Normal mode - show BLE state
+        const char* bleMode = bleConfigMode ? "EDIT" :
+                              systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
+                              systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER" : "DUAL";
+        const char* bleState = clientConnected ? "Synced" : "Scanning";
+        
+        // For SERVER mode or EDIT mode, don't show scanning
+        if (systemConfig.bleMode == BLE_SERVER_ONLY || bleConfigMode) {
+            bleState = clientConnected ? "Synced" : "";
+        }
+        
+        char statusLine[32];
+        if (strlen(bleState) > 0) {
+            snprintf(statusLine, sizeof(statusLine), "BLE:%s %s", bleMode, bleState);
+        } else {
+            snprintf(statusLine, sizeof(statusLine), "BLE:%s", bleMode);
+        }
+        display.print(statusLine);
     }
-
-    // Last Sent
-    lastSentMidiString[19] = '\0';
-    display.getTextBounds(lastSentMidiString, 0, 0, &x1, &y1, &w, &h);
-    int16_t lastNoteX = SCREEN_WIDTH - w - 2;
-    if (lastNoteX < SCREEN_WIDTH / 2) lastNoteX = SCREEN_WIDTH / 2;
-    display.setCursor(lastNoteX, 44);
-    display.print(lastSentMidiString);
 
     display.display();
 }
@@ -224,11 +241,11 @@ void displayMenu() {
     display.setTextColor(SSD1306_WHITE);
 
     // Build menu items dynamically to show status
-    char menuItems[14][25];  // Array to hold menu item strings (increased for BT Serial)
+    char menuItems[13][25];  // Array to hold menu item strings
     strncpy(menuItems[0], "Save and Exit", 25);
     strncpy(menuItems[1], "Exit without Saving", 25);
-    snprintf(menuItems[2], 25, "Wi-Fi Editor (%s)", isWifiOn ? "ON" : "OFF");
-    snprintf(menuItems[3], 25, "BT Serial (%s)", isBtSerialOn ? "ON" : "OFF");
+    snprintf(menuItems[2], 25, "Wi-Fi LoadCfg (%s)", isWifiOn ? "ON" : "OFF");
+    snprintf(menuItems[3], 25, "BT SerialEdit (%s)", isBtSerialOn ? "ON" : "OFF");
     strncpy(menuItems[4], "LED Bright (On)", 25);
     strncpy(menuItems[5], "LED Bright (Dim)", 25);
     strncpy(menuItems[6], "Pad Debounce", 25);
@@ -237,19 +254,40 @@ void displayMenu() {
     strncpy(menuItems[9], "Factory Reset", 25);
     strncpy(menuItems[10], "Name Font Size", 25);
     snprintf(menuItems[11], 25, "Wifi %s at Boot", systemConfig.wifiOnAtBoot ? "ON" : "OFF");
-    // BLE Mode display
-    const char* bleModeStr = systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
+    // BLE Mode display - includes EDIT option for config mode
+    const char* bleModeStr = bleConfigMode ? "EDIT" :
+                             systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT" :
                              systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL" : "SERVER";
-    snprintf(menuItems[12], 25, "BLE: %s", bleModeStr);
-    // BLE Config Mode (pauses scanning for web editor)
-    snprintf(menuItems[13], 25, "BLE Config: %s", bleConfigMode ? "ON" : "OFF");
+    snprintf(menuItems[12], 25, "BLE Mode: %s", bleModeStr);
     
-    int numMenuItems = 14;
+    int numMenuItems = 13;
 
     display.setCursor(0, 0);
     display.printf("-- Menu CHOCOTONE --");
 
-    if (inSubMenu) {
+    if (factoryResetConfirm) {
+        // Factory Reset confirmation submenu
+        display.setCursor(0, 0);
+        display.printf("-- WARNING! --");
+        display.setCursor(0, 14);
+        display.print("Clear all settings?");
+        display.setCursor(0, 28);
+        display.print("This cannot be undone!");
+        
+        // Show Yes/No options
+        display.setCursor(10, 46);
+        if (editingValue == 0) {
+            display.print("> Yes, Reset");
+        } else {
+            display.print("  Yes, Reset");
+        }
+        display.setCursor(10, 56);
+        if (editingValue == 1) {
+            display.print("> No, Go Back");
+        } else {
+            display.print("  No, Go Back");
+        }
+    } else if (inSubMenu) {
         display.setCursor(10, 20);
         display.printf("Editing: %s", menuItems[menuSelection]);
         display.setTextSize(2);

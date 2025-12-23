@@ -386,21 +386,22 @@
         /* VIRTUAL CONTROLLER OVERRIDES */
         /* Keep existing controller vars but adjust container max-width if needed */
         .controller-wrapper {
+            position: relative;
             /* Existing controller styling follows... */
-            --chassis-ar: 51.5%;
-            --chassis-w: 400px;
+            --chassis-ar: 44.5%;
+            --chassis-w: 1080px;
             --chassis-rad: 40px;
-            --oled-w: 23%;
-            --oled-h: 25.5%;
+            --oled-w: 18%;
+            --oled-h: 22.5%;
             --oled-x: 74.5%;
             --oled-y: 50%;
-            --btn-y-top: 23.5%;
-            --btn-y-btm: 5%;
+            --btn-y-top: 21.5%;
+            --btn-y-btm: 6%;
             --btn-spacing: 25%;
             --btn-size: 9%;
             --enc-x: 7%;
             --enc-y: 50%;
-            --enc-size: 8%;
+            --enc-size: 7%;
         }
 
         .chassis {
@@ -409,10 +410,35 @@
             max-width: var(--chassis-w);
             margin: 0 auto;
             padding-bottom: var(--chassis-ar);
+            background: transparent;
+            overflow: visible;
+        }
+
+        .chassis-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: #1a1a1a;
             border-radius: var(--chassis-rad);
-            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px #333;
-            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #333;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .chassis-components {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .chassis-components>* {
+            pointer-events: auto;
         }
 
         /* Screws */
@@ -535,6 +561,12 @@
             border: 3px solid #333;
             z-index: -1;
             transition: border-color 0.1s, box-shadow 0.1s;
+            --led-color: #333;
+        }
+
+        .led-ring.led-on {
+            border-color: var(--led-color);
+            box-shadow: 0 0 15px var(--led-color), 0 0 30px var(--led-color);
         }
 
         /* Encoder */
@@ -641,14 +673,18 @@
         }
 
         .oled-status {
+            font-size: 1.2em;
+            text-align: center;
+            font-weight: bold;
+            color: #00FFFF;
+            margin-bottom: 4px;
+        }
+
+        .oled-labels {
             font-size: 0.7em;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            border-top: 1px solid #005555;
-            margin-top: 2px;
-            padding-top: 2px;
+            text-align: center;
             color: #00AAAA;
+            letter-spacing: 1px;
         }
 
         .oled-menu-header {
@@ -1812,69 +1848,72 @@
 
             <div class="controller-wrapper">
                 <div class="chassis">
-                    <div class="screw tl"></div>
-                    <div class="screw tr"></div>
-                    <div class="screw bl"></div>
-                    <div class="screw br"></div>
+                    <div class="chassis-bg"></div>
+                    <div class="chassis-components">
+                        <div class="screw tl"></div>
+                        <div class="screw tr"></div>
+                        <div class="screw bl"></div>
+                        <div class="screw br"></div>
 
-                    <!-- Top Row -->
-                    <div class="button-unit" id="btn-5" data-tooltip="Switch 5: Snapshot A">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-5"></div>
+                        <!-- Top Row -->
+                        <div class="button-unit" id="btn-5" data-tooltip="Switch 5: Snapshot A">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-5"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-6" data-tooltip="Switch 6: Snapshot B">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-6"></div>
+                        <div class="button-unit" id="btn-6" data-tooltip="Switch 6: Snapshot B">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-6"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-7" data-tooltip="Switch 7: Snapshot C">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-7"></div>
+                        <div class="button-unit" id="btn-7" data-tooltip="Switch 7: Snapshot C">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-7"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-8" data-tooltip="Switch 8: Tap Tempo">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-8"></div>
+                        <div class="button-unit" id="btn-8" data-tooltip="Switch 8: Tap Tempo">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-8"></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Bottom Row -->
-                    <div class="button-unit" id="btn-1" data-tooltip="Switch 1: Toggle Drive">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-1"></div>
+                        <!-- Bottom Row -->
+                        <div class="button-unit" id="btn-1" data-tooltip="Switch 1: Toggle Drive">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-1"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-2" data-tooltip="Switch 2: Toggle Mod">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-2"></div>
+                        <div class="button-unit" id="btn-2" data-tooltip="Switch 2: Toggle Mod">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-2"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-3" data-tooltip="Switch 3: Toggle Delay">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-3"></div>
+                        <div class="button-unit" id="btn-3" data-tooltip="Switch 3: Toggle Delay">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-3"></div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="button-unit" id="btn-4" data-tooltip="Switch 4: Toggle Reverb">
-                        <div class="footswitch">
-                            <div class="led-ring" id="led-4"></div>
+                        <div class="button-unit" id="btn-4" data-tooltip="Switch 4: Toggle Reverb">
+                            <div class="footswitch">
+                                <div class="led-ring" id="led-4"></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- OLED -->
-                    <div class="oled-frame">
-                        <div class="oled-glass">
-                            <div class="oled-pixel-grid" id="oled-content"></div>
+                        <!-- OLED -->
+                        <div class="oled-frame">
+                            <div class="oled-glass">
+                                <div class="oled-pixel-grid" id="oled-content"></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Encoder -->
-                    <div class="encoder-unit" id="encoder-knob" data-tooltip="Encoder: Click/Scroll/Hold">
-                        <div class="knob-cap"></div>
-                    </div>
+                        <!-- Encoder -->
+                        <div class="encoder-unit" id="encoder-knob" data-tooltip="Encoder: Click/Scroll/Hold">
+                            <div class="knob-cap"></div>
+                        </div>
 
-                    <!-- Tooltip -->
-                    <div id="v-tooltip" class="v-tooltip">Info</div>
+                        <!-- Tooltip -->
+                        <div id="v-tooltip" class="v-tooltip">Info</div>
+                    </div>
                 </div>
             </div>
             <!-- LAYOUT EDITOR UI (Moved Outside Wrapper) -->
@@ -1900,7 +1939,7 @@
                     <div class="editor-row"><span>LED Fmt:</span>
                         <select id="sel-led-fmt" onchange="updateStyle('led', this.value)">
                             <option value="led-ring">Ring</option>
-                            <option value="led-strip">Strip</option>
+                            <option value="led-strip" selected>Strip</option>
                             <option value="led-dot">Dot</option>
                             <option value="led-rect">Rect</option>
                             <option value="led-inside">Inside</option>
@@ -1936,7 +1975,7 @@
                             <option value="screen-tft">TFT</option>
                             <option value="screen-ips">IPS</option>
                             <option value="screen-lcd">LCD</option>
-                            <option value="screen-amoled">AMOLED</option>
+                            <option value="screen-amoled" selected>AMOLED</option>
                             <option value="screen-vfd">VFD</option>
                         </select>
                     </div>
@@ -1973,6 +2012,16 @@
                         <input type="range" id="sl-chamfer" min="5" max="30" step="1" value="15"
                             onchange="updateChamfer()" disabled><span class="slider-value" id="val-chamfer">15px</span>
                     </div>
+                    <div class="editor-row"><span>Slope Height:</span>
+                        <input type="checkbox" id="chk-slope" onchange="updateSlope()">
+                        <input type="range" id="sl-slope-y" min="10" max="400" step="5" value="40"
+                            onchange="updateSlope()" disabled><span class="slider-value" id="val-slope-y">40px</span>
+                    </div>
+                    <div class="editor-row"><span>Slope Angle:</span>
+                        <input type="range" id="sl-slope-angle" min="0" max="45" step="1" value="25"
+                            onchange="updateSlope()" disabled><span class="slider-value"
+                            id="val-slope-angle">25&deg;</span>
+                    </div>
                     <hr style="border-color:#444;">
 
                     <div class="editor-row"><span>Buttons #:</span> <input type="range" id="sl-btn-count" min="1"
@@ -1997,9 +2046,9 @@
                             step="0.5"><span class="slider-value" id="val-oled-w"></span></div>
                     <div class="editor-row"><span>Height:</span> <input type="range" id="sl-oled-h" min="10" max="60"
                             step="0.5"><span class="slider-value" id="val-oled-h"></span></div>
-                    <div class="editor-row"><span>Left X:</span> <input type="range" id="sl-oled-x" min="20" max="80"
+                    <div class="editor-row"><span>Left X:</span> <input type="range" id="sl-oled-x" min="0" max="100"
                             step="0.5"><span class="slider-value" id="val-oled-x"></span></div>
-                    <div class="editor-row"><span>Top Y:</span> <input type="range" id="sl-oled-y" min="20" max="80"
+                    <div class="editor-row"><span>Top Y:</span> <input type="range" id="sl-oled-y" min="0" max="80"
                             step="0.5"><span class="slider-value" id="val-oled-y"></span></div>
                     <h4>Text Sizes</h4>
                     <div class="editor-row"><span>Preset:</span> <input type="range" id="sl-font-preset" min="0.8"
@@ -2047,6 +2096,241 @@
     <script>
         // --- EDITOR LOGIC ---
         const wrapper = document.querySelector('.controller-wrapper');
+
+        // ==========================================
+        // PRESET DATA (Matches DefaultPresets.h)
+        // ==========================================
+        const LED_TOGGLE = 'toggle';
+        const LED_MOMENTARY = 'momentary';
+        const LED_SELECTION = 'selection';
+
+        const PRESET_LED_NORMAL = 'NORMAL';
+        const PRESET_LED_SELECTION = 'SELECTION';
+
+        const defaultPresets = [
+            {
+                name: "STOMP",
+                ledMode: PRESET_LED_NORMAL,
+                buttons: [
+                    { name: "NR", color: [0xFF, 0xFF, 0xFF], ledMode: LED_TOGGLE },
+                    { name: "FX1", color: [0x3F, 0x67, 0xFF], ledMode: LED_TOGGLE },
+                    { name: "DRV", color: [0xFC, 0x2C, 0x00], ledMode: LED_TOGGLE },
+                    { name: "TAP", color: [0xFF, 0xFF, 0xFF], ledMode: LED_MOMENTARY },
+                    { name: "EQ", color: [0x0A, 0xF5, 0x00], ledMode: LED_TOGGLE },
+                    { name: "FX2", color: [0x11, 0xF3, 0xFF], ledMode: LED_TOGGLE },
+                    { name: "DLY", color: [0x33, 0x2A, 0xFF], ledMode: LED_TOGGLE },
+                    { name: "RVB", color: [0x84, 0x00, 0xF7], ledMode: LED_TOGGLE }
+                ]
+            },
+            {
+                name: "BANKS 1-8",
+                ledMode: PRESET_LED_SELECTION,
+                buttons: [
+                    { name: "B1", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B2", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B3", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B4", color: [0xFF, 0xFF, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B5", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
+                    { name: "B6", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
+                    { name: "B7", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION },
+                    { name: "B8", color: [0x0A, 0xF5, 0x00], ledMode: LED_SELECTION }
+                ]
+            },
+            {
+                name: "BANKS 9-16",
+                ledMode: PRESET_LED_SELECTION,
+                buttons: [
+                    { name: "B9", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B10", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B11", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B12", color: [0x11, 0xF3, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B13", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B14", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B15", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION },
+                    { name: "B16", color: [0xAA, 0x00, 0xFF], ledMode: LED_SELECTION }
+                ]
+            },
+            {
+                name: "Note",
+                ledMode: PRESET_LED_SELECTION,
+                buttons: [
+                    { name: "1st", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "2nd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "3rd", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "4th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "5th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "6th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "7th", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY },
+                    { name: "8up", color: [0xFD, 0x00, 0x00], ledMode: LED_MOMENTARY }
+                ]
+            }
+        ];
+
+        // State tracking
+        let currentPreset = 0;
+        let ledToggleState = [false, false, false, false, false, false, false, false];
+        let selectionState = -1; // For SELECTION mode, which button is selected
+
+        // ==========================================
+        // OLED DISPLAY
+        // ==========================================
+        function updateOLED() {
+            const oled = document.getElementById('oled-content');
+            const preset = defaultPresets[currentPreset];
+            const buttonCount = parseInt(document.getElementById('sl-btn-count')?.value || 8);
+
+            // Build labels for visible buttons
+            const labels = preset.buttons.slice(0, Math.min(buttonCount, 8)).map(b => b.name);
+
+            // Pad or distribute labels evenly
+            const topLabels = labels.slice(Math.ceil(labels.length / 2)).reverse();
+            const btmLabels = labels.slice(0, Math.ceil(labels.length / 2));
+
+            oled.innerHTML = `
+                <div class="oled-status">${preset.name}</div>
+                <div class="oled-labels">${topLabels.join(' ')}</div>
+                <div class="oled-labels">${btmLabels.join(' ')}</div>
+            `;
+        }
+
+        // ==========================================
+        // LED CONTROL
+        // ==========================================
+        function rgbToHex(r, g, b) {
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function setLedColor(btnIndex, on) {
+            const led = document.getElementById(`led-${btnIndex + 1}`);
+            if (!led) return;
+
+            const preset = defaultPresets[currentPreset];
+            const btn = preset.buttons[btnIndex];
+            if (!btn) return;
+
+            if (on) {
+                const [r, g, b] = btn.color;
+                led.style.setProperty('--led-color', rgbToHex(r, g, b));
+                led.classList.add('led-on');
+            } else {
+                led.style.removeProperty('--led-color');
+                led.classList.remove('led-on');
+            }
+        }
+
+        function updateLeds() {
+            const preset = defaultPresets[currentPreset];
+            const buttonCount = parseInt(document.getElementById('sl-btn-count')?.value || 8);
+
+            for (let i = 0; i < buttonCount; i++) {
+                const btn = preset.buttons[i];
+                if (!btn) continue;
+
+                if (preset.ledMode === PRESET_LED_SELECTION) {
+                    // In selection mode, only selected button is lit
+                    setLedColor(i, selectionState === i);
+                } else {
+                    // Normal mode - show toggle state
+                    setLedColor(i, ledToggleState[i]);
+                }
+            }
+        }
+
+        // ==========================================
+        // BUTTON CLICK HANDLING
+        // ==========================================
+        function handleButtonClick(btnIndex) {
+            const preset = defaultPresets[currentPreset];
+            const btn = preset.buttons[btnIndex];
+            if (!btn) return;
+
+            if (btn.ledMode === LED_TOGGLE) {
+                // Toggle state
+                ledToggleState[btnIndex] = !ledToggleState[btnIndex];
+            } else if (btn.ledMode === LED_SELECTION) {
+                // Selection mode - only this one lit
+                selectionState = btnIndex;
+            } else if (btn.ledMode === LED_MOMENTARY) {
+                // Momentary - handled by mousedown/mouseup
+            }
+
+            updateLeds();
+            updateOLED();
+        }
+
+        function handleButtonDown(btnIndex) {
+            const preset = defaultPresets[currentPreset];
+            const btn = preset.buttons[btnIndex];
+            if (!btn) return;
+
+            if (btn.ledMode === LED_MOMENTARY) {
+                setLedColor(btnIndex, true);
+            }
+        }
+
+        function handleButtonUp(btnIndex) {
+            const preset = defaultPresets[currentPreset];
+            const btn = preset.buttons[btnIndex];
+            if (!btn) return;
+
+            if (btn.ledMode === LED_MOMENTARY) {
+                setLedColor(btnIndex, false);
+            }
+        }
+
+        // ==========================================
+        // ENCODER NAVIGATION
+        // ==========================================
+        function changePreset(delta) {
+            currentPreset = (currentPreset + delta + 4) % 4;
+            // Reset states when changing presets
+            ledToggleState = [false, false, false, false, false, false, false, false];
+            selectionState = -1;
+            updateOLED();
+            updateLeds();
+        }
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        function initializeButtonHandlers() {
+            document.querySelectorAll('.button-unit').forEach(btn => {
+                const match = btn.id.match(/btn-(\d+)/);
+                if (!match) return;
+                const idx = parseInt(match[1]) - 1;
+
+                btn.addEventListener('click', () => handleButtonClick(idx));
+                btn.addEventListener('mousedown', () => handleButtonDown(idx));
+                btn.addEventListener('mouseup', () => handleButtonUp(idx));
+                btn.addEventListener('mouseleave', () => handleButtonUp(idx));
+            });
+
+            // Encoder click = change preset, scroll = navigate + rotate
+            const encoder = document.getElementById('encoder-knob');
+            const knobCap = encoder?.querySelector('.knob-cap');
+            let encoderRotation = 0;
+            if (encoder && knobCap) {
+                // Add smooth transition for rotation
+                knobCap.style.transition = 'transform 0.1s ease-out';
+
+                encoder.addEventListener('click', () => changePreset(1));
+                encoder.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 1 : -1;
+                    changePreset(delta);
+                    // Rotate encoder knob visually
+                    encoderRotation += delta * 15; // 15 degrees per scroll step
+                    knobCap.style.transform = `rotate(${encoderRotation}deg)`;
+                });
+            }
+
+            // Initialize display
+            updateOLED();
+            updateLeds();
+        }
+
+        // Call after DOM is ready
+        document.addEventListener('DOMContentLoaded', initializeButtonHandlers);
 
         function toggleEditor() {
             document.getElementById('layout-editor').classList.toggle('minimized');
@@ -2120,16 +2404,32 @@
             }
         }
 
+        // Apply default component styles on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            updateStyle('led', 'led-strip');
+            updateStyle('screen', 'screen-amoled');
+        });
+
         function updateColor(target, color) {
-            const chassis = document.querySelector('.chassis');
+            const chassisBg = document.querySelector('.chassis-bg');
             const screws = document.querySelectorAll('.screw');
             const encoder = document.querySelector('.knob-cap');
 
             if (target === 'faceplate') {
-                chassis.style.background = color;
+                chassisBg.style.background = color;
             } else if (target === 'contour') {
                 const thickness = document.getElementById('sl-contour-th')?.value || 2;
-                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${thickness}px ${color}`;
+                chassisBg.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 ${thickness}px ${color}`;
+                const frontFace = document.querySelector('.front-face');
+                if (frontFace) {
+                    frontFace.style.boxShadow = `
+                        inset ${thickness}px 0 0 0 ${color}, 
+                        inset -${thickness}px 0 0 0 ${color}, 
+                        inset 0 -${thickness}px 0 0 ${color},
+                        inset 0 -3px 8px rgba(255,255,255,0.05),
+                        0 20px 40px rgba(0,0,0,0.6)
+                    `;
+                }
             } else if (target === 'screw') {
                 screws.forEach(s => s.style.background = color);
             } else if (target === 'encoder') {
@@ -2154,12 +2454,22 @@
         }
 
         function updateSizeControl(target, value) {
-            const chassis = document.querySelector('.chassis');
+            const chassisBg = document.querySelector('.chassis-bg');
             const screws = document.querySelectorAll('.screw');
             const contourColor = document.getElementById('col-contour')?.value || '#333333';
 
             if (target === 'contour') {
-                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${value}px ${contourColor}`;
+                chassisBg.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 ${value}px ${contourColor}`;
+                const frontFace = document.querySelector('.front-face');
+                if (frontFace) {
+                    frontFace.style.boxShadow = `
+                        inset ${value}px 0 0 0 ${contourColor}, 
+                        inset -${value}px 0 0 0 ${contourColor}, 
+                        inset 0 -${value}px 0 0 ${contourColor},
+                        inset 0 -3px 8px rgba(255,255,255,0.05),
+                        0 20px 40px rgba(0,0,0,0.6)
+                    `;
+                }
                 document.getElementById('val-contour-th').textContent = value + 'px';
             } else if (target === 'screw') {
                 screws.forEach(s => {
@@ -2173,7 +2483,7 @@
         function updateChamfer() {
             const checkbox = document.getElementById('chk-chamfer');
             const slider = document.getElementById('sl-chamfer');
-            const chassis = document.querySelector('.chassis');
+            const chassisBg = document.querySelector('.chassis-bg');
             const contourColor = document.getElementById('col-contour')?.value || '#333333';
             const contourThickness = document.getElementById('sl-contour-th')?.value || 2;
 
@@ -2182,17 +2492,80 @@
             if (checkbox.checked) {
                 const size = parseInt(slider.value);
                 // Bevel effect using inset shadows to simulate chamfered/beveled edges
-                chassis.style.boxShadow = `
+                chassisBg.style.boxShadow = `
                     inset 0 0 50px rgba(0,0,0,0.8),
                     inset ${size}px ${size}px ${size * 2}px rgba(80,80,80,0.4),
                     inset -${size}px -${size}px ${size * 2}px rgba(0,0,0,0.6),
                     0 20px 50px rgba(0,0,0,0.5),
-                    0 0 0 ${contourThickness}px ${contourColor}
+                    inset 0 0 0 ${contourThickness}px ${contourColor}
                 `;
                 document.getElementById('val-chamfer').textContent = size + 'px';
             } else {
                 // Reset to default shadow
-                chassis.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), 0 0 0 ${contourThickness}px ${contourColor}`;
+                chassisBg.style.boxShadow = `inset 0 0 50px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 ${contourThickness}px ${contourColor}`;
+            }
+        }
+
+        function updateSlope() {
+            const checkbox = document.getElementById('chk-slope');
+            const sliderHeight = document.getElementById('sl-slope-y');
+            const sliderAngle = document.getElementById('sl-slope-angle');
+            const chassisBg = document.querySelector('.chassis-bg');
+            const wrapper = document.querySelector('.controller-wrapper');
+
+            const isEnabled = checkbox.checked;
+            sliderHeight.disabled = !isEnabled;
+            if (sliderAngle) sliderAngle.disabled = !isEnabled;
+
+            document.getElementById('val-slope-y').textContent = sliderHeight.value + 'px';
+            if (sliderAngle) document.getElementById('val-slope-angle').textContent = sliderAngle.value + '°';
+
+            // Remove existing front face if any
+            const existingFace = wrapper.querySelector('.front-face');
+            if (existingFace) existingFace.remove();
+
+            // Reset clip-path on background plate
+            chassisBg.style.clipPath = 'none';
+
+            if (isEnabled) {
+                const faceHeight = parseInt(sliderHeight.value);
+                const angle = parseInt(sliderAngle ? sliderAngle.value : 0);
+                const contourColor = document.getElementById('col-contour')?.value || '#333333';
+                const contourThickness = parseInt(document.getElementById('sl-contour-th')?.value || 2);
+                const cornerRadius = parseInt(document.getElementById('sl-rad')?.value || 40);
+
+                // Crop only the background plate
+                chassisBg.style.clipPath = `inset(0 0 ${faceHeight}px 0)`;
+
+                // Create the front face element
+                const frontFace = document.createElement('div');
+                frontFace.className = 'front-face';
+
+                frontFace.style.cssText = `
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    width: 100%;
+                    max-width: var(--chassis-w);
+                    margin: 0 auto;
+                    height: ${faceHeight + 2}px;
+                    background: linear-gradient(to bottom, #1a1a1a 0%, #0d0d0d 60%, #050505 100%);
+                    border-radius: 0 0 ${cornerRadius}px ${cornerRadius}px;
+                    /* Use multiple inset shadows for sides and bottom to avoid a 'line' at the join */
+                    box-shadow: 
+                        inset ${contourThickness}px 0 0 0 ${contourColor}, 
+                        inset -${contourThickness}px 0 0 0 ${contourColor}, 
+                        inset 0 -${contourThickness}px 0 0 ${contourColor},
+                        inset 0 -3px 8px rgba(255,255,255,0.05),
+                        0 20px 40px rgba(0,0,0,0.6);
+                    z-index: 2;
+                    pointer-events: none;
+                    transform-origin: top center;
+                    transform: perspective(1000px) rotateX(-${angle}deg);
+                `;
+
+                wrapper.appendChild(frontFace);
             }
         }
 
@@ -2200,12 +2573,13 @@
             count = parseInt(count);
             document.getElementById('val-btn-count').textContent = count;
 
+            const components = document.querySelector('.chassis-components');
             const chassis = document.querySelector('.chassis');
             const wrapper = document.querySelector('.controller-wrapper');
             const rowCount = parseInt(document.getElementById('sel-btn-rows')?.value || 2);
 
-            // Remove all existing button units
-            chassis.querySelectorAll('.button-unit').forEach(b => b.remove());
+            // Remove all existing button units from the components layer
+            components.querySelectorAll('.button-unit').forEach(b => b.remove());
 
             // Distribute buttons across rows (bottom to top)
             // For 1 row: all buttons on bottom
@@ -2327,7 +2701,7 @@
                 for (let i = 0; i < numInRow; i++) {
                     const mult = mults[i];
                     const btn = createButtonElement(btnNum, rowPos, mult, btnStyle, ledStyle);
-                    chassis.appendChild(btn);
+                    components.appendChild(btn);
                     btnNum++;
                 }
             }
@@ -2352,13 +2726,14 @@
             // The multiplier positions: -1.5, -0.5, 0.5, 1.5 for 4 buttons
             // The CSS class .button-unit already has transform: translate(-50%, -50%) for centering
             // Need to set bottom:auto for top/mid rows to override static CSS rules for #btn-1 through #btn-4
+            // Need to set top:auto for bottom row to override static CSS rules for #btn-5 through #btn-8
             if (row === 'top') {
                 btn.style.cssText = `position:absolute; top:var(--btn-y-top); bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             } else if (row === 'mid') {
                 // top:50% + the existing translate(-50%,-50%) centers the button vertically
                 btn.style.cssText = `position:absolute; top:50%; bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             } else {
-                btn.style.cssText = `position:absolute; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+                btn.style.cssText = `position:absolute; top:auto; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
             }
 
             const footswitch = document.createElement('div');
@@ -3045,6 +3420,12 @@
         // Encoder handling
         let encTimer = null;
         let isLongPress = false;
+        let encoderRotation = 0;
+        // Setup smooth rotation transition for encoder
+        const knobCap = document.querySelector('.knob-cap');
+        if (knobCap) {
+            knobCap.style.transition = 'transform 0.1s ease-out';
+        }
 
         encoder.addEventListener('mousedown', () => {
             isLongPress = false;
@@ -3116,6 +3497,13 @@
                 state.presetIndex = (state.presetIndex + delta + presets.length) % presets.length;
                 state.buttonActive = [false, false, false, false, false, false, false, false];
             }
+
+            // Rotate encoder knob visually
+            encoderRotation += delta * 15; // 15 degrees per scroll step
+            if (knobCap) {
+                knobCap.style.transform = `rotate(${encoderRotation}deg)`;
+            }
+
             render();
         });
 

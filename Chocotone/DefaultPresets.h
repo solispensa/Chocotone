@@ -70,6 +70,20 @@ void addCombo(ButtonConfig& btn, int8_t partner, MidiCommandType type) {
     }
 }
 
+// Helper: Add LONG_PRESS action to existing button
+void addLongPress(ButtonConfig& btn, MidiCommandType type, uint16_t holdMs) {
+    if (btn.messageCount < MAX_ACTIONS_PER_BUTTON) {
+        ActionMessage& msg = btn.messages[btn.messageCount++];
+        msg.action = ACTION_LONG_PRESS;
+        msg.type = type;
+        msg.channel = 1;
+        msg.data1 = 0;
+        msg.data2 = 0;
+        msg.longPress.holdMs = holdMs;
+        msg.label[0] = '\0';
+    }
+}
+
 void loadFactoryPresets() {
     // ========================================
     // INITIALIZE ALL BUTTONS
@@ -121,20 +135,19 @@ void loadFactoryPresets() {
         btn.messages[0].tapTempo.tapLock = 7;
     }
     
-    // EQ (CC#48) - Green + COMBO: Btn4+Btn0 = PRESET_DOWN
+    // EQ (CC#48) - Green + LONG_PRESS: PRESET_DOWN
     setToggleCC(buttonConfigs[0][4], "EQ", 48, 0x0A, 0xF5, 0x00);
-    addCombo(buttonConfigs[0][4], 0, PRESET_DOWN);
+    addLongPress(buttonConfigs[0][4], PRESET_DOWN, 700);
     
-    // FX2 (CC#49) - Cyan + COMBO: Btn5+Btn6 = WIFI_TOGGLE
+    // FX2 (CC#49) - Cyan
     setToggleCC(buttonConfigs[0][5], "FX2", 49, 0x11, 0xF3, 0xFF);
-    addCombo(buttonConfigs[0][5], 6, WIFI_TOGGLE);
     
     // DLY (CC#50) - Blue
     setToggleCC(buttonConfigs[0][6], "DLY", 50, 0x33, 0x2A, 0xFF);
     
-    // RVB (CC#51) - Purple + COMBO: Btn7+Btn3 = PRESET_UP
+    // RVB (CC#51) - Purple + LONG_PRESS: PRESET_UP
     setToggleCC(buttonConfigs[0][7], "RVB", 51, 0x84, 0x00, 0xF7);
-    addCombo(buttonConfigs[0][7], 3, PRESET_UP);
+    addLongPress(buttonConfigs[0][7], PRESET_UP, 700);
     
     // ========================================
     // PRESET 1: "BANKS 1-8" - Program Selection
@@ -148,12 +161,11 @@ void loadFactoryPresets() {
     setProgramSelect(buttonConfigs[1][2], "B3", 3, 0xFF, 0xFF, 0xFF);
     setProgramSelect(buttonConfigs[1][3], "B4", 4, 0xFF, 0xFF, 0xFF);
     setProgramSelect(buttonConfigs[1][4], "B5", 5, 0x0A, 0xF5, 0x00);
-    addCombo(buttonConfigs[1][4], 0, PRESET_DOWN);
+    addLongPress(buttonConfigs[1][4], PRESET_DOWN, 700);
     setProgramSelect(buttonConfigs[1][5], "B6", 6, 0x0A, 0xF5, 0x00);
-    addCombo(buttonConfigs[1][5], 6, WIFI_TOGGLE);
     setProgramSelect(buttonConfigs[1][6], "B7", 7, 0x0A, 0xF5, 0x00);
     setProgramSelect(buttonConfigs[1][7], "B8", 8, 0x0A, 0xF5, 0x00);
-    addCombo(buttonConfigs[1][7], 3, PRESET_UP);
+    addLongPress(buttonConfigs[1][7], PRESET_UP, 700);
     
     // ========================================
     // PRESET 2: "BANKS 9-16" - Program Selection
@@ -167,41 +179,30 @@ void loadFactoryPresets() {
     setProgramSelect(buttonConfigs[2][2], "B11", 11, 0x11, 0xF3, 0xFF);
     setProgramSelect(buttonConfigs[2][3], "B12", 12, 0x11, 0xF3, 0xFF);
     setProgramSelect(buttonConfigs[2][4], "B13", 13, 0xAA, 0x00, 0xFF);
-    addCombo(buttonConfigs[2][4], 0, PRESET_DOWN);
+    addLongPress(buttonConfigs[2][4], PRESET_DOWN, 700);
     setProgramSelect(buttonConfigs[2][5], "B14", 14, 0xAA, 0x00, 0xFF);
-    addCombo(buttonConfigs[2][5], 6, WIFI_TOGGLE);
     setProgramSelect(buttonConfigs[2][6], "B15", 15, 0xAA, 0x00, 0xFF);
     setProgramSelect(buttonConfigs[2][7], "B16", 16, 0xAA, 0x00, 0xFF);
-    addCombo(buttonConfigs[2][7], 3, PRESET_UP);
+    addLongPress(buttonConfigs[2][7], PRESET_UP, 700);
     
     // ========================================
-    // PRESET 3: "Note" - MIDI Notes C Major Scale
+    // PRESET 3: "Note" - CC values for song selection
     // ========================================
     strncpy(presetNames[3], "Note", 20);
     presetNames[3][20] = '\0';
     presetLedModes[3] = PRESET_LED_SELECTION;
     
-    const uint8_t notes[] = {60, 62, 64, 65, 67, 69, 71, 72}; // C4 to C5
+    // Note preset uses CC#1 with values 40-47 for song selection
+    const uint8_t noteValues[] = {40, 41, 42, 43, 44, 45, 46, 47};
     const char* noteNames[] = {"1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8up"};
     
     for (int i = 0; i < 8; i++) {
-        ButtonConfig& btn = buttonConfigs[3][i];
-        strncpy(btn.name, noteNames[i], 20); btn.name[20] = '\0';
-        btn.ledMode = LED_MOMENTARY;
-        btn.messageCount = 1;
-        
-        btn.messages[0].action = ACTION_PRESS;
-        btn.messages[0].type = NOTE_MOMENTARY;
-        btn.messages[0].channel = 1;
-        btn.messages[0].data1 = notes[i];
-        btn.messages[0].data2 = 127;
-        btn.messages[0].rgb[0] = 0xFD; btn.messages[0].rgb[1] = 0x00; btn.messages[0].rgb[2] = 0x00;
+        setProgramSelect(buttonConfigs[3][i], noteNames[i], noteValues[i], 0xFD, 0x00, 0x00);
     }
     
-    // Add combos to Note preset
-    addCombo(buttonConfigs[3][4], 0, PRESET_DOWN);
-    addCombo(buttonConfigs[3][5], 6, WIFI_TOGGLE);
-    addCombo(buttonConfigs[3][7], 3, PRESET_UP);
+    // Add LONG_PRESS for preset navigation
+    addLongPress(buttonConfigs[3][4], PRESET_DOWN, 700);
+    addLongPress(buttonConfigs[3][7], PRESET_UP, 700);
     
     // ========================================
     // GLOBAL SPECIAL ACTIONS

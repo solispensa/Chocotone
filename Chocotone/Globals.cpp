@@ -81,6 +81,7 @@ unsigned long encoderButtonPressStartTime = 0;
 int currentMode = 0;
 int menuSelection = 0;
 bool inSubMenu = false;
+bool factoryResetConfirm = false;  // Factory Reset confirmation submenu
 int editingValue = 0;
 
 // Button state tracking

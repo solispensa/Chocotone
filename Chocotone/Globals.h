@@ -234,6 +234,7 @@ extern unsigned long encoderButtonPressStartTime;
 extern int currentMode;
 extern int menuSelection;
 extern bool inSubMenu;
+extern bool factoryResetConfirm;
 extern int editingValue;
 
 // Button state tracking

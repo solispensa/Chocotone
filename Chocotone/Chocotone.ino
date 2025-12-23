@@ -11,7 +11,7 @@
 void setup() {
     Serial.begin(115200);
     delay(100);  // Power stabilization delay
-    Serial.println("\n\n=== ESP32 MIDI Controller Starting ===");
+    Serial.println("\n\n=== CHOCOTONE MIDI Controller Firmware Starting ===");
 
     // Initialize Display with slower I2C for stability
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);

@@ -99,7 +99,7 @@ void executeActionMessage(const ActionMessage& msg) {
             
         case SYSEX:
             // Send raw SysEx bytes
-            if (msg.sysex.length > 0 && msg.sysex.length <= 16) {
+            if (msg.sysex.length > 0 && msg.sysex.length <= 48) {
                 sendSysex(msg.sysex.data, msg.sysex.length);
                 Serial.printf("SYSEX sent (%d bytes)\n", msg.sysex.length);
             }
@@ -510,11 +510,23 @@ void loop_presetMode() {
             
             if (longPress) {
                 unsigned long elapsed = millis() - buttonHoldStartTime[i];
-                uint16_t threshold = longPress->longPress.holdMs > 0 ? longPress->longPress.holdMs : 500;
+                uint16_t threshold = longPress->longPress.holdMs > 0 ? longPress->longPress.holdMs : 700;
                 
                 if (elapsed >= threshold) {
-                    // Fire long press action
-                    strncpy(buttonNameToShow, "HOLD", 20);
+                    // Fire long press action - show label if available
+                    if (longPress->label[0] != '\0') {
+                        strncpy(buttonNameToShow, longPress->label, 20);
+                    } else {
+                        // Try to get a meaningful name from the command type
+                        switch (longPress->type) {
+                            case PRESET_UP: strncpy(buttonNameToShow, "PRESET+", 20); break;
+                            case PRESET_DOWN: strncpy(buttonNameToShow, "PRESET-", 20); break;
+                            case WIFI_TOGGLE: strncpy(buttonNameToShow, "WiFi", 20); break;
+                            case CLEAR_BLE_BONDS: strncpy(buttonNameToShow, "BLE CLR", 20); break;
+                            default: strncpy(buttonNameToShow, "HOLD", 20); break;
+                        }
+                    }
+                    buttonNameToShow[20] = '\0';
                     buttonNameDisplayUntil = millis() + 500;
                     safeDisplayOLED();
                     
@@ -537,9 +549,15 @@ void loop_menuMode() {
     if (newEncoderPosition == oldEncoderPosition) return;
 
     int change = (newEncoderPosition - oldEncoderPosition);
-    int numMenuItems = 14;  // Increased for BT Serial
+    int numMenuItems = 13;  // Menu items count
 
-    if (inSubMenu) {
+    if (factoryResetConfirm) {
+        // In Factory Reset confirmation - just toggle between Yes (0) and No (1)
+        if (change != 0) {
+            editingValue = (editingValue == 0) ? 1 : 0;
+        }
+        oldEncoderPosition = newEncoderPosition;
+    } else if (inSubMenu) {
         editingValue += change;
         oldEncoderPosition = newEncoderPosition;
         if (menuSelection == 4) editingValue = constrain(editingValue, 0, 255);  // LED Bright On
@@ -559,6 +577,21 @@ void loop_menuMode() {
 }
 
 void handleMenuSelection() {
+    // Handle Factory Reset confirmation first
+    if (factoryResetConfirm) {
+        if (editingValue == 0) {
+            // User selected "Yes, Reset"
+            systemPrefs.begin("midi_presets", false); systemPrefs.clear(); systemPrefs.end();
+            systemPrefs.begin("midi_system", false); systemPrefs.clear(); systemPrefs.end();
+            ESP.restart();
+        } else {
+            // User selected "No, Go Back"
+            factoryResetConfirm = false;
+            displayMenu();
+        }
+        return;
+    }
+    
     if (!inSubMenu) {
         switch (menuSelection) {
             case 0:  // Save and Exit
@@ -620,30 +653,37 @@ void handleMenuSelection() {
             case 6: inSubMenu = true; editingValue = buttonDebounce; break;
             case 7: clearBLEBonds(); currentMode = 0; break;
             case 8: ESP.restart(); break;
-            case 9: 
-               systemPrefs.begin("midi_presets", false); systemPrefs.clear(); systemPrefs.end();
-               systemPrefs.begin("midi_system", false); systemPrefs.clear(); systemPrefs.end();
-               ESP.restart(); 
-               break;
+            case 9:  // Factory Reset - show confirmation
+                if (!factoryResetConfirm) {
+                    factoryResetConfirm = true;  // Enter confirmation mode
+                    editingValue = 1;  // Default to "No, go back" (1 = No)
+                } else {
+                    // Already in confirmation, this shouldn't be reached normally
+                    factoryResetConfirm = false;
+                }
+                displayMenu();
+                break;
             case 10: inSubMenu = true; editingValue = buttonNameFontSize; break;
             case 11:  // WiFi at Boot
                 systemConfig.wifiOnAtBoot = !systemConfig.wifiOnAtBoot;
                 displayMenu();
                 break;
-            case 12:  // BLE Mode
-                if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
-                    systemConfig.bleMode = BLE_DUAL_MODE;
-                } else if (systemConfig.bleMode == BLE_DUAL_MODE) {
+            case 12:  // BLE Mode - cycles: CLIENT → SERVER → EDIT(config) → back to CLIENT
+                if (bleConfigMode) {
+                    // Currently in EDIT mode, go to CLIENT
+                    toggleBleConfigMode();  // Turn off config mode
+                    // Don't change bleMode or set bleModeChanged - just exiting EDIT
+                } else if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
                     systemConfig.bleMode = BLE_SERVER_ONLY;
+                    bleModeChanged = true;  // Actual mode change requires reboot
+                } else if (systemConfig.bleMode == BLE_SERVER_ONLY) {
+                    // Enter EDIT mode - no reboot required
+                    toggleBleConfigMode();  // Turn on config mode
                 } else {
+                    // DUAL mode or other, go to CLIENT
                     systemConfig.bleMode = BLE_CLIENT_ONLY;
+                    bleModeChanged = true;
                 }
-                bleModeChanged = true;
-                displayMenu();
-                break;
-            case 13:  // BLE Config Mode
-                // Toggle BLE Config Mode - pauses scanning for web editor
-                toggleBleConfigMode();
                 displayMenu();
                 break;
         }
