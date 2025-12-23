@@ -5070,12 +5070,7 @@
             if (pressAction && pressAction.type === 'TAP_TEMPO') {
                 handleTapTempo(btnLogicIndex);
 
-                // --- FIX: Send MIDI for Tap Tempo ---
-                // We must send the message explicitly here because we return early 
-                // to prevent standard toggle logic from interfering.
-                if (typeof sendMidiMessage === 'function') {
-                    sendMidiMessage(pressAction);
-                }
+                // MIDI is handled via SysEx in handleTapTempo, so we don't send generic CC here.
 
                 // Also set button name for tap
                 state.buttonNameToShow = "TAP";
