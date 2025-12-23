@@ -45,7 +45,7 @@ Chocotone works with any BLE MIDI device that accepts standard MIDI messages. Te
 You can configure **4 to 10 buttons** via the web editor. The layout automatically adjusts on the OLED display. I plan adding more buttons in the future.
 
 ### What ESP32 board should I use?
-Any ESP32 development board with BLE support works. The project was developed and tested with the ESP32-DevKitC.
+Any ESP32 development board with BLE support works. The project was developed and tested with the ESP32 NodeMCU32s.
 
 ### Do I need pull-up resistors?
 - Most GPIOs have internal pull-ups that work fine

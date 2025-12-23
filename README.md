@@ -8,6 +8,8 @@
 [![ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Arduino](https://img.shields.io/badge/Framework-Arduino-00979D.svg)](https://www.arduino.cc/)
 
+> 🎸 **Join our community!** Get help, share your build, and connect with other makers in our [Facebook Group](https://www.facebook.com/groups/1950814575859830/)
+
 ---
 
 ![Chocotone Slide](images/chocotone_slide.png)
@@ -69,7 +71,7 @@
 ### Core Components
 | Component | Specification | Notes |
 |-----------|---------------|-------|
-| Microcontroller | ESP32 (any variant with BLE) | Tested with ESP32-DevKitC |
+| Microcontroller | ESP32 (any variant with BLE) | Tested with ESP32 NodeMCU32s |
 | OLED Display | 128x64 I2C SSD1306 | 0.96" typical |
 | Rotary Encoder | Standard EC11 type | With push button |
 | NeoPixel LEDs | WS2812B strip/ring | Match button count (4-10) |
@@ -346,6 +348,7 @@ Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidel
 
 ## Support
 
+- **Facebook Group**: [Join our community](https://www.facebook.com/groups/1950814575859830/) for help, builds, and discussion
 - **Issues**: Please open a GitHub issue for bugs or feature requests
 - **Discussions**: Use GitHub Discussions for questions and ideas
 
