@@ -313,6 +313,27 @@ Archived versions (v7, v8) available in [archive/](archive/) for reference.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+### Commercial Use & Ecosystem Support
+
+You are free to use Chocotone for commercial purposes. We are proud to see this system power new products!
+
+However, Chocotone saves commercial developers hundreds of hours of R&D time. If your product generates revenue, we strongly encourage you to reinvest a portion of that success back into the project.
+
+Treating your donation as a maintenance cost ensures that the core system your product relies on remains bug-free, updated, and compatible with future hardware.
+
+> 👉 **Support the Project: Become a Commercial Sponsor!**
+> Sponsors help sustain the ecosystem and may be eligible for logo placement in our documentation.
+
+### Attribution Requirements
+
+To maintain a healthy open-source ecosystem, the following attribution is required for commercial products using this code:
+
+**Marketing & Documentation:** You must credit Chocotone in your manual, website, or repository.
+
+**Product Branding:** If you use the code without major architectural changes, please feature **"Powered by Chocotone Open MIDI Controller System"** on your product packaging or startup screen.
+
+**Why?** This signals quality and compatibility to your users, validates your device within the community, and helps the ecosystem grow.
+
 ## Contributing
 
 Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
