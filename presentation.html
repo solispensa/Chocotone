@@ -4433,6 +4433,17 @@
         // ==========================================
         // IMPORT CONFIGURATION
         // ==========================================
+
+        // Helper: Convert hex color string to RGB array
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            return [
+                parseInt(hex.substring(0, 2), 16),
+                parseInt(hex.substring(2, 4), 16),
+                parseInt(hex.substring(4, 6), 16)
+            ];
+        }
+
         function importConfig(input) {
             const file = input.files[0];
             if (!file) return;
@@ -4464,7 +4475,24 @@
                                         if (bIdx < intPreset.buttons.length) {
                                             const intBtn = intPreset.buttons[bIdx];
                                             intBtn.n = impBtn.name;
-                                            if (Array.isArray(impBtn.color)) intBtn.rgb = impBtn.color;
+
+                                            // Import color from various sources
+                                            let color = null;
+                                            // 1. Try impBtn.color (array format from firmware)
+                                            if (Array.isArray(impBtn.color)) {
+                                                color = impBtn.color;
+                                            }
+                                            // 2. Try messages[0].rgb (from editor export - hex string or array)
+                                            else if (impBtn.messages && impBtn.messages[0] && impBtn.messages[0].rgb) {
+                                                const msgRgb = impBtn.messages[0].rgb;
+                                                if (typeof msgRgb === 'string') {
+                                                    color = hexToRgb(msgRgb);
+                                                } else if (Array.isArray(msgRgb)) {
+                                                    color = msgRgb;
+                                                }
+                                            }
+                                            if (color) intBtn.rgb = color;
+
                                             intBtn.ledMode = impBtn.ledMode;
 
                                             // Robust Message Logic
@@ -4898,7 +4926,8 @@
                 const l = leds[idx + 1];
                 if (!l) return;
 
-                const isTapTempo = btn.type === 'TAP_TEMPO';
+                // Check if this button has a TAP_TEMPO message (source of truth for imported configs)
+                const isTapTempo = btn.messages && btn.messages.some(m => m.type === 'TAP_TEMPO');
                 const isActive = state.buttonActive[idx];
 
                 // Brightness calculation
@@ -5372,6 +5401,8 @@
         });
 
         // Initial render
+        initializeLeds(); // Populate leds object so colors display on load
+        updateLeds();     // Apply default LED colors
         render();
     </script>
 
