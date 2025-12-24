@@ -754,6 +754,53 @@ void processBufferedSysex() {
             return;  // Processed GP5 chunk
         }
         
+        // =========================================================
+        // GP5 REAL-TIME EFFECT TOGGLE DETECTION
+        // When user presses footswitch on GP5, it sends a CTL notification.
+        // Reference: GP5EditorBT.html lines 2725-2741: 
+        // bytes[5]==0, bytes[6]==1, bytes[12]==2, bytes[13]==4, bytes[14]==14
+        //
+        // Effect state bits in this message:
+        //   bytes[16]: bit 0=NR, bit 1=PRE, bit 2=DST, bit 3=AMP
+        //   bytes[15]: bit 0=CAB, bit 1=EQ, bit 2=MOD, bit 3=DLY
+        //   bytes[18]: bit 0=RVB, bit 1=NS
+        // =========================================================
+        if (sysexLen >= 24 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x01 &&
+            sysexBuffer[12] == 0x02 && sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x0E) {
+            
+            Serial.println("GP5: CTL toggle received - updating effect states");
+            
+            extern bool effectStates[10];  // From Globals
+            
+            uint8_t stateNibble1 = sysexBuffer[16];  // NR, PRE, DST, AMP
+            uint8_t stateNibble2 = sysexBuffer[15];  // CAB, EQ, MOD, DLY
+            uint8_t stateNibble3 = sysexBuffer[18];  // RVB, NS
+            
+            Serial.printf("GP5 CTL: bytes[15]=0x%02X [16]=0x%02X [18]=0x%02X\n",
+                stateNibble2, stateNibble1, stateNibble3);
+            
+            // Decode effect states (same mapping as preset dump)
+            effectStates[0] = (stateNibble1 & (1 << 0)) != 0;  // NR
+            effectStates[1] = (stateNibble1 & (1 << 1)) != 0;  // PRE
+            effectStates[2] = (stateNibble1 & (1 << 2)) != 0;  // DST
+            effectStates[3] = (stateNibble1 & (1 << 3)) != 0;  // AMP
+            effectStates[4] = (stateNibble2 & (1 << 0)) != 0;  // CAB
+            effectStates[5] = (stateNibble2 & (1 << 1)) != 0;  // EQ
+            effectStates[6] = (stateNibble2 & (1 << 2)) != 0;  // MOD
+            effectStates[7] = (stateNibble2 & (1 << 3)) != 0;  // DLY
+            effectStates[8] = (stateNibble3 & (1 << 0)) != 0;  // RVB
+            effectStates[9] = (stateNibble3 & (1 << 1)) != 0;  // NS
+            
+            Serial.printf("GP5 CTL State: NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d MOD=%d DLY=%d RVB=%d NS=%d\n",
+                effectStates[0], effectStates[1], effectStates[2], effectStates[3],
+                effectStates[4], effectStates[5], effectStates[6], effectStates[7],
+                effectStates[8], effectStates[9]);
+            
+            // Apply to button LED states
+            applyGp5StateToButtons();
+            return;
+        }
+        
         // Check for preset changed notification
         // Reference: bytes[11]==1, bytes[12]==2, bytes[13]==4, bytes[14]==3
         if (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
