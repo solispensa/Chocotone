@@ -687,14 +687,25 @@
             line-height: 1;
         }
 
-        .oled-row-top {
+        .oled-row-top,
+        .oled-row-btm,
+        .oled-row-mid {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
+            width: 100%;
+            padding: 0 4px;
+            box-sizing: border-box;
+            line-height: 1;
             font-size: 0.8em;
+            /* Apply font-size here for all rows */
+        }
+
+        .oled-row-top {
+            justify-content: space-between;
+            /* Override for top row if needed */
         }
 
         .oled-row-btm {
-            display: flex;
             justify-content: space-between;
             font-size: 0.8em;
             margin-top: auto;
@@ -3704,24 +3715,7 @@
         // ==========================================
         // OLED DISPLAY
         // ==========================================
-        function updateOLED() {
-            const oled = document.getElementById('oled-content');
-            const preset = defaultPresets[currentPreset];
-            const buttonCount = parseInt(document.getElementById('sl-btn-count')?.value || 8);
 
-            // Build labels for visible buttons
-            const labels = preset.buttons.slice(0, Math.min(buttonCount, 8)).map(b => b.name);
-
-            // Pad or distribute labels evenly
-            const topLabels = labels.slice(Math.ceil(labels.length / 2)).reverse();
-            const btmLabels = labels.slice(0, Math.ceil(labels.length / 2));
-
-            oled.innerHTML = `
-                <div class="oled-status">${preset.name}</div>
-                <div class="oled-labels">${topLabels.join(' ')}</div>
-                <div class="oled-labels">${btmLabels.join(' ')}</div>
-            `;
-        }
 
         // ==========================================
         // LED CONTROL
@@ -3852,7 +3846,8 @@
             // Reset states when changing presets
             ledToggleState = [false, false, false, false, false, false, false, false];
             selectionState = -1;
-            updateOLED();
+            updateLeds();
+            render();
             updateLeds();
         }
 
@@ -3891,7 +3886,7 @@
             }
 
             // Initialize display
-            updateOLED();
+            render();
             updateLeds();
         }
 
@@ -4282,6 +4277,11 @@
             // Reinitialize leds and handlers
             initializeLeds();
             initializeButtonHandlers();
+
+            // --- FIX: Resize state arrays to match new count ---
+            state.buttonActive = new Array(count).fill(false);
+            state.buttonNextIsB = new Array(count).fill(false);
+
             updateLeds();
             render();
         }
@@ -4331,12 +4331,21 @@
                 // Ensure preset has enough buttons
                 while (preset.buttons.length < count) {
                     if (presetIdx === 0) {
-                        // STOMP: add IR and AMP
-                        const extraIdx = preset.buttons.length - 8;
-                        if (extraIdx < extraButtons.length) {
-                            preset.buttons.push({ ...extraButtons[extraIdx] });
-                        } else {
-                            preset.buttons.push({ n: `B${preset.buttons.length + 1}`, rgb: [0x80, 0x80, 0x80], type: 'CC', isAlternate: true });
+                        // STOMP: Logic to restore specific buttons
+                        const nextIdx = preset.buttons.length;
+
+                        // 1. Try to restore from default set (if within 8 buttons)
+                        if (nextIdx < defaultStompButtons.length) {
+                            preset.buttons.push({ ...defaultStompButtons[nextIdx] });
+                        }
+                        // 2. Add extra buttons (IR/AMP) for indices > 8
+                        else {
+                            const extraIdx = nextIdx - 8;
+                            if (extraIdx < extraButtons.length) {
+                                preset.buttons.push({ ...extraButtons[extraIdx] });
+                            } else {
+                                preset.buttons.push({ n: `B${nextIdx + 1}`, rgb: [0x80, 0x80, 0x80], type: 'CC', isAlternate: true });
+                            }
                         }
                     } else {
                         // Other presets: add generic buttons
@@ -4354,10 +4363,14 @@
         }
 
         function initializeLeds() {
-            const ledElements = document.querySelectorAll('[id^="led-"]');
+            // Find all LED elements dynamically
+            const ledElements = document.querySelectorAll('.led-ring');
             ledElements.forEach(el => {
-                const num = parseInt(el.id.replace('led-', ''));
-                leds[num] = el;
+                const idPart = el.id.replace('led-', '');
+                const num = parseInt(idPart);
+                if (!isNaN(num)) {
+                    leds[num] = el;
+                }
             });
         }
 
@@ -4505,14 +4518,26 @@
         const tooltip = document.getElementById('v-tooltip');
         const encoder = document.getElementById('encoder-knob');
 
-        const ledIds = [1, 2, 3, 4, 5, 6, 7, 8];
         const leds = {};
-        ledIds.forEach(id => leds[id] = document.getElementById('led-' + id));
+        // ledIds removed, initializeLeds will populate leds dynamically
 
         // ============================================
         // FIRMWARE-ACCURATE PRESET DATA
         // From DefaultPresets.h - exact RGB values
         // ============================================
+
+        // Define default STOMP buttons for restoration logic
+        const defaultStompButtons = [
+            { n: 'NR', rgb: [0xFF, 0xFF, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 43, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 43, val2: 0 }] },
+            { n: 'FX1', rgb: [0x3F, 0x67, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 44, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 44, val2: 0 }] },
+            { n: 'DRV', rgb: [0xFC, 0x2C, 0x00], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 45, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 45, val2: 0 }] },
+            { n: 'TAP', rgb: [0xFF, 0xFF, 0xFF], type: 'TAP_TEMPO', tapLock: 7, messages: [{ action: 'PRESS', type: 'TAP_TEMPO', ch: 1, val1: 0, val2: 0 }] },
+            { n: 'EQ', rgb: [0x0A, 0xF5, 0x00], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 48, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 48, val2: 0 }] },
+            { n: 'FX2', rgb: [0x11, 0xF3, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 49, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 49, val2: 0 }] },
+            { n: 'DLY', rgb: [0x33, 0x2A, 0xFF], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 50, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 50, val2: 0 }] },
+            { n: 'RVB', rgb: [0x84, 0x00, 0xF7], type: 'CC', isAlternate: true, messages: [{ action: 'PRESS', type: 'CC', ch: 1, val1: 51, val2: 127 }, { action: '2ND_PRESS', type: 'CC', ch: 1, val1: 51, val2: 0 }] }
+        ];
+
         const presets = [
             // Preset 0: STOMP
             {
@@ -4796,15 +4821,43 @@
 
             const p = presets[state.presetIndex];
             const btnCount = p.buttons.length;
-            const btmRowCount = Math.floor(btnCount / 2);
-            const topRowCount = Math.ceil(btnCount / 2);
+            const rowCount = parseInt(document.getElementById('sel-btn-rows')?.value || 2);
 
-            // Top Row - higher numbered buttons (btmRowCount+1 to btnCount)
+            let btmCount = 0;
+            let midCount = 0;
+            let topCount = 0;
+
+            if (rowCount === 1) {
+                btmCount = btnCount;
+            } else if (rowCount === 2) {
+                btmCount = Math.ceil(btnCount / 2);
+                topCount = btnCount - btmCount;
+            } else { // 3 rows
+                const perRow = Math.floor(btnCount / 3);
+                const rem = btnCount % 3;
+                btmCount = perRow + (rem >= 1 ? 1 : 0);
+                midCount = perRow + (rem >= 2 ? 1 : 0);
+                topCount = perRow;
+            }
+
+            // Slicing Indices:
+            // 0 -> btmCount-1 : Bottom
+            // btmCount -> btmCount+midCount-1 : Middle
+            // btmCount+midCount -> End : Top
+
+            // Top Row
             let topLabels = '';
-            for (let i = btmRowCount; i < btnCount; i++) {
+            for (let i = btmCount + midCount; i < btnCount; i++) {
                 topLabels += `<span>${cutName(p.buttons[i].n)}</span>`;
             }
-            const topRow = `<div class="oled-row-top">${topLabels}</div>`;
+            const topRow = topCount > 0 ? `<div class="oled-row-top">${topLabels}</div>` : '';
+
+            // Mid Row
+            let midLabels = '';
+            for (let i = btmCount; i < btmCount + midCount; i++) {
+                midLabels += `<span>${cutName(p.buttons[i].n)}</span>`;
+            }
+            const midRow = midCount > 0 ? `<div class="oled-row-mid">${midLabels}</div>` : '';
 
             // Main area - Preset name and BPM
             const main = `<div class="oled-main-area">
@@ -4818,14 +4871,16 @@
                 <span>WiFi:${state.wifiOn ? 'Y' : 'N'}</span>
             </div>`;
 
-            // Bottom Row - lower numbered buttons (0 to btmRowCount-1)
+            // Bottom Row
             let btmLabels = '';
-            for (let i = 0; i < btmRowCount; i++) {
+            for (let i = 0; i < btmCount; i++) {
                 btmLabels += `<span>${cutName(p.buttons[i].n)}</span>`;
             }
-            const btmRow = `<div class="oled-row-btm">${btmLabels}</div>`;
+            const btmRow = btmCount > 0 ? `<div class="oled-row-btm">${btmLabels}</div>` : '';
 
-            oledContent.innerHTML = topRow + main + status + btmRow;
+            // Order: Top -> Main -> Status -> Mid -> Btm
+            // Mid is placed below status to mimic physical location between top and bottom(ish)
+            oledContent.innerHTML = topRow + main + status + midRow + btmRow;
             applyFontSettings();
             updateLeds();
         }
@@ -5243,7 +5298,8 @@
                     // Preset mode: cycle presets
                     state.presetIndex = (state.presetIndex + 1) % presets.length;
                     // Reset button states when changing presets
-                    state.buttonActive = [false, false, false, false, false, false, false, false];
+                    // Reset button states when changing presets
+                    state.buttonActive = new Array(state.buttonActive.length).fill(false);
                     render();
                 }
             }
@@ -5279,7 +5335,7 @@
             } else {
                 // Preset mode: scroll presets (firmware doesn't do this, but nice UX)
                 state.presetIndex = (state.presetIndex + delta + presets.length) % presets.length;
-                state.buttonActive = [false, false, false, false, false, false, false, false];
+                state.buttonActive = new Array(state.buttonActive.length).fill(false);
             }
 
             // Rotate encoder knob visually
