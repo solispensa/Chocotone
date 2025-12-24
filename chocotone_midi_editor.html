@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1'>
+    <title>Chocotone MIDI Editor</title>
+    <style>
+        /* Import Montserrat Font */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+
+        :root {
+            --bg: #000000;
+            --card: #111111;
+            --card-hover: #1a1a1a;
+            --text: #e5fff2;
+            --text-dim: #8ffdff;
+            --acc: #8c81df;
+            --acc-dim: #6b62b0;
+            --inp: #1a1a1a;
+            --brd: #333333;
+            --success: #22c55e;
+            --warning: #8c81df;
+            --danger: #ef4444;
+            --radius: 10px;
+            --cyan: #8ffdff;
+            --mint: #e5fff2;
+            --orange: #8c81df;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header / Logo */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--brd);
+        }
+
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .logo-part-1 {
+            color: var(--mint);
+        }
+
+        .logo-part-2 {
+            color: var(--orange);
+        }
+
+        .logo-subline {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--cyan);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-top: 6px;
+        }
+
+        /* Two-Column Desktop Layout */
+        .two-col-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .col-left,
+        .col-right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (min-width: 1024px) {
+            .two-col-layout {
+                flex-direction: row;
+                gap: 12px;
+            }
+
+            .col-left,
+            .col-right {
+                flex: 0 0 calc(50% - 6px);
+                width: calc(50% - 6px);
+                min-width: 280px;
+            }
+        }
+
+        /* Wide Desktop 16:9 optimization */
+        @media (min-width: 1400px) {
+            body {
+                max-width: 1400px;
+                padding: 30px 50px;
+            }
+        }
+
+        /* Connection Cards */
+        .conn-card-usb {
+            border-color: var(--orange) !important;
+        }
+
+        .conn-card-ble {
+            border-color: var(--cyan) !important;
+        }
+
+        /* Section Cards */
+        .section {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--brd);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--acc);
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Row layouts - CSS Grid */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        /* Form Fields */
+        .field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .field label {
+            width: 55px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        /* Inputs */
+        .field input,
+        .field select {
+            width: 100%;
+            min-width: 0;
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border 0.1s;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--acc);
+        }
+
+        .field input[type="color"] {
+            height: 34px;
+            padding: 2px;
+            cursor: pointer;
+        }
+
+        .field input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex: none;
+        }
+
+        .field.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* Button Quick Menu - 2 rows layout */
+        .btn-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn-tile {
+            background: var(--inp);
+            border: 2px solid var(--brd);
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            /* Desktop: vertically center contents */
+            justify-content: space-between;
+        }
+
+        .btn-tile:hover {
+            background: var(--card-hover);
+            border-color: var(--acc-dim);
+        }
+
+        .btn-tile.active {
+            border-color: var(--acc);
+            background: var(--card-hover);
+        }
+
+        .btn-tile .num {
+            font-size: 0.9rem;
+            /* Small Number (Base) */
+            font-weight: bold;
+            color: var(--text-dim);
+        }
+
+        .btn-tile .name {
+            font-size: 1.2rem;
+            /* Big Label (Base) */
+            font-weight: 600;
+            margin: 2px 0;
+            white-space: normal;
+            /* Wrap text */
+            line-height: 1.1;
+        }
+
+        .btn-tile .info {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .btn-tile .color-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #fff3;
+            flex-shrink: 0;
+            margin-left: 8px;
+            /* Desktop: vertically centered by parent's align-items: center */
+        }
+
+        /* System Tile - Full width, outside cards */
+        .sys-tile-wrap {
+            margin: 16px 0;
+        }
+
+        .sys-tile {
+            background: var(--card);
+            border: 1px solid var(--brd);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .sys-tile:hover {
+            border-color: var(--acc);
+            background: var(--card-hover);
+        }
+
+        .sys-tile.active {
+            border-color: var(--acc);
+            background: linear-gradient(135deg, var(--acc-dim), var(--acc));
+        }
+
+        .sys-tile .icon {
+            font-size: 1.2rem;
+        }
+
+        .sys-tile .label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* Message Box */
+        .msg-box {
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .msg-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--acc);
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--brd);
+            padding-bottom: 6px;
+        }
+
+        /* Delete button */
+        .msg-box .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .msg-box .remove-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn.primary {
+            background: var(--acc);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            background: var(--acc-dim);
+        }
+
+        .btn.secondary {
+            background: var(--inp);
+            color: var(--text);
+            border: 1px solid var(--brd);
+        }
+
+        .btn.success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn.warning {
+            background: var(--warning);
+            color: #000;
+        }
+
+        .btn.sm {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+        }
+
+        /* JSON Area */
+        .json-area {
+            width: 100%;
+            height: 120px;
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .logo-text {
+                font-size: 32px;
+            }
+
+            .logo-subline {
+                font-size: 11px;
+                letter-spacing: 2px;
+            }
+        }
+
+        /* Desktop - wider layout */
+        @media (min-width: 1024px) {
+            body {
+                padding: 30px 40px;
+            }
+
+            .desktop-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+
+            .row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+    <style>
+        /* Mobile Layout Refinements */
+        @media (max-width: 600px) {
+            .btn-tile {
+                padding: 10px 12px;
+                align-items: flex-start;
+                /* Mobile: align to top */
+            }
+
+            .btn-tile .color-dot {
+                width: 16px;
+                height: 16px;
+                margin-top: -4px;
+                /* Pull closer to top edge */
+                margin-right: -6px;
+                /* Pull closer to right edge */
+                align-self: flex-start;
+                /* Mobile: top-right aligned */
+            }
+        }
+    </style>
+    <script src="devices_database.js"></script>
+</head>
+
+<body>
+    <div class="header">
+        <h1 class="logo-text">
+            <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
+        </h1>
+        <div class="logo-subline">OPEN MIDI CONTROLLER</div>
+    </div>
+
+    <div id="app"></div>
+
+    <script>
+        // ===============================================================
+        // STATE
+        // ===============================================================
+        var selectedBtn = 0;
+        var showSystem = false;
+
+        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
+        var midiTypes = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
+
+        // ===============================================================
+        // DATA
+        // ===============================================================
+        var presetData = {
+            configName: "My Chocotone Config",
+            lastModified: "",
+            presets: [
+                {
+                    name: "STOMP", presetLedMode: "NORMAL", syncMode: "SPM", buttons: [
+                        { name: "NR", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 43, data2: 127, rgb: "#ffffff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 43, data2: 0, rgb: "#ffffff" }] },
+                        { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
+                        { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
+                        { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 13, data2: 127, rhythmPrev: 0, rhythmNext: 4, tapLock: 7, rgb: "#ffffff" }] },
+                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, label: "" }] },
+                        { name: "FX2", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 49, data2: 127, rgb: "#11f3ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 49, data2: 0, rgb: "#11f3ff" }] },
+                        { name: "DLY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#332aff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#332aff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE", channel: 1, data1: 0, data2: 0, label: "" }] },
+                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }, { action: "COMBO", partner: 3, type: "PRESET_UP", channel: 1, data1: 0, data2: 0, label: "" }] }
+                    ]
+                },
+                {
+                    name: "BANKS 1-8", presetLedMode: "SELECTION", buttons: [
+                        { name: "B1", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 1, rgb: "#ffffff" }] },
+                        { name: "B2", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 2, rgb: "#ffffff" }] },
+                        { name: "B3", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 3, rgb: "#ffffff" }] },
+                        { name: "B4", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 4, rgb: "#ffffff" }] },
+                        { name: "B5", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 5, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B6", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 6, rgb: "#0af500" }] },
+                        { name: "B7", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 7, rgb: "#0af500" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "B8", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 8, rgb: "#0af500" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                },
+                {
+                    name: "BANKS 9-16", presetLedMode: "SELECTION", buttons: [
+                        { name: "B9", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 9, rgb: "#11f3ff" }] },
+                        { name: "B10", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 10, rgb: "#11f3ff" }] },
+                        { name: "B11", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 11, rgb: "#11f3ff" }] },
+                        { name: "B12", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 12, rgb: "#11f3ff" }] },
+                        { name: "B13", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 13, rgb: "#aa00ff" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B14", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 14, rgb: "#aa00ff" }] },
+                        { name: "B15", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 15, rgb: "#aa00ff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "B16", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 16, rgb: "#aa00ff" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                },
+                {
+                    name: "Note", presetLedMode: "SELECTION", buttons: [
+                        { name: "1st", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 60, data2: 127, rgb: "#fd0000" }] },
+                        { name: "2nd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 62, data2: 127, rgb: "#fd0000" }] },
+                        { name: "3rd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 64, data2: 127, rgb: "#fd0000" }] },
+                        { name: "4th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 65, data2: 127, rgb: "#fd0000" }] },
+                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 67, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "6th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 69, data2: 127, rgb: "#fd0000" }] },
+                        { name: "7th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 71, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 72, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                }
+            ],
+            currentPreset: 0,
+            system: {
+                bleDeviceName: "CHOCOTONE",
+                apSSID: "CHOCOTONE",
+                apPassword: "12345678",
+                buttonCount: 8,
+                buttonPins: "14,27,26,25,33,32,16,17",
+                ledPin: 15,
+                ledsPerButton: 1,
+                ledMap: "0,1,2,3,7,6,5,4,8,9",
+                encoderA: 18,
+                encoderB: 19,
+                encoderBtn: 23,
+                bleMode: "CLIENT",
+                brightness: 220,
+                brightnessDim: 20
+            }
+        };
+
+        function fillEmptyPresets() {
+            for (let p = 0; p < presetData.presets.length; p++) {
+                if (!presetData.presets[p].buttons.length) {
+                    for (let i = 0; i < 8; i++) presetData.presets[p].buttons.push(createDefaultButton(i));
+                }
+            }
+        }
+        fillEmptyPresets();
+
+        // Normalize config data received from device (remap field names)
+        // Firmware uses: color, partner (in combo)
+        // Editor uses: rgb, partner
+        function normalizeConfigData(data) {
+            if (!data || !data.presets) return data;
+            for (var p = 0; p < data.presets.length; p++) {
+                var preset = data.presets[p];
+                if (!preset.buttons) continue;
+                for (var b = 0; b < preset.buttons.length; b++) {
+                    var btn = preset.buttons[b];
+                    if (!btn.messages) continue;
+                    for (var m = 0; m < btn.messages.length; m++) {
+                        var msg = btn.messages[m];
+                        // Remap 'color' to 'rgb'
+                        if (msg.color && !msg.rgb) {
+                            msg.rgb = msg.color;
+                            delete msg.color;
+                        }
+                        // Ensure defaults for missing fields
+                        if (!msg.rgb) msg.rgb = '#bb86fc';
+                        if (!msg.label) msg.label = '';
+                        if (msg.partner === undefined) msg.partner = 0;
+                    }
+                }
+            }
+            return data;
+        }
+
+
+        // ===============================================================
+        // OPEN MIDI FUNCTIONS
+        // ===============================================================
+        function getDeviceSelectOptions() {
+            var devices = typeof getDeviceList === 'function' ? getDeviceList() : ['Generic MIDI Device'];
+            var current = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            return devices.map(function (d) {
+                return '<option value="' + d + '"' + (d === current ? ' selected' : '') + '>' + d + '</option>';
+            }).join('');
+        }
+        function getTemplateSelectOptions() {
+            var current = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            var templates = typeof getDeviceTemplates === 'function' ? getDeviceTemplates(current) : {};
+            var fullConfigs = typeof getFullConfigList === 'function' ? getFullConfigList() : [];
+
+            var html = '<option value="">-- Select Template --</option>';
+
+            // Full Configurations (load everything)
+            if (fullConfigs.length > 0) {
+                html += '<optgroup label="[Full Configurations]">';
+                for (var i = 0; i < fullConfigs.length; i++) {
+                    html += '<option value="FULL:' + fullConfigs[i] + '">' + fullConfigs[i] + '</option>';
+                }
+                html += '</optgroup>';
+            }
+
+            // Device-specific partial templates
+            html += '<optgroup label="[Button Layouts: ' + current + ']">';
+            for (var name in templates) {
+                html += '<option value="' + name + '">' + name + '</option>';
+            }
+            html += '</optgroup>';
+
+            return html;
+        }
+        function getCCPickerOptions(selectedVal) {
+            if (typeof buildCCSelectOptions === 'function') {
+                return buildCCSelectOptions(selectedVal);
+            }
+            // Fallback: simple 0-127
+            var html = '';
+            for (var i = 0; i <= 127; i++) {
+                html += '<option value="' + i + '"' + (i === selectedVal ? ' selected' : '') + '>CC ' + i + '</option>';
+            }
+            return html;
+        }
+        function loadDeviceTemplate() {
+            var sel = document.getElementById('tmplSelect');
+            if (!sel || !sel.value) return alert('Please select a template');
+            var tmplName = sel.value;
+
+            // Check if this is a full configuration
+            if (tmplName.startsWith('FULL:')) {
+                var configName = tmplName.substring(5);
+                var fullConfig = typeof getFullConfig === 'function' ? getFullConfig(configName) : null;
+                if (!fullConfig) return alert('Full configuration not found');
+
+                // Load system config
+                if (fullConfig.system) {
+                    for (var key in fullConfig.system) {
+                        presetData.system[key] = fullConfig.system[key];
+                    }
+                }
+
+                // Load all presets
+                if (fullConfig.presets) {
+                    for (var p = 0; p < fullConfig.presets.length && p < 4; p++) {
+                        var srcPreset = fullConfig.presets[p];
+                        presetData.presets[p].name = srcPreset.name;
+                        presetData.presets[p].presetLedMode = srcPreset.presetLedMode || 'NORMAL';
+                        presetData.presets[p].buttons = JSON.parse(JSON.stringify(srcPreset.buttons));
+                    }
+                }
+
+                selectedBtn = 0;
+                render();
+                alert('Full configuration "' + configName + '" loaded!\n\nIncludes:\n- System config (10 buttons)\n- All 4 presets');
+                return;
+            }
+
+            // Regular partial template (only loads buttons for current preset)
+            var currentDevice = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            var templates = typeof getDeviceTemplates === 'function' ? getDeviceTemplates(currentDevice) : {};
+            var tmpl = templates[tmplName];
+            if (!tmpl) return alert('Template not found');
+
+            var p = presetData.currentPreset;
+            var count = Math.min(tmpl.length, presetData.system.buttonCount);
+            for (var i = 0; i < count; i++) {
+                var src = tmpl[i];
+                var btn = presetData.presets[p].buttons[i];
+                btn.name = src.name;
+                btn.messages = [];
+
+                // Check for SysEx template (has sysexOn/sysexOff)
+                if (src.sysexOn && src.sysexOff) {
+                    // SysEx toggle button - PRESS sends ON, 2ND_PRESS sends OFF
+                    btn.messages.push({
+                        action: 'PRESS',
+                        type: 'SYSEX',
+                        channel: 1,
+                        data1: 0,
+                        data2: 0,
+                        rgb: src.color,
+                        sysex: src.sysexOn  // Hex string
+                    });
+                    btn.messages.push({
+                        action: '2ND_PRESS',
+                        type: 'SYSEX',
+                        channel: 1,
+                        data1: 0,
+                        data2: 0,
+                        rgb: src.color,
+                        sysex: src.sysexOff  // Hex string
+                    });
+                    btn.ledMode = 'TOGGLE';
+                } else if (src.special) {
+                    // Special action (TAP_TEMPO, etc.)
+                    var msg1 = { action: 'PRESS', type: src.special, channel: 1, data1: 0, data2: 127, rgb: src.color };
+                    btn.messages.push(msg1);
+                    btn.ledMode = 'MOMENTARY';
+                } else {
+                    // Regular CC toggle
+                    var msg1 = { action: 'PRESS', type: 'CC', channel: 1, data1: src.cc, data2: (src.d2 !== undefined ? src.d2 : 127), rgb: src.color };
+                    btn.messages.push(msg1);
+                    btn.messages.push({ action: '2ND_PRESS', type: 'CC', channel: 1, data1: src.cc, data2: 0, rgb: src.color });
+                    btn.ledMode = 'TOGGLE';
+                }
+            }
+            render();
+            alert('Template "' + tmplName + '" loaded!');
+        }
+        function changeTargetDevice(d) {
+            if (typeof setCurrentDevice === 'function') setCurrentDevice(d);
+            render();
+        }
+
+        // ===============================================================
+        // RENDER UI
+        // ===============================================================
+        function render() {
+            var p = presetData.currentPreset;
+            var preset = presetData.presets[p];
+            var btn = preset.buttons[selectedBtn];
+            var presetMode = preset.presetLedMode || 'NORMAL';
+            var showLedMode = (presetMode === 'NORMAL' || presetMode === 'HYBRID');
+            var showSelGroup = (presetMode === 'HYBRID');
+            var html = '';
+
+            // Start two-column layout wrapper
+            html += '<div class="two-col-layout">';
+
+            // ========== LEFT COLUMN ==========
+            html += '<div class="col-left">';
+
+            // --- CONFIG PROFILE -------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">📋 Config Profile</div>';
+            html += '<div class="row">';
+            html += '<div class="field" style="flex:2"><label>Name</label><input type="text" value="' + (presetData.configName || 'My Config') + '" maxlength="40" onchange="presetData.configName=this.value"></div>';
+            html += '<div class="field" style="flex:1"><label>Modified</label><input type="text" value="' + (presetData.lastModified || 'Not saved') + '" readonly style="opacity:0.7;cursor:not-allowed"></div>';
+            html += '<div class="field" style="max-width:100px;align-self:flex-end"><button class="btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);width:100%;font-weight:bold" onclick="saveChanges()">💾 Save</button></div>';
+            html += '</div>';
+            html += '</div>';
+
+            // --- PRESET CONFIG -------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Preset Configuration</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Preset</label><select onchange="chgPreset(this.value)">';
+            for (var i = 0; i < 4; i++) html += '<option value="' + i + '"' + (i === p ? ' selected' : '') + '>' + presetData.presets[i].name + '</option>';
+            html += '</select></div>';
+            html += '<div class="field"><label>Name</label><input type="text" value="' + preset.name + '" maxlength="20" onchange="chgPresetName(this.value)"></div>';
+            html += '<div class="field"><label>LED Mode</label><select onchange="chgPresetLedMode(this.value)">';
+            html += '<option value="NORMAL"' + (presetMode === 'NORMAL' ? ' selected' : '') + '>Normal</option>';
+            html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
+            html += '<option value="HYBRID"' + (presetMode === 'HYBRID' ? ' selected' : '') + '>Hybrid</option>';
+            html += '</select></div>';
+            // Sync Mode dropdown
+            var syncMode = preset.syncMode || 'NONE';
+            html += '<div class="field"><label>Sync</label><select onchange="chgSyncMode(this.value)">';
+            html += '<option value="NONE"' + (syncMode === 'NONE' ? ' selected' : '') + '>None</option>';
+            html += '<option value="SPM"' + (syncMode === 'SPM' ? ' selected' : '') + '>SPM</option>';
+            html += '<option value="GP5"' + (syncMode === 'GP5' ? ' selected' : '') + '>GP-5</option>';
+            html += '</select></div>';
+            html += '</div></div>';
+
+            // --- BUTTONS (2 ROWS) ----------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title" style="font-size:1.1rem">Buttons</div>';
+            var btnCount = presetData.system.buttonCount || 8;
+            var cols = Math.ceil(btnCount / 2); // 2 rows = half columns
+            html += '<div class="btn-grid" style="grid-template-columns: repeat(' + cols + ', 1fr)">';
+            // Render second half first (top row: 5,6,7,8), then first half (bottom row: 1,2,3,4)
+            var half = Math.ceil(btnCount / 2);
+            var order = [];
+            for (var i = half; i < btnCount; i++) order.push(i); // Top row: indices 4,5,6,7
+            for (var i = 0; i < half; i++) order.push(i);        // Bottom row: indices 0,1,2,3
+            for (var idx = 0; idx < order.length; idx++) {
+                var b = order[idx];
+                var bt = preset.buttons[b];
+                if (!bt) continue;
+                var isActive = (b === selectedBtn && !showSystem);
+                var msg1 = (bt.messages && bt.messages[0]) ? bt.messages[0] : { type: 'OFF', data1: 0, rgb: '#555' };
+
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')">';
+                html += '<div style="flex:1;min-width:0">';
+                html += '<div class="num">#' + (b + 1) + '</div>';
+                html += '<div class="name">' + bt.name + '</div>';
+                html += '<div class="info">' + msg1.type + ' ' + msg1.data1 + '</div>';
+                html += '</div>';
+                html += '<div class="color-dot" style="background:' + msg1.rgb + '"></div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>'; // Close Buttons section
+
+            // System Tile
+            html += '<div class="sys-tile-wrap">';
+            html += '<div class="sys-tile' + (showSystem ? ' active' : '') + '" onclick="toggleSystem()">';
+            html += '<span class="label">System Configuration</span>';
+            html += '</div></div>';
+
+            html += '</div>'; // Close LEFT COLUMN
+
+            // ========== RIGHT COLUMN ==========
+            html += '<div class="col-right">';
+
+            // --- MAIN CONTENT (Button Detail or System Config) ------------
+            if (showSystem) {
+                html += renderSystemConfig();
+            } else {
+                html += renderButtonDetail(btn, selectedBtn, showLedMode, showSelGroup);
+            }
+
+            // --- JSON ----------------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Import / Export</div>';
+            html += '<textarea class="json-area" id="jsonArea" placeholder="Paste JSON here..."></textarea>';
+            html += '<input type="file" id="fileInput" accept=".json" style="display:none" onchange="openFile(this)">';
+            html += '<div class="actions" style="margin-top:10px">';
+            html += '<button class="btn success" onclick="exportJSON()">Export</button>';
+            html += '<button class="btn secondary" onclick="importJSON()">Import</button>';
+            html += '<button class="btn primary" onclick="document.getElementById(\'fileInput\').click()">Open File</button>';
+            html += '<button class="btn secondary" onclick="copyJSON()">Copy</button>';
+            html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
+            html += '</div></div>';
+
+            // --- Serial Log ------------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Serial Log <button class="btn secondary" style="float:right;padding:2px 8px;font-size:0.7rem" onclick="document.getElementById(\'serialLog\').value=\'\'">Clear</button></div>';
+            html += '<textarea class="json-area" id="serialLog" readonly style="height:100px;font-family:monospace;font-size:0.75rem;background:#1a1a1a" placeholder="Firmware messages will appear here..."></textarea>';
+            html += '</div>';
+
+            html += '</div>'; // Close RIGHT COLUMN
+
+            html += '</div>'; // Close two-col-layout
+
+            html += '<div style="text-align:center;color:#555;font-size:0.7rem;margin-top:10px">Chocotone v2.0 - Hybrid Editor</div>';
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function renderButtonDetail(btn, idx, showLedMode, showSelGroup) {
+            var html = '<div class="section">';
+            html += '<div class="section-title">Button ' + (idx + 1) + ': ' + btn.name + '</div>';
+
+            html += '<div class="row">';
+            html += '<div class="field"><label>Label</label><input type="text" value="' + btn.name + '" maxlength="20" onchange="updBtn(\'name\',this.value)"></div>';
+            if (showLedMode) {
+                html += '<div class="field"><label>LED</label><select onchange="updBtn(\'ledMode\',this.value)">';
+                html += '<option value="MOMENTARY"' + (btn.ledMode === 'MOMENTARY' ? ' selected' : '') + '>Momentary</option>';
+                html += '<option value="TOGGLE"' + (btn.ledMode === 'TOGGLE' ? ' selected' : '') + '>Toggle</option>';
+                html += '</select></div>';
+            }
+            if (showSelGroup) {
+                html += '<div class="field"><label>Sel.Grp</label><input type="checkbox"' + (btn.inSelectionGroup ? ' checked' : '') + ' onchange="updBtn(\'inSelectionGroup\',this.checked)"></div>';
+            }
+            html += '</div>';
+
+            html += '<div class="section-title" style="margin-top:16px; border-bottom:1px solid #333; padding-bottom:4px">Action List <button class="btn primary sm" style="margin-left:auto" onclick="addMsg()">+</button></div>';
+
+            var msgs = btn.messages || [];
+            for (var i = 0; i < msgs.length; i++) html += renderActionCard(msgs[i], i);
+
+            // Save Changes Button
+            html += '<div class="actions" style="margin-top:16px; justify-content:center">';
+            html += '<button class="btn success" onclick="saveChanges()">Save Changes</button>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderActionCard(msg, i) {
+            var html = '<div class="msg-box">';
+            // Header with action number and buttons
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">';
+            html += '<span style="font-weight:600;color:var(--acc);font-size:0.85rem">Action ' + (i + 1) + '</span>';
+            html += '<div style="display:flex;gap:6px">';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="copyAction(' + i + ')" title="Copy">📋</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="pasteAction(' + i + ')" title="Paste">📄</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#ef4444" onclick="delMsg(' + i + ')" title="Delete">×</button>';
+            html += '</div>';
+            html += '</div>';
+
+            // Action Type + Label (for ALL action types)
+            html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:var(--acc)">Type</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            html += '<div class="row" style="margin-bottom:8px">';
+            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
+            html += '</div>';
+
+            // Conditional fields
+            if (msg.action === 'COMBO') {
+                html += '<div class="row">';
+                html += '<div class="field"><label>Partner</label><select onchange="updMsg(' + i + ',\'partner\',parseInt(this.value))">';
+                var cnt = presetData.system.buttonCount;
+                for (let b = 0; b < cnt; b++) {
+                    if (b !== selectedBtn) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
+                }
+                html += '</select></div>';
+                html += '</div>';
+            }
+            else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
+                html += '<div class="row">';
+                html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="updMsg(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
+                html += '</div>';
+            }
+
+            // MIDI Content
+            html += '<div class="row">';
+            html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
+            html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
+            // D1/D2 hidden for TAP_TEMPO
+            if (msg.type !== 'TAP_TEMPO') {
+                // D1 as CC Picker dropdown for CC type
+                if (msg.type === 'CC') {
+                    html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                } else {
+                    html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                }
+                html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
+            }
+            html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
+            html += '</div>';
+
+            if (msg.type === 'TAP_TEMPO') {
+                html += '<div class="row" style="margin-top:8px">';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
+                html += '</div>';
+            }
+
+            // SysEx hex input field with picker
+            if (msg.type === 'SYSEX') {
+                html += '<div class="row" style="margin-top:8px">';
+                html += '<div class="field" style="flex:1"><label>SysEx Preset</label><select style="font-size:11px" onchange="applySysexPreset(' + i + ',this.value)">' + getSysexPickerOptions() + '</select></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-top:6px">';
+                html += '<div class="field" style="flex:1"><label>SysEx Hex (manual edit)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="updMsg(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderSystemConfig() {
+            var sys = presetData.system;
+            var html = '<div class="section">';
+            html += '<div class="section-title">System Configuration</div>';
+
+            // Templates
+            html += '<div class="msg-box"><div class="msg-title">Templates</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Device</label><select onchange="changeTargetDevice(this.value)">' + getDeviceSelectOptions() + '</select></div>';
+            html += '</div><div class="row">';
+            html += '<div class="field"><label>Template</label><select id="tmplSelect">' + getTemplateSelectOptions() + '</select></div>';
+            html += '<div class="field" style="max-width:100px"><button class="btn primary sm" onclick="loadDeviceTemplate()">Load</button></div>';
+            html += '</div></div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Bluetooth / WiFi</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>BLE Name</label><input type="text" value="' + sys.bleDeviceName + '" maxlength="20" onchange="updSys(\'bleDeviceName\',this.value)"></div>';
+            html += '<div class="field"><label>BLE Mode</label><select onchange="updSys(\'bleMode\',this.value)">';
+            html += '<option value="CLIENT"' + (sys.bleMode === 'CLIENT' ? ' selected' : '') + '>Client</option>';
+            html += '<option value="SERVER"' + (sys.bleMode === 'SERVER' ? ' selected' : '') + '>Server</option>';
+            html += '<option value="DUAL"' + (sys.bleMode === 'DUAL' ? ' selected' : '') + '>Dual</option>';
+            html += '</select></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>WiFi SSID</label><input type="text" value="' + sys.apSSID + '" onchange="updSys(\'apSSID\',this.value)"></div>';
+            html += '<div class="field"><label>Password</label><input type="text" value="' + sys.apPassword + '" onchange="updSys(\'apPassword\',this.value)"></div>';
+            html += '</div></div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Hardware</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Buttons #</label><input type="number" min="4" max="10" value="' + sys.buttonCount + '" onchange="updBtnCount(parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Btn Pins</label><input type="text" value="' + sys.buttonPins + '" onchange="updSys(\'buttonPins\',this.value)"></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>LED Pin</label><input type="number" min="0" max="39" value="' + sys.ledPin + '" onchange="updSys(\'ledPin\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>LEDs/Btn</label><input type="number" min="1" max="32" value="' + sys.ledsPerButton + '" onchange="updSys(\'ledsPerButton\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>LED Map</label><input type="text" value="' + sys.ledMap + '" onchange="updSys(\'ledMap\',this.value)"></div>';
+            html += '</div>';
+            html += '<div class="row">';
+
+            html += '<div class="field"><label style="font-size:11px">LED Bright On</label><input type="number" min="0" max="255" value="' + (sys.brightness || 220) + '" onchange="updSys(\'brightness\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Bright Dim</label><input type="number" min="0" max="255" value="' + (sys.brightnessDim || 20) + '" onchange="updSys(\'brightnessDim\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Tap Tempo</label><input type="number" min="0" max="255" value="' + (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) + '" onchange="updSys(\'brightnessTap\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '</div>';
+            var showWarning = (sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240;
+            html += '<div id="brightnessWarning" class="row" style="color:#fbbf24; font-size:12px;' + (showWarning ? '' : 'display:none;') + '">⚠️ LED too bright, use with caution</div>';
+            html += '</div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Encoder</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Enc A</label><input type="number" min="0" max="39" value="' + sys.encoderA + '" onchange="updSys(\'encoderA\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Enc B</label><input type="number" min="0" max="39" value="' + sys.encoderB + '" onchange="updSys(\'encoderB\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Enc Btn</label><input type="number" min="0" max="39" value="' + sys.encoderBtn + '" onchange="updSys(\'encoderBtn\',parseInt(this.value))"></div>';
+            html += '</div></div>';
+
+            html += '</div>';
+            return html;
+        }
+
+
+        // Auto-label generator - matches firmware getButtonSummary() in UI_Display.cpp
+        // For notes, CC, PC: return empty so button label is used instead
+        function getAutoLabel(msg) {
+            switch (msg.type) {
+                case 'NOTE_MOMENTARY':
+                case 'NOTE_ON':
+                case 'NOTE_OFF':
+                case 'CC':
+                case 'PC':
+                case 'SYSEX':
+                    return '';  // Use button label
+                case 'TAP_TEMPO': return 'TAP';
+                case 'PRESET_UP': return '>';
+                case 'PRESET_DOWN': return '<';
+                case 'PRESET_1': return presetData.presets[0] ? presetData.presets[0].name : 'P1';
+                case 'PRESET_2': return presetData.presets[1] ? presetData.presets[1].name : 'P2';
+                case 'PRESET_3': return presetData.presets[2] ? presetData.presets[2].name : 'P3';
+                case 'PRESET_4': return presetData.presets[3] ? presetData.presets[3].name : 'P4';
+                case 'WIFI_TOGGLE': return 'WiFi';
+                case 'CLEAR_BLE_BONDS': return 'xBLE';
+                case 'OFF': return '';
+                default: return '';
+            }
+        }
+
+        function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
+        function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
+
+        function chgPreset(v) {
+            presetData.currentPreset = parseInt(v);
+            selectedBtn = 0;
+            showSystem = false;
+            render();
+
+            // WiFi: fire and forget
+            fetch('/preset?p=' + v).catch(function (e) { });
+
+            // Serial: send if connected
+            if (serialWriter) {
+                serialWriter.write(new TextEncoder().encode('SET_PRESET:' + v + '\n')).catch(function (e) { });
+            }
+
+            // BLE: send if connected
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                console.log('BLE: Sending SET_PRESET:' + v);
+                bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + v + '\n'))
+                    .then(function () { console.log('BLE: SET_PRESET sent successfully'); })
+                    .catch(function (e) { console.error('BLE SET_PRESET error:', e); });
+            } else {
+                console.log('BLE: Not connected (bleRxChar:', !!bleRxChar, 'bleDevice:', !!bleDevice, 'connected:', bleDevice ? bleDevice.gatt.connected : false, ')');
+            }
+        }
+        function chgPresetLedMode(v) { presetData.presets[presetData.currentPreset].presetLedMode = v; render(); }
+        function selBtn(b) { selectedBtn = b; showSystem = false; render(); }
+        function toggleSystem() { showSystem = !showSystem; render(); }
+
+        function updBtn(k, v) { presetData.presets[presetData.currentPreset].buttons[selectedBtn][k] = v; render(); }
+        function updMsg(idx, k, v) {
+            presetData.presets[presetData.currentPreset].buttons[selectedBtn].messages[idx][k] = v;
+            if (k === 'type' || k === 'action') render();
+        }
+        function addMsg() {
+            var p = presetData.currentPreset;
+            var btn = presetData.presets[p].buttons[selectedBtn];
+            if (!btn.messages) btn.messages = [];
+            btn.messages.push({ action: 'PRESS', type: 'CC', channel: 1, data1: 0, data2: 127, rgb: '#bb86fc' });
+            render();
+        }
+        function delMsg(idx) {
+            var p = presetData.currentPreset;
+            presetData.presets[p].buttons[selectedBtn].messages.splice(idx, 1);
+            render();
+        }
+
+        // Clipboard for action copy/paste
+        var actionClipboard = null;
+
+        function copyAction(idx) {
+            var p = presetData.currentPreset;
+            var msg = presetData.presets[p].buttons[selectedBtn].messages[idx];
+            actionClipboard = JSON.parse(JSON.stringify(msg)); // Deep copy
+            alert('Action ' + (idx + 1) + ' copied!');
+        }
+
+        function pasteAction(idx) {
+            if (!actionClipboard) { alert('Nothing to paste. Copy an action first.'); return; }
+            var p = presetData.currentPreset;
+            presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
+            render();
+        }
+        // chgPreset is now defined earlier in the file with full BLE support
+        function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
+        function chgPresetName(newName) { presetData.presets[presetData.currentPreset].name = newName; }
+        function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
+        function selBtn(idx) { selectedBtn = idx; showSystem = false; render(); }
+        function toggleSystem() { showSystem = !showSystem; render(); }
+        function checkBrightnessWarning() {
+            var sys = presetData.system;
+            var warn = document.getElementById('brightnessWarning');
+            if (warn) warn.style.display = ((sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 255) > 240) ? 'block' : 'none';
+        }
+        function updSys(k, v) { presetData.system[k] = v; }
+        function saveChanges() {
+            // In offline mode, save means export to JSON area
+            exportJSON();
+            render();  // Update buttons selection UI with new values
+            alert('Changes saved! JSON has been updated in the Export area below.');
+        }
+        function updBtnCount(count) {
+            presetData.system.buttonCount = count;
+            for (var p = 0; p < presetData.presets.length; p++) {
+                var btns = presetData.presets[p].buttons;
+                while (btns.length < count) btns.push(createDefaultButton(btns.length));
+                while (btns.length > count) btns.pop();
+            }
+            if (selectedBtn >= count) selectedBtn = count - 1;
+            render();
+        }
+        function createDefaultButton(idx) {
+            var colors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd', '#ff9ff3', '#54a0ff', '#00d2d3'];
+            var c = colors[idx % colors.length];
+            return {
+                name: 'BTN' + (idx + 1), ledMode: 'MOMENTARY', inSelectionGroup: false,
+                messages: [{ action: 'PRESS', type: 'CC', channel: 1, data1: 20 + idx, data2: 127, rgb: c }]
+            };
+        }
+
+        function exportJSON() {
+            presetData.lastModified = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            var jsonStr = JSON.stringify(presetData, null, 2);
+            render(); // Update UI to show new timestamp (rebuilds DOM)
+            document.getElementById('jsonArea').value = jsonStr; // Restore JSON after render
+        }
+        function importJSON() {
+            try {
+                var data = JSON.parse(document.getElementById('jsonArea').value);
+                if (data.presets) {
+                    // Preserve configName and lastModified
+                    var savedConfigName = presetData.configName;
+                    var savedLastModified = presetData.lastModified;
+                    presetData = data;
+                    // Restore if not present in imported data
+                    if (!data.configName) presetData.configName = savedConfigName;
+                    if (!data.lastModified) presetData.lastModified = savedLastModified;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Imported!\n\nConfig: ' + (presetData.configName || 'Unnamed') + '\nLast Modified: ' + (presetData.lastModified || 'Unknown'));
+                } else alert('Invalid format');
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        function copyJSON() { exportJSON(); navigator.clipboard.writeText(document.getElementById('jsonArea').value); alert('Copied!'); }
+        function downloadJSON() {
+            exportJSON();
+            var filename = (presetData.configName || 'chocotone_config').replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
+            var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+        function openFile(input) {
+            var file = input.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    if (data.presets) {
+                        presetData = data;
+                        selectedBtn = 0;
+                        showSystem = false;
+                        render();
+                        document.getElementById('jsonArea').value = e.target.result;
+                        alert('File loaded!\\n\\nConfig: ' + (data.configName || 'Unnamed') + '\\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                    } else {
+                        alert('Invalid file format: no presets found');
+                    }
+                } catch (err) {
+                    alert('Error reading file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset for future opens
+        }
+
+        // Send preset change to connected device
+        async function sendPresetToDevice(presetIdx) {
+            // Serial
+            if (serialWriter) {
+                try {
+                    await serialWriter.write(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                } catch (e) {
+                    console.log('Serial preset sync error:', e);
+                }
+            }
+            // BLE
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                    console.log('BLE: Preset ' + presetIdx + ' sent');
+                } catch (e) {
+                    console.log('BLE preset sync error:', e);
+                }
+            }
+        }
+
+        // ========== SYSEX PRESETS DATABASE (SPM) ==========
+        var sysexPresets = {
+            // Reverb Types (10 types)
+            'SPM: Reverb Type - Air': 'f0050b00010000000e0101040700080000000000000008000000000000000b00000000000cf7',
+            'SPM: Reverb Type - Room': 'f00d0100010000000e0101040700080000000000000008000000000000000000000000000cf7',
+            'SPM: Reverb Type - Hall': 'f00c0700010000000e0101040700080000000000000008000000000000000100000000000cf7',
+            'SPM: Reverb Type - Church': 'f00f0d00010000000e0101040700080000000000000008000000000000000200000000000cf7',
+            'SPM: Reverb Type - Plate L': 'f00b0600010000000e0101040700080000000000000008000000000000010000000000000cf7',
+            'SPM: Reverb Type - Plate': 'f0000300010000000e0101040700080000000000000008000000000000000f00000000000cf7',
+            'SPM: Reverb Type - Spring': 'f0080900010000000e0101040700080000000000000008000000000000000400000000000cf7',
+            'SPM: Reverb Type - N-Star': 'f00a0500010000000e0101040700080000000000000008000000000000000600000000000cf7',
+            'SPM: Reverb Type - Deepsea': 'f00b0300010000000e0101040700080000000000000008000000000000000700000000000cf7',
+            'SPM: Reverb Type - Sweet Space': 'f00f0800010000000e0101040700080000000000000008000000000000010500000000000cf7',
+            // Reverb On/Off
+            'SPM: Reverb - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'SPM: Reverb - OFF': 'f0090200010000000a0101040900080000000000000000000000000000f7',
+            // Delay Time (common values)
+            'SPM: Delay Time 100ms': 'f00d0900010000000e0101040800070000000000000001000000000000000000000c080402f7',
+            'SPM: Delay Time 150ms': 'f00b0200010000000e01010408000700000000000000010000000000000000000001060403f7',
+            'SPM: Delay Time 200ms': 'f0060800010000000e01010408000700000000000000010000000000000000000004080403f7',
+            'SPM: Delay Time 250ms': 'f00a0e00010000000e010104080007000000000000000100000000000000000000070a0403f7',
+            'SPM: Delay Time 300ms': 'f0000400010000000e01010408000700000000000000010000000000000000000009060403f7',
+            'SPM: Delay Time 350ms': 'f00b0700010000000e0101040800070000000000000001000000000000000000000b060403f7',
+            'SPM: Delay Time 400ms': 'f00d0e00010000000e0101040800070000000000000001000000000000000000000c080403f7',
+            'SPM: Delay Time 500ms': 'f0000d00010000000e0101040800070000000000000001000000000000000000000f0a0403f7',
+            // Delay Mix (common values)
+            'SPM: Delay Mix 0%': 'f0040600010000000e01010408000700000000000000000000000000000000000000000000f7',
+            'SPM: Delay Mix 10%': 'f0020800010000000e01010408000700000000000000000000000000000000000002000401f7',
+            'SPM: Delay Mix 20%': 'f0090e00010000000e0101040800070000000000000000000000000000000000000a000401f7',
+            'SPM: Delay Mix 30%': 'f0090200010000000e0101040800070000000000000000000000000000000000000f000401f7',
+            'SPM: Delay Mix 40%': 'f0020100010000000e01010408000700000000000000000000000000000000000002000402f7',
+            'SPM: Delay Mix 50%': 'f0070c00010000000e01010408000700000000000000000000000000000000000004080402f7',
+            'SPM: Delay Mix 60%': 'f0020d00010000000e01010408000700000000000000000000000000000000000007000402f7',
+            'SPM: Delay Mix 70%': 'f00c0500010000000e010104080007000000000000000000000000000000000000080c0402f7',
+            'SPM: Delay Mix 80%': 'f0090700010000000e0101040800070000000000000000000000000000000000000a000402f7',
+            'SPM: Delay Mix 90%': 'f00c0000010000000e0101040800070000000000000000000000000000000000000b000402f7',
+            'SPM: Delay Mix 100%': 'f00c0a00010000000e0101040800070000000000000000000000000000000000000c080402f7',
+            // Reverb Decay (common values)
+            'SPM: Reverb Decay 10%': 'f0020800010000000e01010408000800000000000000020000000000000000000002000401f7',
+            'SPM: Reverb Decay 30%': 'f0090200010000000e01010408000800000000000000020000000000000000000002080401f7',
+            'SPM: Reverb Decay 50%': 'f0070c00010000000e01010408000800000000000000020000000000000000000004080402f7',
+            'SPM: Reverb Decay 70%': 'f00c0500010000000e010104080008000000000000000200000000000000000000080c0402f7',
+            'SPM: Reverb Decay 100%': 'f0040800010000000e0101040800080000000000000002000000000000000000000c060402f7',
+            // Delay Feedback (common values)
+            'SPM: Delay Feedback 0%': 'f0060000010000000e01010408000700000000000000020000000000000000000000000000f7',
+            'SPM: Delay Feedback 10%': 'f0000e00010000000e01010408000700000000000000020000000000000000000002000401f7',
+            'SPM: Delay Feedback 20%': 'f00b0800010000000e0101040800070000000000000002000000000000000000000a000401f7',
+            'SPM: Delay Feedback 30%': 'f00b0400010000000e0101040800070000000000000002000000000000000000000f000401f7',
+            'SPM: Delay Feedback 40%': 'f0000700010000000e01010408000700000000000000020000000000000000000002000402f7',
+            'SPM: Delay Feedback 50%': 'f0050a00010000000e01010408000700000000000000020000000000000000000004080402f7',
+            'SPM: Delay Feedback 60%': 'f0000b00010000000e01010408000700000000000000020000000000000000000007000402f7',
+            'SPM: Delay Feedback 70%': 'f00e0300010000000e01010408000700000000000000020000000000000000000008080402f7',
+            'SPM: Delay Feedback 80%': 'f00b0100010000000e0101040800070000000000000002000000000000000000000a000402f7',
+            'SPM: Delay Feedback 90%': 'f00e0600010000000e0101040800070000000000000002000000000000000000000b000402f7',
+            'SPM: Delay Feedback 100%': 'f00e0c00010000000e0101040800070000000000000002000000000000000000000c080402f7',
+            // ========== GP-5 SYSEX PRESETS ==========
+            // GP-5 Effect On/Off (computed with CRC8)
+            'GP5: NR - ON': 'f0010c00010000000a0101040900000000000000000001000000000000f7',
+            'GP5: NR - OFF': 'f0000a00010000000a0101040900000000000000000000000000000000f7',
+            'GP5: PRE - ON': 'f0000f00010000000a0101040900010000000000000001000000000000f7',
+            'GP5: PRE - OFF': 'f0010900010000000a01010409000100000000000000000000000000000000f7',
+            'GP5: DST - ON': 'f0030a00010000000a0101040900020000000000000001000000000000f7',
+            'GP5: DST - OFF': 'f0020c00010000000a01010409000200000000000000000000000000000000f7',
+            'GP5: AMP - ON': 'f0020900010000000a0101040900030000000000000001000000000000f7',
+            'GP5: AMP - OFF': 'f0030f00010000000a01010409000300000000000000000000000000000000f7',
+            'GP5: CAB - ON': 'f0050000010000000a0101040900040000000000000001000000000000f7',
+            'GP5: CAB - OFF': 'f0040600010000000a01010409000400000000000000000000000000000000f7',
+            'GP5: EQ - ON': 'f0040300010000000a0101040900050000000000000001000000000000f7',
+            'GP5: EQ - OFF': 'f0050500010000000a01010409000500000000000000000000000000000000f7',
+            'GP5: MOD - ON': 'f0070600010000000a0101040900060000000000000001000000000000f7',
+            'GP5: MOD - OFF': 'f0060000010000000a01010409000600000000000000000000000000000000f7',
+            'GP5: DLY - ON': 'f0060500010000000a0101040900070000000000000001000000000000f7',
+            'GP5: DLY - OFF': 'f0070300010000000a01010409000700000000000000000000000000000000f7',
+            'GP5: RVB - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'GP5: RVB - OFF': 'f0090200010000000a01010409000800000000000000000000000000000000f7',
+            'GP5: NS - ON': 'f0090700010000000a0101040900090000000000000001000000000000f7',
+            'GP5: NS - OFF': 'f0080100010000000a01010409000900000000000000000000000000000000f7'
+        };
+
+        function getSysexPickerOptions() {
+            var html = '<option value="">-- Select SysEx Preset --</option>';
+            // SPM SysEx Presets
+            html += '<optgroup label="── Sonicake Pocket Master ──">';
+            html += '<optgroup label="[SPM] Reverb Type">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Type') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb ON/OFF">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb - O') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Time">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Time') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Mix">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Mix') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb Decay">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Decay') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Feedback">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Feedback') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            // GP-5 SysEx Presets
+            html += '<optgroup label="── Valeton GP-5 ──">';
+            html += '<optgroup label="[GP5] Effect On/Off">';
+            for (var k in sysexPresets) { if (k.indexOf('GP5:') === 0) html += '<option value="' + k + '">' + k.replace('GP5: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '</optgroup>';
+            return html;
+        }
+
+        function applySysexPreset(msgIdx, presetName) {
+            if (!presetName || !sysexPresets[presetName]) return;
+            updMsg(msgIdx, 'sysex', sysexPresets[presetName]);
+            render();
+        }
+
+        // ===============================================================
+        // WEB SERIAL API - USB Connection to Chocotone
+        // ===============================================================
+        var serialPort = null;
+        var serialReader = null;
+        var serialWriter = null;
+        var serialBuffer = '';
+
+        async function connectUSB() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial not supported. Use Chrome or Edge.');
+                return;
+            }
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+                serialWriter = serialPort.writable.getWriter();
+                serialReader = serialPort.readable.getReader();
+                document.getElementById('usbStatus').textContent = 'Connected';
+                document.getElementById('usbStatus').style.color = '#22c55e';
+                document.getElementById('btnConnect').textContent = 'Disconnect';
+                // Start reading
+                readSerial();
+            } catch (e) {
+                console.error('Serial error:', e);
+                alert('Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectUSB() {
+            try {
+                if (serialReader) {
+                    try { await serialReader.cancel(); } catch (e) { console.log('Reader cancel:', e); }
+                    try { serialReader.releaseLock(); } catch (e) { console.log('Reader release:', e); }
+                    serialReader = null;
+                }
+                if (serialWriter) {
+                    try { serialWriter.releaseLock(); } catch (e) { console.log('Writer release:', e); }
+                    serialWriter = null;
+                }
+                if (serialPort) {
+                    try { await serialPort.close(); } catch (e) { console.log('Port close:', e); }
+                    serialPort = null;
+                }
+            } catch (e) {
+                console.error('Disconnect error:', e);
+            }
+            // Force null to ensure clean state
+            serialPort = null;
+            serialReader = null;
+            serialWriter = null;
+            document.getElementById('usbStatus').textContent = 'Not connected';
+            document.getElementById('usbStatus').style.color = '#71717a';
+            document.getElementById('btnConnect').textContent = 'Connect USB/BT';
+        }
+
+        function toggleUSB() {
+            if (serialPort) disconnectUSB();
+            else connectUSB();
+        }
+
+        async function readSerial() {
+            while (serialPort && serialReader) {
+                try {
+                    const { value, done } = await serialReader.read();
+                    if (done) break;
+                    serialBuffer += new TextDecoder().decode(value);
+                    processSerialData();
+                } catch (e) { break; }
+            }
+        }
+
+        var expectingConfig = false;
+        var configJson = '';
+
+        function processSerialData() {
+            var lines = serialBuffer.split('\n');
+            serialBuffer = lines.pop(); // Keep incomplete line
+            for (var line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                // Log all messages to Serial Log area
+                var logArea = document.getElementById('serialLog');
+                if (logArea && !expectingConfig) {
+                    logArea.value += line + '\n';
+                    logArea.scrollTop = logArea.scrollHeight;
+                }
+
+                if (line === 'CONFIG_START') {
+                    expectingConfig = true;
+                    configJson = '';
+                } else if (line === 'CONFIG_END') {
+                    expectingConfig = false;
+                    try {
+                        var data = JSON.parse(configJson);
+                        normalizeConfigData(data);  // Remap color→rgb
+                        console.log('Received config:', data);
+                        if (data.presets) {
+                            // Use config metadata from device if present
+                            if (data.configName) presetData.configName = data.configName;
+                            if (data.lastModified) presetData.lastModified = data.lastModified;
+                            presetData.presets = data.presets;
+                            if (data.system) {
+                                // Merge system properties
+                                if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                                if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                                if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                                if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                                if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
+                                if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                                if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                                if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                                if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                                if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                                if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                                if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
+                                if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                            }
+                            presetData.currentPreset = data.currentPreset || 0;
+                            selectedBtn = 0;
+                            showSystem = false;
+                            render();
+                            alert('Config loaded from device!');
+                        } else {
+                            alert('Invalid config: no presets found');
+                        }
+                    } catch (e) {
+                        console.error('Parse error:', e, 'JSON:', configJson);
+                        alert('Parse error: ' + e.message);
+                    }
+                } else if (expectingConfig) {
+                    configJson += line;
+                }
+            }
+        }
+
+        async function readFromDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            await serialWriter.write(new TextEncoder().encode('GET_CONFIG\n'));
+        }
+
+        async function sendToDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 400; // Smaller chunks for BT Serial compatibility
+
+            try {
+                // Start upload
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(200);  // Longer delay for BT Serial init
+
+                // Send chunks
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+                    await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
+                    await sleep(100); // Longer delay for BT Serial
+                }
+
+                // End upload - wait for all chunks to be processed
+                await sleep(300);
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+                alert('Config sent to device! Check serial monitor for status.');
+            } catch (e) {
+                alert('Send error: ' + e.message);
+            }
+        }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        // ===============================================================
+        // WEB BLUETOOTH API - BLE Connection to Chocotone
+        // ===============================================================
+        var bleDevice = null;
+        var bleRxChar = null;  // Write to device
+        var bleTxChar = null;  // Notify from device
+        var bleBuffer = '';
+        var bleConfigJson = '';
+        var bleExpectingConfig = false;
+
+        // Chocotone Config Service UUIDs (must match firmware)
+        const BLE_CONFIG_SERVICE = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+        const BLE_CONFIG_RX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567891';
+        const BLE_CONFIG_TX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567892';
+
+        async function connectBLE() {
+            if (!('bluetooth' in navigator)) {
+                alert('Web Bluetooth not supported. Use Chrome or Edge on desktop.');
+                return;
+            }
+            try {
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    // Use services filter instead of name to avoid case sensitivity issues
+                    // This shows all devices advertising the Config Service UUID
+                    filters: [
+                        { services: [BLE_CONFIG_SERVICE] },
+                        { namePrefix: 'CHOCOTONE' },
+                        { namePrefix: 'Chocotone' },
+                        { namePrefix: 'chocotone' }
+                    ],
+                    optionalServices: [BLE_CONFIG_SERVICE]
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(BLE_CONFIG_SERVICE);
+
+                bleRxChar = await service.getCharacteristic(BLE_CONFIG_RX);
+                bleTxChar = await service.getCharacteristic(BLE_CONFIG_TX);
+
+                // Start notifications for responses
+                await bleTxChar.startNotifications();
+                bleTxChar.addEventListener('characteristicvaluechanged', handleBleNotification);
+
+                // Handle disconnection events
+                bleDevice.addEventListener('gattserverdisconnected', () => {
+                    console.log('BLE Disconnected');
+                    bleRxChar = null;
+                    bleTxChar = null;
+                    var statusEl = document.getElementById('bleStatus');
+                    if (statusEl) {
+                        statusEl.textContent = 'Disconnected';
+                        statusEl.style.color = '#ef4444';
+                    }
+                    var btnEl = document.getElementById('btnBleConnect');
+                    if (btnEl) btnEl.textContent = 'Connect BLE';
+                    render();
+                });
+
+                document.getElementById('bleStatus').textContent = 'Connected';
+                document.getElementById('bleStatus').style.color = '#22c55e';
+                document.getElementById('btnBleConnect').textContent = 'Disconnect';
+
+                console.log('BLE Connected to Chocotone');
+
+                // Brief delay to ensure connection is stable
+                await sleep(200);
+            } catch (e) {
+                console.error('BLE error:', e);
+                alert('BLE Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectBLE() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            bleDevice = null;
+            bleRxChar = null;
+            bleTxChar = null;
+            document.getElementById('bleStatus').textContent = 'Not connected';
+            document.getElementById('bleStatus').style.color = '#71717a';
+            document.getElementById('btnBleConnect').textContent = 'Connect BLE';
+        }
+
+        function toggleBLE() {
+            if (bleDevice && bleDevice.gatt.connected) disconnectBLE();
+            else connectBLE();
+        }
+
+        // BLE response handler - simplified for request-acknowledge protocol
+        var bleResponseResolve = null;
+        var bleResponseTimeout = null;
+
+        function handleBleNotification(event) {
+            var value = new TextDecoder().decode(event.target.value);
+            console.log('BLE response:', value.substring(0, 100));
+
+            // Clear timeout and resolve promise
+            if (bleResponseTimeout) {
+                clearTimeout(bleResponseTimeout);
+                bleResponseTimeout = null;
+            }
+            if (bleResponseResolve) {
+                bleResponseResolve(value);
+                bleResponseResolve = null;
+            }
+        }
+
+        // Send command and wait for response
+        async function sendBleCommand(cmd, timeoutMs = 3000) {
+            return new Promise(async (resolve, reject) => {
+                bleResponseResolve = resolve;
+                bleResponseTimeout = setTimeout(() => {
+                    bleResponseResolve = null;
+                    reject(new Error('BLE timeout waiting for: ' + cmd));
+                }, timeoutMs);
+
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode(cmd + '\n'));
+                } catch (e) {
+                    clearTimeout(bleResponseTimeout);
+                    bleResponseResolve = null;
+                    reject(e);
+                }
+            });
+        }
+
+        async function readFromDeviceBLE() {
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
+
+            try {
+                console.log('BLE Read: Starting request-acknowledge transfer...');
+
+                // Step 1: Request config info
+                var infoResponse = await sendBleCommand('GET_CONFIG', 5000);
+                console.log('BLE Read: Got info:', infoResponse);
+
+                if (!infoResponse.startsWith('CONFIG_INFO:')) {
+                    throw new Error('Unexpected response: ' + infoResponse);
+                }
+
+                // Parse: CONFIG_INFO:8203:65
+                var parts = infoResponse.split(':');
+                var totalBytes = parseInt(parts[1]);
+                var totalChunks = parseInt(parts[2]);
+                console.log('BLE Read: Expecting ' + totalBytes + ' bytes in ' + totalChunks + ' chunks');
+
+                // Step 2: Request each chunk
+                var jsonBuffer = '';
+                for (var i = 0; i < totalChunks; i++) {
+                    var chunkResponse = await sendBleCommand('GET_CHUNK:' + i, 3000);
+
+                    // Parse: CHUNK:N:data
+                    if (!chunkResponse.startsWith('CHUNK:')) {
+                        throw new Error('Invalid chunk response: ' + chunkResponse);
+                    }
+
+                    // Extract data after "CHUNK:N:"
+                    var colonIdx = chunkResponse.indexOf(':', 6);  // Find second colon
+                    var chunkData = chunkResponse.substring(colonIdx + 1);
+                    jsonBuffer += chunkData;
+
+                    // Progress logging every 10 chunks
+                    if (i % 10 === 0 || i === totalChunks - 1) {
+                        console.log('BLE Read: Chunk ' + (i + 1) + '/' + totalChunks + ' (' + jsonBuffer.length + ' bytes)');
+                    }
+
+                    // Small delay between chunk requests
+                    await sleep(20);
+                }
+
+                console.log('BLE Read: All chunks received, total: ' + jsonBuffer.length + ' bytes');
+
+                // Step 3: Parse JSON
+                var data = JSON.parse(jsonBuffer);
+                normalizeConfigData(data);  // Remap color→rgb
+                console.log('BLE received config:', data);
+
+                if (data.presets) {
+                    // Use config metadata from device if present
+                    if (data.configName) presetData.configName = data.configName;
+                    if (data.lastModified) presetData.lastModified = data.lastModified;
+                    presetData.presets = data.presets;
+                    if (data.system) {
+                        // Merge system properties individually
+                        if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                        if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                        if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                        if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                        if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
+                        if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                        if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                        if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                        if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                        if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                        if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                        if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
+                        if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                        if (data.system.brightnessDim !== undefined) presetData.system.brightnessDim = data.system.brightnessDim;
+                        if (data.system.brightnessTap !== undefined) presetData.system.brightnessTap = data.system.brightnessTap;
+                    }
+                    presetData.currentPreset = data.currentPreset || 0;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Config loaded from device via Bluetooth!');
+                } else {
+                    alert('BLE Error: No presets found in config');
+                }
+
+            } catch (e) {
+                console.error('BLE Read error:', e);
+                alert('BLE Read error: ' + e.message);
+            }
+        }
+
+        async function sendToDeviceBLE() {
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 150; // Small chunks for reliable BLE transfer
+            var totalChunks = Math.ceil(json.length / CHUNK_SIZE);
+
+            try {
+                console.log('BLE Send: Starting upload of ' + json.length + ' bytes in ' + totalChunks + ' chunks');
+
+                // Start upload
+                var startResponse = await sendBleCommand('SET_CONFIG_START', 3000);
+                console.log('BLE Send: Start response:', startResponse);
+
+                if (startResponse !== 'CONFIG_READY') {
+                    throw new Error('Device not ready: ' + startResponse);
+                }
+
+                // Send chunks
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+
+                    var chunkResponse = await sendBleCommand('SET_CONFIG_CHUNK:' + chunk, 3000);
+
+                    if (!chunkResponse.startsWith('CHUNK_OK:')) {
+                        throw new Error('Chunk error: ' + chunkResponse);
+                    }
+
+                    if (chunkNum % 10 === 0) {
+                        console.log('BLE Send: Chunk ' + chunkNum + '/' + totalChunks);
+                    }
+                }
+
+                // End upload
+                var endResponse = await sendBleCommand('SET_CONFIG_END', 10000);
+                console.log('BLE Send: End response:', endResponse);
+
+                if (endResponse === 'CONFIG_SAVED') {
+                    alert('Config saved to device via Bluetooth!');
+                } else {
+                    throw new Error('Save failed: ' + endResponse);
+                }
+
+            } catch (e) {
+                console.error('BLE Send error:', e);
+                alert('BLE Send error: ' + e.message);
+            }
+        }
+
+        // Add connection sections to render
+        var origRender = render;
+        render = function () {
+            origRender();
+            var app = document.getElementById('app');
+
+            // USB Status
+            var usbConnected = serialPort !== null;
+            var usbStatusText = usbConnected ? 'Connected' : 'Not connected';
+            var usbStatusColor = usbConnected ? '#22c55e' : '#71717a';
+            var usbBtnText = usbConnected ? 'Disconnect' : 'Connect USB/BT';
+
+            // BLE Status
+            var bleConnected = bleDevice && bleDevice.gatt && bleDevice.gatt.connected;
+            var bleStatusText = bleConnected ? 'Connected' : 'Not connected';
+            var bleStatusColor = bleConnected ? '#22c55e' : '#71717a';
+            var bleBtnText = bleConnected ? 'Disconnect' : 'Connect BLE';
+
+            // Twin card container - uses same layout as columns for alignment
+            var html = '<div class="two-col-layout" style="margin-bottom:12px">';
+
+            // USB Serial Card - Orange theme (uses CSS vars)
+            html += '<div class="section conn-card-usb col-left" style="margin-bottom:0">';
+            html += '<div class="section-title">🔌 USB or BT Serial</div>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()" style="grid-column:1/span 2; width:100%">' + usbBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDevice()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDevice()" style="grid-column:2; width:100%">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge only</div>';
+            html += '</div>';
+
+            // Bluetooth Card - Cyan theme (uses CSS vars)
+            html += '<div class="section conn-card-ble col-right" style="margin-bottom:0">';
+            html += '<div class="section-title" style="color:var(--cyan)">📶 BLE Connection</div>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000; grid-column:1/span 2; width:100%">' + bleBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDeviceBLE()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDeviceBLE()" style="grid-column:2; width:100%">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge desktop only</div>';
+            html += '</div>';
+
+            html += '</div>';
+            app.insertAdjacentHTML('afterbegin', html);
+        };
+
+        render();
+
+        // ===============================================================
+        // DEV TOOLS - Live Color Palette Editor
+        // ===============================================================
+        (function () {
+            var devPanel = document.createElement('div');
+            devPanel.id = 'devTools';
+            devPanel.className = 'collapsed';
+            devPanel.innerHTML = `
+                <style>
+                    #devTools {
+                        position: fixed;
+                        top: 15px;
+                        right: 15px;
+                        background: var(--card, #111);
+                        border: 2px solid var(--orange, #ffae3d);
+                        border-radius: 12px;
+                        padding: 16px;
+                        z-index: 9999;
+                        font-family: 'Montserrat', sans-serif;
+                        font-size: 12px;
+                        color: var(--mint, #e5fff2);
+                        min-width: 200px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                    }
+                    #devTools.collapsed { 
+                        padding: 0;
+                        min-width: auto;
+                        border-radius: 50%;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    #devTools.collapsed .dev-content { display: none; }
+                    #devTools.collapsed .dev-header-text { display: none; }
+                    #devTools .dev-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 12px;
+                        font-weight: 700;
+                        color: var(--orange, #ffae3d);
+                        cursor: pointer;
+                    }
+                    #devTools.collapsed .dev-header { 
+                        margin-bottom: 0;
+                        font-size: 18px;
+                    }
+                    #devTools .dev-asterisk {
+                        display: none;
+                    }
+                    #devTools.collapsed .dev-asterisk {
+                        display: block;
+                        font-size: 20px;
+                    }
+                    #devTools .color-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin-bottom: 8px;
+                    }
+                    #devTools .color-row label {
+                        flex: 1;
+                        color: var(--cyan, #8ffdff);
+                    }
+                    #devTools input[type="color"] {
+                        width: 40px;
+                        height: 28px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn {
+                        width: 100%;
+                        padding: 8px;
+                        margin-top: 10px;
+                        background: var(--orange, #ffae3d);
+                        color: #000;
+                        border: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn:hover { background: var(--acc-dim, #cc8a2e); }
+                </style>
+                <div class="dev-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <span class="dev-asterisk">✱</span>
+                    <span class="dev-header-text">🎨 Dev Tools</span>
+                    <span class="dev-header-text" style="font-size:10px">✕</span>
+                </div>
+                <div class="dev-content">
+                    <div class="color-row">
+                        <label>Background</label>
+                        <input type="color" id="devBg" value="#000000">
+                    </div>
+                    <div class="color-row">
+                        <label>Mint (Text)</label>
+                        <input type="color" id="devMint" value="#e5fff2">
+                    </div>
+                    <div class="color-row">
+                        <label>Cyan (Dim)</label>
+                        <input type="color" id="devCyan" value="#8ffdff">
+                    </div>
+                    <div class="color-row">
+                        <label>Accent (Acc)</label>
+                        <input type="color" id="devOrange" value="#8c81df">
+                    </div>
+                    <button class="dev-btn" onclick="exportPalette()">📋 Export Palette</button>
+                </div>
+            `;
+            document.body.appendChild(devPanel);
+
+            // Live color update functions
+            document.getElementById('devBg').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--bg', e.target.value);
+            });
+            document.getElementById('devMint').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text', e.target.value);
+                document.documentElement.style.setProperty('--mint', e.target.value);
+            });
+            document.getElementById('devCyan').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text-dim', e.target.value);
+                document.documentElement.style.setProperty('--cyan', e.target.value);
+            });
+            document.getElementById('devOrange').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--acc', e.target.value);
+                document.documentElement.style.setProperty('--warning', e.target.value);
+                document.documentElement.style.setProperty('--orange', e.target.value);
+            });
+
+            // Export palette function
+            window.exportPalette = function () {
+                var bg = document.getElementById('devBg').value;
+                var mint = document.getElementById('devMint').value;
+                var cyan = document.getElementById('devCyan').value;
+                var orange = document.getElementById('devOrange').value;
+                var code = `Palette:\n--bg: ${bg};\n--mint: ${mint};\n--cyan: ${cyan};\n--orange: ${orange};`;
+                navigator.clipboard.writeText(code);
+                alert('Palette copied to clipboard!\n\n' + code);
+            };
+        })();
+    </script>
+</body>
+
+</html>
