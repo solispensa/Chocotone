@@ -674,7 +674,17 @@ void processBufferedSysex() {
     // Effect state bytes are at offsets 140, 141, 143 in combined data.
     // Reference: GP5EditorBT.html handleNotification()
     // =========================================================
+    
+    // DEBUG: Log sync mode for this preset
+    Serial.printf("[GP5 DEBUG] Current preset: %d, SyncMode: %d (0=NONE, 1=SPM, 2=GP5)\n", 
+        currentPreset, presetSyncMode[currentPreset]);
+    
     if (presetSyncMode[currentPreset] == SYNC_GP5) {
+        // DEBUG: Log key bytes for pattern matching
+        Serial.printf("[GP5 DEBUG] Key bytes: [5]=0x%02X [6]=0x%02X [7]=0x%02X [8]=0x%02X [11]=0x%02X [12]=0x%02X [13]=0x%02X [14]=0x%02X\n",
+            sysexBuffer[5], sysexBuffer[6], sysexBuffer[7], sysexBuffer[8],
+            sysexBuffer[11], sysexBuffer[12], sysexBuffer[13], sysexBuffer[14]);
+        
         // Static buffers for multi-chunk accumulation
         static uint8_t gp5PresetData[1024];  // Combined preset data
         static size_t gp5PresetDataLen = 0;
@@ -683,7 +693,14 @@ void processBufferedSysex() {
         // Check for 212-byte preset dump packets
         // Pattern from reference: bytes[5]==0, bytes[6]==5 for preset info chunks
         // bytes[7]/bytes[8] = chunk index (high nibble / low nibble)
-        if (sysexLen >= 150 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05) {
+        bool isPresetChunk = (sysexLen >= 150 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05);
+        Serial.printf("[GP5 DEBUG] Preset chunk check: len=%d>=150? %s, [5]==0? %s, [6]==5? %s => %s\n",
+            sysexLen, sysexLen >= 150 ? "YES" : "NO",
+            sysexBuffer[5] == 0x00 ? "YES" : "NO",
+            sysexBuffer[6] == 0x05 ? "YES" : "NO",
+            isPresetChunk ? "MATCH" : "no match");
+        
+        if (isPresetChunk) {
             uint8_t chunkIndex = sysexBuffer[7] * 16 + sysexBuffer[8];
             
             Serial.printf("GP5: Preset info chunk %d received (%d bytes)\n", chunkIndex, sysexLen);
@@ -765,8 +782,12 @@ void processBufferedSysex() {
         //   bytes[15]: bit 0=CAB, bit 1=EQ, bit 2=MOD, bit 3=DLY
         //   bytes[18]: bit 0=RVB, bit 1=NS
         // =========================================================
-        if (sysexLen >= 24 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x01 &&
-            sysexBuffer[12] == 0x02 && sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x0E) {
+        bool isCTLToggle = (sysexLen >= 24 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x01 &&
+            sysexBuffer[12] == 0x02 && sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x0E);
+        Serial.printf("[GP5 DEBUG] CTL toggle check: [5]=0, [6]=1, [12]=2, [13]=4, [14]=0E => %s\n",
+            isCTLToggle ? "MATCH" : "no match");
+        
+        if (isCTLToggle) {
             
             Serial.println("GP5: CTL toggle received - updating effect states");
             
@@ -803,14 +824,19 @@ void processBufferedSysex() {
         
         // Check for preset changed notification
         // Reference: bytes[11]==1, bytes[12]==2, bytes[13]==4, bytes[14]==3
-        if (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
-            sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x03) {
+        bool isPresetChanged = (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
+            sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x03);
+        Serial.printf("[GP5 DEBUG] Preset changed check: [11]=1, [12]=2, [13]=4, [14]=3 => %s\n",
+            isPresetChanged ? "MATCH" : "no match");
+        
+        if (isPresetChanged) {
             Serial.println("GP5: Preset changed on device - requesting new state");
             delay(50);
             gp5_request_current_preset();
             return;
         }
         
+        Serial.println("[GP5 DEBUG] No GP5 pattern matched, falling through to SPM parsing");
         // If no GP5 pattern matched, fall through to SPM parsing
     }
 
