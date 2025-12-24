@@ -1660,9 +1660,31 @@ void handleSerialConfig() {
             }
             // SET_CONFIG_START - Begin receiving config
             else if (serialBuffer == "SET_CONFIG_START") {
+                // Pause BLE scan to prevent serial buffer overflow
+                doScan = false;
+                BLEScan* pScan = BLEDevice::getScan();
+                if (pScan) {
+                    pScan->stop();
+                }
                 uploadBufferLen = 0;
                 memset(uploadBuffer, 0, sizeof(uploadBuffer));
                 Serial.println("READY");
+            }
+            // PAUSE_SCAN - Stop BLE scanning for reliable serial transfer
+            else if (serialBuffer == "PAUSE_SCAN") {
+                doScan = false;
+                BLEScan* pScan = BLEDevice::getScan();
+                if (pScan) {
+                    pScan->stop();
+                }
+                Serial.println("SCAN_PAUSED");
+            }
+            // RESUME_SCAN - Resume BLE scanning after transfer
+            else if (serialBuffer == "RESUME_SCAN") {
+                if (systemConfig.bleMode == BLE_CLIENT_ONLY || systemConfig.bleMode == BLE_DUAL_MODE) {
+                    doScan = true;
+                }
+                Serial.println("SCAN_RESUMED");
             }
             // SET_CONFIG_CHUNK:{data} - Receive a chunk of config data
             else if (serialBuffer.startsWith("SET_CONFIG_CHUNK:")) {

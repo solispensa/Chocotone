@@ -1510,23 +1510,31 @@
         async function sendToDevice() {
             if (!serialWriter) { alert('Connect USB first'); return; }
             var json = JSON.stringify(presetData);
-            var CHUNK_SIZE = 400; // Smaller chunks for BT Serial compatibility
+            var CHUNK_SIZE = 200; // Smaller chunks to prevent serial buffer overflow
 
             try {
-                // Start upload
-                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
-                await sleep(200);  // Longer delay for BT Serial init
+                // Start upload - pause BLE scan first
+                await serialWriter.write(new TextEncoder().encode('PAUSE_SCAN\n'));
+                await sleep(500);  // Wait for BLE scan to stop
 
-                // Send chunks
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(300);  // Longer delay to ensure READY
+
+                // Send chunks with longer delays
                 for (var i = 0; i < json.length; i += CHUNK_SIZE) {
                     var chunk = json.substring(i, i + CHUNK_SIZE);
                     await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
-                    await sleep(100); // Longer delay for BT Serial
+                    await sleep(50); // Small delay between chunks
+
+                    // Yield to browser every 10 chunks
+                    if ((i / CHUNK_SIZE) % 10 === 0) await sleep(100);
                 }
 
-                // End upload - wait for all chunks to be processed
-                await sleep(300);
+                // End upload
+                await sleep(500);
                 await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+                await sleep(200);
+                await serialWriter.write(new TextEncoder().encode('RESUME_SCAN\n'));
                 alert('Config sent to device! Check serial monitor for status.');
             } catch (e) {
                 alert('Send error: ' + e.message);
