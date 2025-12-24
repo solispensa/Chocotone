@@ -22,6 +22,7 @@
 // Forward Declarations
 static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
 static void serverMidiCallback(BLECharacteristic* pCharacteristic);
+void applyGp5PresetToButtons(uint8_t gp5ActivePreset);  // Forward declaration for GP5 preset sync
 
 // Security Callbacks
 class MySecurityCallbacks : public BLESecurityCallbacks {
@@ -690,14 +691,18 @@ void processBufferedSysex() {
         static size_t gp5PresetDataLen = 0;
         static uint8_t lastChunkIndex = 0xFF;
         
-        // Check for 212-byte preset dump packets
+        // Check for preset dump packets
         // Pattern from reference: bytes[5]==0, bytes[6]==5 for preset info chunks
         // bytes[7]/bytes[8] = chunk index (high nibble / low nibble)
-        bool isPresetChunk = (sysexLen >= 150 && sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05);
-        Serial.printf("[GP5 DEBUG] Preset chunk check: len=%d>=150? %s, [5]==0? %s, [6]==5? %s => %s\n",
-            sysexLen, sysexLen >= 150 ? "YES" : "NO",
+        // NOTE: Final chunk (04) is only 148 bytes, so we need to accept smaller packets
+        bool isFinalChunk = (sysexBuffer[7] == 0x00 && sysexBuffer[8] == 0x04);
+        bool isPresetChunk = (sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05 && 
+                             (sysexLen >= 150 || isFinalChunk));
+        Serial.printf("[GP5 DEBUG] Preset chunk check: len=%d, [5]=0? %s, [6]=5? %s, [7]=0 [8]=4? %s => %s\n",
+            sysexLen,
             sysexBuffer[5] == 0x00 ? "YES" : "NO",
             sysexBuffer[6] == 0x05 ? "YES" : "NO",
+            isFinalChunk ? "YES (final)" : "NO",
             isPresetChunk ? "MATCH" : "no match");
         
         if (isPresetChunk) {
@@ -824,13 +829,21 @@ void processBufferedSysex() {
         
         // Check for preset changed notification
         // Reference: bytes[11]==1, bytes[12]==2, bytes[13]==4, bytes[14]==3
+        // Preset number is at bytes[15] (high nibble) and bytes[16] (low nibble)
         bool isPresetChanged = (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
             sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x03);
         Serial.printf("[GP5 DEBUG] Preset changed check: [11]=1, [12]=2, [13]=4, [14]=3 => %s\n",
             isPresetChanged ? "MATCH" : "no match");
         
-        if (isPresetChanged) {
-            Serial.println("GP5: Preset changed on device - requesting new state");
+        if (isPresetChanged && sysexLen >= 17) {
+            // Extract preset number from nibbles
+            uint8_t gp5ActivePreset = sysexBuffer[15] * 16 + sysexBuffer[16];
+            Serial.printf("GP5: Preset changed to %d - updating buttons and requesting state\n", gp5ActivePreset);
+            
+            // Update preset selection buttons
+            applyGp5PresetToButtons(gp5ActivePreset);
+            
+            // Request full preset state
             delay(50);
             gp5_request_current_preset();
             return;
@@ -1192,17 +1205,17 @@ void applyGp5StateToButtons() {
     
     Serial.println("GP5 Sync: Applying state to buttons...");
     
-    // GP5 CC number to effect index mapping:
-    // CC 0 = NR (index 0)
-    // CC 1 = PRE/FX1 (index 1)
-    // CC 2 = DST/DRV (index 2)
-    // CC 3 = AMP (index 3)
-    // CC 4 = CAB/IR (index 4)
-    // CC 5 = EQ (index 5)
-    // CC 6 = MOD/FX2 (index 6)
-    // CC 7 = DLY (index 7)
-    // CC 8 = RVB (index 8)
-    // CC 9 = NS (index 9)
+    // GP5 effect control:
+    // - BLE MIDI: Uses SysEx messages (what GP5EditorBT.html uses)
+    // - USB MIDI: Uses CC 0-9 for effect toggles
+    // 
+    // SysEx pattern for GP5 effect toggle (from GP5EditorBT.html):
+    // f0 ... 0a 01 01 04 09 00 [EFFECT_INDEX] ... f7
+    // Effect index is at byte 14 (0-indexed, counting from f0)
+    // Byte 23 = state (0x01 = ON, 0x00 = OFF) - but we get state from device notifications
+    //
+    // Effect indices:  
+    // 0=NR, 1=PRE, 2=DST, 3=AMP, 4=CAB, 5=EQ, 6=MOD, 7=DLY, 8=RVB, 9=NS
     
     for (int btn = 0; btn < systemConfig.buttonCount; btn++) {
         ButtonConfig& config = buttonConfigs[currentPreset][btn];
@@ -1212,16 +1225,38 @@ void applyGp5StateToButtons() {
             continue;
         }
         
-        // Find the PRESS action to check if it's a CC for an effect
+        // Find the PRESS action to check message type
         ActionMessage* pressAction = findAction(config, ACTION_PRESS);
-        if (!pressAction || pressAction->type != CC) {
+        if (!pressAction) {
             continue;
         }
         
-        // Check if this CC is in range 0-9 (GP5 effect toggles)
-        uint8_t ccNum = pressAction->data1;
-        if (ccNum <= 9) {
-            bool effectIsOn = effectStates[ccNum];
+        int effectIndex = -1;
+        
+        // Check if it's a CC-based GP5 effect toggle (USB MIDI)
+        if (pressAction->type == CC && pressAction->data1 <= 9) {
+            effectIndex = pressAction->data1;
+        }
+        // Check if it's a SysEx-based GP5 effect toggle (BLE MIDI)
+        else if (pressAction->type == SYSEX && pressAction->sysex.length > 15) {
+            // GP5 SysEx pattern check: bytes 8-13 should be "0a 01 01 04 09 00"
+            // Effect index is at byte 14
+            if (pressAction->sysex.data[8] == 0x0A && pressAction->sysex.data[9] == 0x01 &&
+                pressAction->sysex.data[10] == 0x01 && pressAction->sysex.data[11] == 0x04 &&
+                pressAction->sysex.data[12] == 0x09 && pressAction->sysex.data[13] == 0x00) {
+                
+                effectIndex = pressAction->sysex.data[14];
+                
+                if (effectIndex >= 0 && effectIndex <= 9) {
+                    Serial.printf("[GP5 SysEx] BTN %d: Found GP5 effect SysEx, index=%d\n", 
+                        btn, effectIndex);
+                }
+            }
+        }
+        
+        // If we found a valid GP5 effect (either CC or SysEx), sync its state
+        if (effectIndex >= 0 && effectIndex <= 9) {
+            bool effectIsOn = effectStates[effectIndex];
             
             // Set button state:
             // If effect is ON, next press should turn it OFF (send 2ND_PRESS action)
@@ -1229,8 +1264,8 @@ void applyGp5StateToButtons() {
             config.isAlternate = effectIsOn;
             ledToggleState[btn] = effectIsOn;
             
-            Serial.printf("  BTN %d (%s): CC%d -> Effect[%d] = %s\n", 
-                btn, config.name, ccNum, ccNum, effectIsOn ? "ON" : "OFF");
+            Serial.printf("  BTN %d (%s): Effect[%d] = %s\n", 
+                btn, config.name, effectIndex, effectIsOn ? "ON" : "OFF");
         }
     }
     
@@ -1239,6 +1274,52 @@ void applyGp5StateToButtons() {
     updateLeds();
     
     Serial.println("GP5 Sync: State applied successfully");
+}
+
+// Apply GP5 active preset to preset selection buttons
+void applyGp5PresetToButtons(uint8_t gp5ActivePreset) {
+    if (presetSyncMode[currentPreset] != SYNC_GP5) {
+        return;
+    }
+    
+    Serial.printf("GP5 Preset Sync: Highlighting preset %d buttons...\n", gp5ActivePreset);
+    
+    // GP5 Preset Select SysEx pattern (from GP-5 SysEx.pdf):
+    // f0 ... 06 01 01 04 03 [PRESET_NUMBER] ... f7
+    // Pattern at bytes 8-12: "06 01 01 04 03"
+    // Preset number at byte 14
+    
+    for (int btn = 0; btn < systemConfig.buttonCount; btn++) {
+        ButtonConfig& config = buttonConfigs[currentPreset][btn];
+        
+        // Find the PRESS action
+        ActionMessage* pressAction = findAction(config, ACTION_PRESS);
+        if (!pressAction || pressAction->type != SYSEX || pressAction->sysex.length < 15) {
+            continue;
+        }
+        
+        // Check if it's a GP5 preset select SysEx
+        if (pressAction->sysex.data[8] == 0x06 && pressAction->sysex.data[9] == 0x01 &&
+            pressAction->sysex.data[10] == 0x01 && pressAction->sysex.data[11] == 0x04 &&
+            pressAction->sysex.data[12] == 0x03) {
+            
+            uint8_t buttonPresetNum = pressAction->sysex.data[14];
+            
+            // Light up button if it matches the active GP5 preset
+            if (buttonPresetNum == gp5ActivePreset) {
+                ledToggleState[btn] = true;
+                Serial.printf("  BTN %d (%s): Preset %d ACTIVE\n", btn, config.name, buttonPresetNum);
+            } else {
+                ledToggleState[btn] = false;
+            }
+        }
+    }
+    
+    // Update LEDs
+    extern void updateLeds();
+    updateLeds();
+    
+    Serial.println("GP5 Preset Sync: Complete");
 }
 
 // ============================================
