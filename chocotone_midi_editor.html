@@ -579,7 +579,8 @@
         function fillEmptyPresets() {
             for (let p = 0; p < presetData.presets.length; p++) {
                 if (!presetData.presets[p].buttons.length) {
-                    for (let i = 0; i < 8; i++) presetData.presets[p].buttons.push(createDefaultButton(i));
+                    var cnt = presetData.system.buttonCount || 8;
+                    for (let i = 0; i < cnt; i++) presetData.presets[p].buttons.push(createDefaultButton(i));
                 }
             }
         }
