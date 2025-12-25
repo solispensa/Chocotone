@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chocotone ESP32 Installer</title>
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <style>
+        /* ============================================
+           CHOCOTONE STANDARD CSS VARIABLES
+           ============================================ */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+
+        :root {
+            --bg: #000000;
+            --card: #111111;
+            --card-hover: #1a1a1a;
+            --text: #e5fff2;
+            --text-dim: #8ffdff;
+            --acc: #8c81df;
+            --acc-dim: #6b62b0;
+            --inp: #1a1a1a;
+            --brd: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 10px;
+            --cyan: #8ffdff;
+            --mint: #e5fff2;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ============================================
+           CHOCOTONE HEADER / LOGO
+           ============================================ */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--brd);
+        }
+
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .logo-part-1 {
+            color: var(--mint);
+        }
+
+        .logo-part-2 {
+            color: var(--acc);
+        }
+
+        .logo-subline {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--cyan);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-top: 8px;
+        }
+
+        /* ============================================
+           SECTION CARDS
+           ============================================ */
+        .section {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--brd);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--acc);
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        /* ============================================
+           INSTALL CARD (MAIN CTA)
+           ============================================ */
+        .install-card {
+            text-align: center;
+            padding: 32px;
+        }
+
+        .install-card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--mint);
+        }
+
+        .install-card p {
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        /* Version Selector */
+        .version-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .version-selector label {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .version-selector select {
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .version-selector select:focus {
+            outline: none;
+            border-color: var(--acc);
+        }
+
+        .version-badge {
+            background: var(--success);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* ESP Web Tools Button Styling */
+        esp-web-install-button {
+            display: inline-block;
+        }
+
+        esp-web-install-button button {
+            background: var(--acc);
+            border: none;
+            padding: 14px 32px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Montserrat', sans-serif;
+            color: #fff;
+        }
+
+        esp-web-install-button button:hover {
+            background: var(--acc-dim);
+            transform: translateY(-2px);
+        }
+
+        /* Browser Warning */
+        .browser-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .browser-warning span {
+            color: var(--warning);
+            font-size: 1.2rem;
+        }
+
+        .browser-warning p {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        /* ============================================
+           REQUIREMENTS GRID
+           ============================================ */
+        .requirement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--inp);
+            border-radius: 8px;
+            border: 1px solid var(--brd);
+        }
+
+        .requirement .icon {
+            font-size: 1.3rem;
+        }
+
+        .requirement span:last-child {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        /* ============================================
+           STEPS GRID
+           ============================================ */
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .step {
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .step:hover {
+            border-color: var(--acc);
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: var(--acc);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .step h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--mint);
+        }
+
+        .step p {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        /* ============================================
+           TROUBLESHOOTING ACCORDION
+           ============================================ */
+        .trouble-item {
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .trouble-item summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 12px 16px;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--mint);
+        }
+
+        .trouble-item summary::before {
+            content: "▶";
+            font-size: 0.65rem;
+            color: var(--acc);
+            transition: transform 0.2s;
+        }
+
+        .trouble-item[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .trouble-item p {
+            color: var(--text-dim);
+            padding: 0 16px 12px 28px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .trouble-item a {
+            color: var(--acc);
+            text-decoration: none;
+        }
+
+        .trouble-item a:hover {
+            text-decoration: underline;
+        }
+
+        /* ============================================
+           DOWNLOAD SECTION
+           ============================================ */
+        .download-section {
+            text-align: center;
+        }
+
+        .download-section h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--mint);
+        }
+
+        .download-section p {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Montserrat', sans-serif;
+            text-decoration: none;
+        }
+
+        .btn.secondary {
+            background: var(--inp);
+            color: var(--text);
+            border: 1px solid var(--brd);
+        }
+
+        .btn.secondary:hover {
+            border-color: var(--acc);
+            background: var(--card-hover);
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        .footer {
+            text-align: center;
+            color: #555;
+            font-size: 0.75rem;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--brd);
+        }
+
+        .footer a {
+            color: var(--acc);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer p {
+            margin: 4px 0;
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .logo-text {
+                font-size: 36px;
+                letter-spacing: -3px;
+            }
+
+            .section {
+                padding: 16px;
+            }
+
+            .install-card {
+                padding: 20px;
+            }
+
+            .step-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .version-selector {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- ============================================
+             CHOCOTONE HEADER
+             ============================================ -->
+        <header class="header">
+            <h1 class="logo-text">
+                <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
+            </h1>
+            <div class="logo-subline">ESP32 FIRMWARE INSTALLER</div>
+        </header>
+
+        <!-- Main Install Card -->
+        <div class="section install-card">
+            <h2>Install Firmware</h2>
+            <p>Connect your ESP32 board via USB and click the button below.</p>
+
+            <!-- Version Selector -->
+            <div class="version-selector">
+                <label for="version-select">Firmware Version:</label>
+                <select id="version-select">
+                    <option value="loading">Loading...</option>
+                </select>
+                <span class="version-badge" id="latest-badge" style="display: none;">Latest</span>
+            </div>
+
+            <esp-web-install-button id="install-button" manifest="manifest.json">
+                <button slot="activate">🚀 Install Chocotone</button>
+                <span slot="unsupported">
+                    <div class="browser-warning">
+                        <span>⚠️</span>
+                        <p>Your browser doesn't support Web Serial. Use <strong>Chrome</strong>, <strong>Edge</strong>,
+                            or <strong>Brave</strong> on desktop.</p>
+                    </div>
+                </span>
+                <span slot="not-allowed">
+                    <div class="browser-warning">
+                        <span>🔒</span>
+                        <p>Serial access blocked. This page must be served over HTTPS or localhost.</p>
+                    </div>
+                </span>
+            </esp-web-install-button>
+        </div>
+
+        <!-- Requirements -->
+        <div class="section">
+            <div class="section-title">📋 What You Need</div>
+            <div class="requirement-grid">
+                <div class="requirement">
+                    <span class="icon">💻</span>
+                    <span>Chrome, Edge, or Brave</span>
+                </div>
+                <div class="requirement">
+                    <span class="icon">🔌</span>
+                    <span>USB data cable</span>
+                </div>
+                <div class="requirement">
+                    <span class="icon">📦</span>
+                    <span>ESP32 dev board</span>
+                </div>
+                <div class="requirement">
+                    <span class="icon">🪟</span>
+                    <span>Win / Mac / Linux</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="section">
+            <div class="section-title">📝 How It Works</div>
+            <div class="step-grid">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Connect ESP32</h3>
+                    <p>Plug your ESP32 board into your computer with a USB data cable.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Select Version</h3>
+                    <p>Choose a firmware version from the dropdown (latest recommended).</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Click Install</h3>
+                    <p>Click the button and select your ESP32 from the list.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Done!</h3>
+                    <p>Wait ~30s. Your controller is ready when OLED shows "Chocotone".</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="section">
+            <div class="section-title">🔧 Troubleshooting</div>
+
+            <details class="trouble-item">
+                <summary>ESP32 not showing in the device list</summary>
+                <p>Use a <strong>data cable</strong>, not charge-only. Try another USB port. On Windows, install <a
+                        href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers" target="_blank">CP210x
+                        drivers</a>.</p>
+            </details>
+
+            <details class="trouble-item">
+                <summary>Installation fails or times out</summary>
+                <p>Hold the <strong>BOOT</strong> button on your ESP32 while clicking "Install". Release after
+                    programming starts.</p>
+            </details>
+
+            <details class="trouble-item">
+                <summary>"Failed to connect" error</summary>
+                <p>Close other programs using the serial port (Arduino IDE, etc.). Unplug/replug the ESP32 and try
+                    again.</p>
+            </details>
+
+            <details class="trouble-item">
+                <summary>Browser shows "Not supported"</summary>
+                <p>Web Serial only works in <strong>Chrome</strong>, <strong>Edge</strong>, <strong>Brave</strong>,
+                    <strong>Arc</strong>, or <strong>Opera</strong>. Firefox and Safari are not supported.</p>
+            </details>
+        </div>
+
+        <!-- Download -->
+        <div class="section download-section">
+            <h3>📥 Alternative Download</h3>
+            <p>Prefer to flash manually with Arduino IDE or esptool?</p>
+            <a href="#" id="download-link" download class="btn secondary">
+                <span>⬇️</span> <span id="download-text">Download .bin</span>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>
+                <a href="https://github.com/solispensa/Chocotone" target="_blank">GitHub</a> ·
+                <a href="docs/BEGINNER_GUIDE.md" target="_blank">Beginner's Guide</a> ·
+                <a href="https://www.facebook.com/groups/1950814575859830/" target="_blank">Community</a>
+            </p>
+            <p>Made with ❤️ for the MIDI community</p>
+        </footer>
+    </div>
+
+    <script>
+        // Firmware version management
+        const FIRMWARE_INDEX_URL = 'firmware/index.json';
+
+        let firmwareData = null;
+        let selectedVersion = null;
+
+        // Load firmware index
+        async function loadFirmwareIndex() {
+            const select = document.getElementById('version-select');
+            const latestBadge = document.getElementById('latest-badge');
+
+            try {
+                const response = await fetch(FIRMWARE_INDEX_URL);
+                if (!response.ok) throw new Error('Failed to load firmware index');
+
+                firmwareData = await response.json();
+
+                // Clear loading option
+                select.innerHTML = '';
+
+                // Add versions (latest first)
+                const sortedVersions = [...firmwareData.versions].sort((a, b) =>
+                    b.version.localeCompare(a.version, undefined, { numeric: true })
+                );
+
+                sortedVersions.forEach((v, index) => {
+                    const option = document.createElement('option');
+                    option.value = v.version;
+                    option.textContent = `v${v.version}${v.version === firmwareData.latest ? ' (Latest)' : ''}`;
+                    if (index === 0) option.selected = true;
+                    select.appendChild(option);
+                });
+
+                // Set initial version
+                selectedVersion = sortedVersions[0]?.version || firmwareData.latest;
+                updateManifest(selectedVersion);
+                updateDownloadLink(selectedVersion);
+
+                // Show latest badge if selected version is latest
+                if (selectedVersion === firmwareData.latest) {
+                    latestBadge.style.display = 'inline';
+                }
+
+            } catch (error) {
+                console.error('Error loading firmware index:', error);
+                // Fallback to default
+                select.innerHTML = '<option value="1.1.0">v1.1.0 (Latest)</option>';
+                selectedVersion = '1.1.0';
+                updateManifest(selectedVersion);
+                updateDownloadLink(selectedVersion);
+            }
+        }
+
+        // Update manifest dynamically
+        function updateManifest(version) {
+            const firmware = firmwareData?.versions.find(v => v.version === version);
+            const filename = firmware?.file || `chocotone_v${version}.bin`;
+
+            // Create dynamic manifest
+            const manifest = {
+                name: "Chocotone MIDI Controller",
+                version: version,
+                new_install_prompt_erase: true,
+                builds: [{
+                    chipFamily: "ESP32",
+                    parts: [{
+                        path: `firmware/${filename}`,
+                        offset: 0
+                    }]
+                }]
+            };
+
+            // Create blob URL for manifest
+            const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+            const manifestUrl = URL.createObjectURL(blob);
+
+            // Update button manifest
+            const installButton = document.getElementById('install-button');
+            installButton.setAttribute('manifest', manifestUrl);
+        }
+
+        // Update download link
+        function updateDownloadLink(version) {
+            const firmware = firmwareData?.versions.find(v => v.version === version);
+            const filename = firmware?.file || `chocotone_v${version}.bin`;
+
+            const downloadLink = document.getElementById('download-link');
+            const downloadText = document.getElementById('download-text');
+
+            downloadLink.href = `firmware/${filename}`;
+            downloadText.textContent = `Download ${filename}`;
+        }
+
+        // Handle version change
+        document.getElementById('version-select').addEventListener('change', (e) => {
+            selectedVersion = e.target.value;
+            const latestBadge = document.getElementById('latest-badge');
+
+            updateManifest(selectedVersion);
+            updateDownloadLink(selectedVersion);
+
+            // Toggle latest badge
+            latestBadge.style.display = (selectedVersion === firmwareData?.latest) ? 'inline' : 'none';
+        });
+
+        // Initialize
+        loadFirmwareIndex();
+    </script>
+</body>
+
+</html>

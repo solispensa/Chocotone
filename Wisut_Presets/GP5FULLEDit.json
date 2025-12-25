@@ -1,0 +1,1220 @@
+{
+  "configName": "GP5FULLEDit",
+  "lastModified": "2025-12-25 07:04:40",
+  "presets": [
+    {
+      "name": "BANK-1",
+      "presetLedMode": "HYBRID",
+      "syncMode": "GP5",
+      "buttons": [
+        {
+          "name": "P1",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 1,
+              "rgb": "#01becb",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070a000100000006010104030001000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_1",
+              "channel": 1,
+              "data1": 43,
+              "data2": 0,
+              "rgb": "#ffffff",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P2",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 2,
+              "rgb": "#4bca07",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00400000100000006010104030002000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_2",
+              "channel": 1,
+              "data1": 44,
+              "data2": 0,
+              "rgb": "#3f67ff",
+              "label": "",
+              "partner": 0,
+              "holdMs": 0
+            }
+          ]
+        },
+        {
+          "name": "P3",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 3,
+              "rgb": "#3d00ad",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00506000100000006010104030003000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_3",
+              "channel": 1,
+              "data1": 45,
+              "data2": 0,
+              "rgb": "#fc2c00",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P4",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 4,
+              "rgb": "#dc04a2",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00304000100000006010104030004000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_4",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P5",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 5,
+              "rgb": "#f50000",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00202000100000006010104030005000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 0,
+              "rgb": "#9bfb88",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "BOOT",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 127,
+              "rgb": "#abe60a",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000f00010000000a0101040900010000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 0,
+              "rgb": "#abe60a",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0010900010000000a01010409000100000000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "OD",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 127,
+              "rgb": "#e6740a",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0030a00010000000a0101040900020000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 0,
+              "rgb": "#e6740a",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0020c00010000000a01010409000200000000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "MODU",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 127,
+              "rgb": "#8400f7",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070600010000000a0101040900060000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 0,
+              "rgb": "#8400f7",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060000010000000a01010409000600000000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "DELY",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 127,
+              "rgb": "#0923ec",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060500010000000a0101040900070000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 127,
+              "rgb": "#0923ec",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070300010000000a01010409000700000000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "TAP",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "TAP_TEMPO",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#26c3f7",
+              "label": "",
+              "partner": 0,
+              "rhythmPrev": 0,
+              "rhythmNext": 4,
+              "tapLock": 7
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BANK-2",
+      "presetLedMode": "HYBRID",
+      "syncMode": "GP5",
+      "buttons": [
+        {
+          "name": "P6",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 6,
+              "rgb": "#0132f4",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00108000100000006010104030006000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_1",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P7",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 7,
+              "rgb": "#9f0ced",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000e000100000006010104030007000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_2",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P8",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 8,
+              "rgb": "#f11e1e",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00d0c000100000006010104030008000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_3",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P9",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 9,
+              "rgb": "#30e119",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00c0a000100000006010104030009000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_4",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P10",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 10,
+              "rgb": "#f50000",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00f0000010000000601010403000a000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 0,
+              "rgb": "#9bfb88",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "BOOT",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 127,
+              "rgb": "#87f500",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000f00010000000a0101040900010000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 0,
+              "rgb": "#87f500",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0010900010000000a0101040900010000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "OD",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 127,
+              "rgb": "#f54900",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0030a00010000000a0101040900020000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 0,
+              "rgb": "#f54900",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0020c00010000000a0101040900020000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "MODU",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 127,
+              "rgb": "#f500ed",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070600010000000a0101040900060000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 0,
+              "rgb": "#f500ed",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060000010000000a0101040900060000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "DELY",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 127,
+              "rgb": "#1a40ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060500010000000a0101040900070000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 0,
+              "rgb": "#1a40ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070300010000000a0101040900070000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "TAP",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "TAP_TEMPO",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#02f2e2",
+              "label": "",
+              "partner": 0,
+              "rhythmPrev": 0,
+              "rhythmNext": 4,
+              "tapLock": 7
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BANK-3",
+      "presetLedMode": "HYBRID",
+      "syncMode": "GP5",
+      "buttons": [
+        {
+          "name": "P11",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 11,
+              "rgb": "#11f3ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00e0600010000000601010403000b000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_1",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P12",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 12,
+              "rgb": "#ef0fff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0080400010000000601010403000c000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_2",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P13",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 13,
+              "rgb": "#0fff83",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0090200010000000601010403000d000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_3",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P14",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 14,
+              "rgb": "#ffdf0f",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00a0800010000000601010403000e000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_4",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P15",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 15,
+              "rgb": "#ff000d",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00b0e00010000000601010403000f000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 0,
+              "rgb": "#9bfb88",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "BOOT",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 127,
+              "rgb": "#00ffaa",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000f00010000000a0101040900010000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 0,
+              "rgb": "#00ffaa",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0010900010000000a0101040900010000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "OD",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 127,
+              "rgb": "#ef6c01",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0030a00010000000a0101040900020000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 0,
+              "rgb": "#ef6c01",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0020c00010000000a0101040900020000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "MODU",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 127,
+              "rgb": "#aa00ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070600010000000a0101040900060000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 0,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060000010000000a0101040900060000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "DELY",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 127,
+              "rgb": "#001cf0",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060500010000000a0101040900070000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 0,
+              "rgb": "#001cf0",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070300010000000a0101040900070000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "TAP",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "TAP_TEMPO",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#08fdd4",
+              "label": "",
+              "partner": 0,
+              "rhythmPrev": 0,
+              "rhythmNext": 4,
+              "tapLock": 7
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BANK-4",
+      "presetLedMode": "HYBRID",
+      "syncMode": "GP5",
+      "buttons": [
+        {
+          "name": "P16",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 16,
+              "rgb": "#ff00f7",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000b000100000006010104030100000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_1",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P17",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 17,
+              "rgb": "#6600ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0010d000100000006010104030101000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_2",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P18",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 18,
+              "rgb": "#00ff9d",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00207000100000006010104030102000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_3",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P19",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 19,
+              "rgb": "#0011ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00301000100000006010104030103000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "PRESET_4",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "P20",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": true,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 0,
+              "data2": 20,
+              "rgb": "#ff0066",
+              "label": "",
+              "partner": -16,
+              "sysex": "f00503000100000006010104030104000000000000f7"
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 0,
+              "rgb": "#9bfb88",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        },
+        {
+          "name": "BOOT",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 127,
+              "rgb": "#00ff40",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0000f00010000000a0101040900010000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 49,
+              "data2": 0,
+              "rgb": "#00ff40",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0010900010000000a0101040900010000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "OD",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 127,
+              "rgb": "#ff8800",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0030a00010000000a0101040900020000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 50,
+              "data2": 0,
+              "rgb": "#ff8800",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0020c00010000000a0101040900020000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "MODU",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 127,
+              "rgb": "#ae00ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070600010000000a0101040900060000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 55,
+              "data2": 0,
+              "rgb": "#ae00ff",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060000010000000a0101040900060000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "DELY",
+          "ledMode": "TOGGLE",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 127,
+              "rgb": "#0b45f4",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0060500010000000a0101040900070000000000000001000000000000f7"
+            },
+            {
+              "action": "2ND_PRESS",
+              "type": "SYSEX",
+              "channel": 1,
+              "data1": 56,
+              "data2": 0,
+              "rgb": "#0b45f4",
+              "label": "",
+              "partner": -16,
+              "sysex": "f0070300010000000a0101040900070000000000000000000000000000f7"
+            }
+          ]
+        },
+        {
+          "name": "TAP",
+          "ledMode": "MOMENTARY",
+          "inSelectionGroup": false,
+          "messages": [
+            {
+              "action": "PRESS",
+              "type": "TAP_TEMPO",
+              "channel": 1,
+              "data1": 0,
+              "data2": 127,
+              "rgb": "#08e7e4",
+              "label": "",
+              "partner": 0,
+              "rhythmPrev": 0,
+              "rhythmNext": 4,
+              "tapLock": 7
+            },
+            {
+              "action": "LONG_PRESS",
+              "type": "CC",
+              "channel": 1,
+              "data1": 58,
+              "data2": 127,
+              "rgb": "#bb86fc",
+              "label": "",
+              "partner": -12,
+              "holdMs": 500
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "currentPreset": 3,
+  "system": {
+    "bleDeviceName": "CHOCOTONE",
+    "apSSID": "CHOCOTONE",
+    "apPassword": "12345678",
+    "buttonCount": 10,
+    "buttonPins": "14,27,26,25,33,32,16,17",
+    "ledPin": 15,
+    "ledsPerButton": 1,
+    "ledMap": "0,1,2,3,7,6,5,4,8,9",
+    "encoderA": 18,
+    "encoderB": 19,
+    "encoderBtn": 23,
+    "bleMode": "CLIENT",
+    "brightness": 70,
+    "brightnessDim": 8,
+    "brightnessTap": 70
+  }
+}

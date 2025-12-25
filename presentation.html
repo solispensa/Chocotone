@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;900&display=swap"
         rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <!-- html2canvas for Export Image feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             /* Palette */
@@ -1744,6 +1746,383 @@
             bottom: -10%;
             left: -10%;
         }
+
+        /* ============================================
+           MOBILE RESPONSIVE STYLES
+           ============================================ */
+
+        /* Hamburger Menu Button */
+        .nav-hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 24px;
+            height: 18px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .nav-hamburger span {
+            display: block;
+            width: 100%;
+            height: 2px;
+            background: var(--text-main);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-hamburger.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .nav-hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .nav-hamburger.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
+        /* Mobile Navigation */
+        @media (max-width: 768px) {
+            nav {
+                padding: 0.5rem 1rem;
+                border-radius: 16px;
+                width: 95%;
+            }
+
+            .nav-hamburger {
+                display: flex;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh;
+                background: rgba(5, 5, 5, 0.98);
+                backdrop-filter: blur(20px);
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 2rem;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+                z-index: 999;
+            }
+
+            .nav-links.active {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .nav-links a {
+                font-size: 1.2rem;
+            }
+
+            /* Hero Section Mobile */
+            section#hero {
+                padding-top: 100px;
+                min-height: auto;
+            }
+
+            .slide-hero-container {
+                aspect-ratio: auto;
+                padding: 4%;
+                gap: 3%;
+            }
+
+            .slide-header {
+                grid-template-columns: 1fr;
+                gap: 3%;
+                flex: 0 0 auto;
+            }
+
+            .slide-header-card:last-child {
+                display: none;
+            }
+
+            .slide-title {
+                font-size: clamp(1.5rem, 8vw, 3rem);
+                letter-spacing: -2px;
+            }
+
+            .slide-subtitle {
+                font-size: clamp(0.6rem, 2.5vw, 1rem);
+            }
+
+            .slide-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 3%;
+            }
+
+            .slide-card {
+                padding: 12% 10%;
+            }
+
+            .slide-card-title {
+                font-size: clamp(0.7rem, 3vw, 1rem);
+                white-space: normal;
+            }
+
+            .slide-card-text {
+                font-size: clamp(0.55rem, 2.2vw, 0.75rem);
+            }
+
+            /* Virtual Chocotone Section Mobile */
+            #virtual-controller {
+                padding: 4rem 1rem;
+            }
+
+            #virtual-controller h2 {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            #virtual-controller>.container>p {
+                font-size: 0.85rem;
+            }
+
+            .controller-wrapper {
+                --chassis-w: 100%;
+                --btn-size: 11%;
+                --btn-spacing: 22%;
+                --enc-size: 9%;
+                --oled-w: 22%;
+                --oled-h: 28%;
+            }
+
+            /* Virtual Chocotone Designer - Bottom Sheet on Mobile */
+            #layout-editor {
+                position: fixed;
+                top: auto;
+                right: 0;
+                left: 0;
+                bottom: 0;
+                width: 100%;
+                max-width: 100%;
+                max-height: 70vh;
+                border-radius: 20px 20px 0 0;
+                margin: 0;
+                transform: translateY(calc(100% - 50px));
+                transition: transform 0.3s ease;
+                z-index: 10000;
+            }
+
+            #layout-editor.minimized {
+                width: 100%;
+                height: auto;
+                min-height: 50px;
+                border-radius: 20px 20px 0 0;
+                transform: translateY(calc(100% - 50px));
+            }
+
+            #layout-editor:not(.minimized) {
+                transform: translateY(0);
+            }
+
+            #layout-editor h3 {
+                justify-content: center;
+                padding: 8px 0;
+            }
+
+            #layout-editor.minimized h3 {
+                font-size: 16px;
+            }
+
+            .layout-content {
+                padding-bottom: 20px;
+            }
+
+            /* Other sections mobile adjustments */
+            section {
+                padding: 4rem 1rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .control-card {
+                padding: 1.5rem;
+            }
+
+            .step-list::before {
+                left: 16px;
+            }
+
+            .step-item {
+                gap: 1rem;
+            }
+
+            .step-num {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+
+            .menu-tree {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .slide-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            #layout-editor {
+                width: 280px;
+            }
+
+            .controller-wrapper {
+                --chassis-w: 100%;
+            }
+        }
+
+        /* Small mobile */
+        @media (max-width: 480px) {
+            .slide-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .slide-card-icon {
+                font-size: 1.5rem;
+            }
+
+            .controller-wrapper {
+                --btn-size: 13%;
+                --btn-spacing: 20%;
+                --oled-w: 25%;
+                --oled-h: 32%;
+                --enc-size: 10%;
+            }
+
+            #layout-editor .editor-row {
+                flex-wrap: wrap;
+            }
+
+            #layout-editor .editor-row span:first-child {
+                width: 100%;
+                margin-bottom: 4px;
+            }
+        }
+
+        /* ============================================
+           ACCORDION SECTION STYLES
+           ============================================ */
+        .accordion-section {
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            cursor: pointer;
+            background: rgba(187, 134, 252, 0.08);
+            border-left: 3px solid var(--accent);
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .accordion-header:hover {
+            background: rgba(187, 134, 252, 0.15);
+        }
+
+        .accordion-header .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 0;
+        }
+
+        .accordion-header .section-icon {
+            font-size: 1rem;
+        }
+
+        .accordion-header .toggle-icon {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .accordion-section.collapsed .accordion-header .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .accordion-content {
+            padding: 10px 12px;
+            background: transparent;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .accordion-section.collapsed .accordion-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        /* Designer Button Styles */
+        .designer-btn {
+            width: 100%;
+            padding: 10px 14px;
+            margin: 4px 0;
+            border: 1px solid rgba(187, 134, 252, 0.3);
+            border-radius: 8px;
+            background: rgba(187, 134, 252, 0.1);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .designer-btn:hover {
+            background: rgba(187, 134, 252, 0.25);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .designer-btn:active {
+            transform: translateY(0);
+        }
+
+        .designer-btn.primary {
+            background: linear-gradient(135deg, var(--brand-lavender), var(--brand-lavender-dim));
+            border: none;
+            box-shadow: 0 2px 8px rgba(140, 129, 223, 0.3);
+        }
+
+        .designer-btn.primary:hover {
+            box-shadow: 0 4px 12px rgba(140, 129, 223, 0.5);
+        }
+
+        .designer-btn .btn-icon {
+            font-size: 1rem;
+        }
     </style>
 </head>
 
@@ -1751,13 +2130,18 @@
 
     <nav>
         <div class="nav-logo">CHOCO<span>TONE</span></div>
+        <div class="nav-hamburger" onclick="toggleMobileNav()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
         <div class="nav-links">
-            <a href="#hero">Overview</a>
-            <a href="#controls">Controls</a>
-            <a href="#tap-tempo">Tap Tempo</a>
-            <a href="#menu">Menu</a>
-            <a href="#web">Config</a>
-            <a href="#virtual-controller">Virtual Chocotone</a>
+            <a href="#hero" onclick="closeMobileNav()">Overview</a>
+            <a href="#controls" onclick="closeMobileNav()">Controls</a>
+            <a href="#tap-tempo" onclick="closeMobileNav()">Tap Tempo</a>
+            <a href="#menu" onclick="closeMobileNav()">Menu</a>
+            <a href="#web" onclick="closeMobileNav()">Config</a>
+            <a href="#virtual-controller" onclick="closeMobileNav()">Virtual Chocotone</a>
         </div>
     </nav>
 
@@ -1978,197 +2362,620 @@
                     </div>
                 </div>
             </div>
-            <!-- LAYOUT EDITOR UI (Moved Outside Wrapper) -->
+            <!-- VIRTUAL CHOCOTONE DESIGNER UI -->
             <div id="layout-editor" class="minimized">
-                <h3 onclick="toggleEditor()" title="Toggle Editor">🎨 <span class="layout-title-text">Layout
-                        Editor</span></h3>
+                <h3 onclick="toggleEditor()" title="Toggle Designer">🎨 <span class="layout-title-text">Virtual
+                        Chocotone Designer</span></h3>
 
                 <div class="layout-content">
-                    <h4>Components</h4>
-                    <div class="editor-row"><span>Btn Fmt:</span>
-                        <select id="sel-btn-fmt" onchange="updateStyle('btn', this.value)">
-                            <option value="">Round</option>
-                            <option value="btn-square">Square</option>
-                            <option value="btn-rect">Rectangular</option>
-                            <option value="btn-metal">Metal Footswitch</option>
-                            <option value="btn-metal-flat">Metal Flat</option>
-                            <option value="btn-soft">Soft Touch</option>
-                            <option value="btn-arcade">Arcade</option>
-                            <option value="btn-illuminated">Illuminated</option>
-                            <option value="btn-transparent">Transparent</option>
-                        </select>
+                    <!-- COMPONENTS SECTION -->
+                    <div class="accordion-section" data-section="components">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">🎛️</span> Components</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Button:</span>
+                                <select id="sel-btn-fmt" onchange="updateStyle('btn', this.value)">
+                                    <option value="">Round</option>
+                                    <option value="btn-square">Square</option>
+                                    <option value="btn-rect">Rectangular</option>
+                                    <option value="btn-metal">Metal Footswitch</option>
+                                    <option value="btn-metal-flat">Metal Flat</option>
+                                    <option value="btn-soft">Soft Touch</option>
+                                    <option value="btn-arcade">Arcade</option>
+                                    <option value="btn-illuminated">Illuminated</option>
+                                    <option value="btn-transparent">Transparent</option>
+                                </select>
+                            </div>
+                            <div class="editor-row"><span>LED:</span>
+                                <select id="sel-led-fmt" onchange="updateStyle('led', this.value)">
+                                    <option value="led-ring">Ring</option>
+                                    <option value="led-strip" selected>Strip</option>
+                                    <option value="led-dot">Dot</option>
+                                    <option value="led-rect">Rect</option>
+                                    <option value="led-inside">Inside</option>
+                                </select>
+                            </div>
+                            <div class="editor-row"><span>Encoder:</span>
+                                <select id="sel-enc-model" onchange="updateStyle('enc', this.value)">
+                                    <option value="">Default</option>
+                                    <option value="enc-2">Silver</option>
+                                    <option value="enc-3">Grip</option>
+                                    <option value="enc-4">Square</option>
+                                    <option value="enc-5">Sphere</option>
+                                    <option value="enc-6">Knurled</option>
+                                    <option value="enc-7">Copper</option>
+                                    <option value="enc-8">Gamer</option>
+                                </select>
+                            </div>
+                            <div class="editor-row"><span>Screws:</span>
+                                <select id="sel-screw-model" onchange="updateStyle('screw', this.value)">
+                                    <option value="">Philips</option>
+                                    <option value="screw-2">Flathead</option>
+                                    <option value="screw-3">Hex</option>
+                                    <option value="screw-4">Torx</option>
+                                    <option value="screw-5">Black</option>
+                                    <option value="screw-6">Gold</option>
+                                    <option value="screw-7">Rusty</option>
+                                    <option value="screw-8">None</option>
+                                </select>
+                            </div>
+                            <div class="editor-row"><span>Screen:</span>
+                                <select id="sel-screen-model" onchange="updateStyle('screen', this.value)">
+                                    <option value="screen-oled">OLED</option>
+                                    <option value="screen-tft">TFT</option>
+                                    <option value="screen-ips">IPS</option>
+                                    <option value="screen-lcd">LCD</option>
+                                    <option value="screen-amoled" selected>AMOLED</option>
+                                    <option value="screen-vfd">VFD</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="editor-row"><span>LED Fmt:</span>
-                        <select id="sel-led-fmt" onchange="updateStyle('led', this.value)">
-                            <option value="led-ring">Ring</option>
-                            <option value="led-strip" selected>Strip</option>
-                            <option value="led-dot">Dot</option>
-                            <option value="led-rect">Rect</option>
-                            <option value="led-inside">Inside</option>
-                        </select>
-                    </div>
-                    <div class="editor-row"><span>Encoder:</span>
-                        <select id="sel-enc-model" onchange="updateStyle('enc', this.value)">
-                            <option value="">Default</option>
-                            <option value="enc-2">Silver</option>
-                            <option value="enc-3">Grip</option>
-                            <option value="enc-4">Square</option>
-                            <option value="enc-5">Sphere</option>
-                            <option value="enc-6">Knurled</option>
-                            <option value="enc-7">Copper</option>
-                            <option value="enc-8">Gamer</option>
-                        </select>
-                    </div>
-                    <div class="editor-row"><span>Screws:</span>
-                        <select id="sel-screw-model" onchange="updateStyle('screw', this.value)">
-                            <option value="">Philips</option>
-                            <option value="screw-2">Flathead</option>
-                            <option value="screw-3">Hex</option>
-                            <option value="screw-4">Torx</option>
-                            <option value="screw-5">Black</option>
-                            <option value="screw-6">Gold</option>
-                            <option value="screw-7">Rusty</option>
-                            <option value="screw-8">None</option>
-                        </select>
-                    </div>
-                    <div class="editor-row"><span>Screen:</span>
-                        <select id="sel-screen-model" onchange="updateStyle('screen', this.value)">
-                            <option value="screen-oled">OLED</option>
-                            <option value="screen-tft">TFT</option>
-                            <option value="screen-ips">IPS</option>
-                            <option value="screen-lcd">LCD</option>
-                            <option value="screen-amoled" selected>AMOLED</option>
-                            <option value="screen-vfd">VFD</option>
-                        </select>
-                    </div>
-                    <hr style="border-color:#444;">
 
-                    <h4>Colors</h4>
-                    <div class="editor-row"><span>Faceplate:</span>
-                        <input type="color" id="col-faceplate" value="#1a1a1a"
-                            onchange="updateColor('faceplate', this.value)">
+                    <!-- COLORS SECTION -->
+                    <div class="accordion-section collapsed" data-section="colors">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">🎨</span> Colors</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Faceplate:</span>
+                                <input type="color" id="col-faceplate" value="#1a1a1a"
+                                    onchange="updateColor('faceplate', this.value)">
+                            </div>
+                            <div class="editor-row"><span>Contour:</span>
+                                <input type="color" id="col-contour" value="#333333"
+                                    onchange="updateColor('contour', this.value)">
+                            </div>
+                            <div class="editor-row"><span>Screws:</span>
+                                <input type="color" id="col-screw" value="#888888"
+                                    onchange="updateColor('screw', this.value)">
+                            </div>
+                            <div class="editor-row"><span>Encoder:</span>
+                                <input type="color" id="col-encoder" value="#222222"
+                                    onchange="updateColor('encoder', this.value)">
+                            </div>
+                            <div class="editor-row"><span>Screen:</span>
+                                <input type="color" id="col-screen" value="#00ffff"
+                                    onchange="updateColor('screen', this.value)">
+                            </div>
+                            <div class="editor-row"><span>Contour Th:</span>
+                                <input type="range" id="sl-contour-th" min="1" max="10" step="1" value="2"
+                                    onchange="updateSizeControl('contour', this.value)">
+                                <span class="slider-value" id="val-contour-th">2px</span>
+                            </div>
+                            <div class="editor-row"><span>Screw Size:</span>
+                                <input type="range" id="sl-screw-size" min="0.5" max="3" step="0.1" value="1.5"
+                                    onchange="updateSizeControl('screw', this.value)">
+                                <span class="slider-value" id="val-screw-size">1.5%</span>
+                            </div>
+                            <div class="editor-row"><span>Chamfer:</span>
+                                <input type="checkbox" id="chk-chamfer" onchange="updateChamfer()">
+                                <input type="range" id="sl-chamfer" min="5" max="30" step="1" value="15"
+                                    onchange="updateChamfer()" disabled>
+                                <span class="slider-value" id="val-chamfer">15px</span>
+                            </div>
+                            <div class="editor-row"><span>Slope Height:</span>
+                                <input type="checkbox" id="chk-slope" onchange="updateSlope()">
+                                <input type="range" id="sl-slope-y" min="10" max="400" step="5" value="40"
+                                    onchange="updateSlope()" disabled>
+                                <span class="slider-value" id="val-slope-y">40px</span>
+                            </div>
+                            <div class="editor-row"><span>Slope Angle:</span>
+                                <input type="range" id="sl-slope-angle" min="0" max="45" step="1" value="25"
+                                    onchange="updateSlope()" disabled>
+                                <span class="slider-value" id="val-slope-angle">25&deg;</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="editor-row"><span>Contour:</span>
-                        <input type="color" id="col-contour" value="#333333"
-                            onchange="updateColor('contour', this.value)">
-                    </div>
-                    <div class="editor-row"><span>Screws:</span>
-                        <input type="color" id="col-screw" value="#888888" onchange="updateColor('screw', this.value)">
-                    </div>
-                    <div class="editor-row"><span>Encoder:</span>
-                        <input type="color" id="col-encoder" value="#222222"
-                            onchange="updateColor('encoder', this.value)">
-                    </div>
-                    <div class="editor-row"><span>Screen:</span>
-                        <input type="color" id="col-screen" value="#00ffff"
-                            onchange="updateColor('screen', this.value)">
-                    </div>
-                    <div class="editor-row"><span>Contour Th:</span> <input type="range" id="sl-contour-th" min="1"
-                            max="10" step="1" value="2" onchange="updateSizeControl('contour', this.value)"><span
-                            class="slider-value" id="val-contour-th">2px</span></div>
-                    <div class="editor-row"><span>Screw Size:</span> <input type="range" id="sl-screw-size" min="0.5"
-                            max="3" step="0.1" value="1.5" onchange="updateSizeControl('screw', this.value)"><span
-                            class="slider-value" id="val-screw-size">1.5%</span></div>
-                    <div class="editor-row"><span>Chamfer:</span>
-                        <input type="checkbox" id="chk-chamfer" onchange="updateChamfer()">
-                        <input type="range" id="sl-chamfer" min="5" max="30" step="1" value="15"
-                            onchange="updateChamfer()" disabled><span class="slider-value" id="val-chamfer">15px</span>
-                    </div>
-                    <div class="editor-row"><span>Slope Height:</span>
-                        <input type="checkbox" id="chk-slope" onchange="updateSlope()">
-                        <input type="range" id="sl-slope-y" min="10" max="400" step="5" value="40"
-                            onchange="updateSlope()" disabled><span class="slider-value" id="val-slope-y">40px</span>
-                    </div>
-                    <div class="editor-row"><span>Slope Angle:</span>
-                        <input type="range" id="sl-slope-angle" min="0" max="45" step="1" value="25"
-                            onchange="updateSlope()" disabled><span class="slider-value"
-                            id="val-slope-angle">25&deg;</span>
-                    </div>
-                    <hr style="border-color:#444;">
 
-                    <div class="editor-row"><span>Buttons #:</span> <input type="range" id="sl-btn-count" min="1"
-                            max="12" step="1" value="8" onchange="updateButtonCount(this.value)"><span
-                            class="slider-value" id="val-btn-count">8</span></div>
-                    <div class="editor-row"><span>Rows #:</span>
-                        <select id="sel-btn-rows"
-                            onchange="updateButtonCount(document.getElementById('sl-btn-count').value)">
-                            <option value="1">1</option>
-                            <option value="2" selected>2</option>
-                            <option value="3">3</option>
-                        </select>
+                    <!-- LAYOUT SECTION -->
+                    <div class="accordion-section collapsed" data-section="layout">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">📐</span> Layout</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Buttons #:</span>
+                                <input type="range" id="sl-btn-count" min="1" max="12" step="1" value="8"
+                                    onchange="updateButtonCount(this.value)">
+                                <span class="slider-value" id="val-btn-count">8</span>
+                            </div>
+                            <div class="editor-row"><span>Rows #:</span>
+                                <select id="sel-btn-rows"
+                                    onchange="updateButtonCount(document.getElementById('sl-btn-count').value)">
+                                    <option value="1">1</option>
+                                    <option value="2" selected>2</option>
+                                    <option value="3">3</option>
+                                </select>
+                            </div>
+                            <div class="editor-row"><span>Height:</span>
+                                <input type="range" id="sl-ar" min="20" max="80" step="0.5">
+                                <span class="slider-value" id="val-ar"></span>
+                            </div>
+                            <div class="editor-row"><span>Width:</span>
+                                <input type="range" id="sl-w" min="400" max="1300" step="10">
+                                <span class="slider-value" id="val-w"></span>
+                            </div>
+                            <div class="editor-row"><span>Corner R:</span>
+                                <input type="range" id="sl-rad" min="0" max="100" step="1">
+                                <span class="slider-value" id="val-rad"></span>
+                            </div>
+                            <div class="editor-row"><span>Btn Size:</span>
+                                <input type="range" id="sl-btn-size" min="5" max="20" step="0.5">
+                                <span class="slider-value" id="val-btn-size"></span>
+                            </div>
+                            <div class="editor-row"><span>Top Row:</span>
+                                <input type="range" id="sl-btn-y1" min="5" max="70" step="0.5">
+                                <span class="slider-value" id="val-btn-y1"></span>
+                            </div>
+                            <div class="editor-row"><span>Btm Row:</span>
+                                <input type="range" id="sl-btn-y2" min="0" max="50" step="0.5">
+                                <span class="slider-value" id="val-btn-y2"></span>
+                            </div>
+                            <div class="editor-row"><span>Spacing:</span>
+                                <input type="range" id="sl-btn-spacing" min="10" max="40" step="0.5">
+                                <span class="slider-value" id="val-btn-spacing"></span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="editor-row"><span>Height:</span> <input type="range" id="sl-ar" min="20" max="80"
-                            step="0.5"><span class="slider-value" id="val-ar"></span></div>
-                    <div class="editor-row"><span>Width:</span> <input type="range" id="sl-w" min="400" max="1300"
-                            step="10"><span class="slider-value" id="val-w"></span></div>
-                    <div class="editor-row"><span>Corner R:</span> <input type="range" id="sl-rad" min="0" max="100"
-                            step="1"><span class="slider-value" id="val-rad"></span></div>
-                    <h4>OLED</h4>
-                    <div class="editor-row"><span>Width:</span> <input type="range" id="sl-oled-w" min="10" max="80"
-                            step="0.5"><span class="slider-value" id="val-oled-w"></span></div>
-                    <div class="editor-row"><span>Height:</span> <input type="range" id="sl-oled-h" min="10" max="60"
-                            step="0.5"><span class="slider-value" id="val-oled-h"></span></div>
-                    <div class="editor-row"><span>Left X:</span> <input type="range" id="sl-oled-x" min="0" max="100"
-                            step="0.5"><span class="slider-value" id="val-oled-x"></span></div>
-                    <div class="editor-row"><span>Top Y:</span> <input type="range" id="sl-oled-y" min="0" max="80"
-                            step="0.5"><span class="slider-value" id="val-oled-y"></span></div>
-                    <h4>Text Sizes</h4>
-                    <div class="editor-row"><span>Preset:</span> <input type="range" id="sl-font-preset" min="0.8"
-                            max="3" step="0.1" value="1.6" onchange="updateFontSize('preset', this.value)"><span
-                            class="slider-value" id="val-font-preset">1.6em</span></div>
-                    <div class="editor-row"><span>Labels:</span> <input type="range" id="sl-font-labels" min="0.5"
-                            max="1.5" step="0.05" value="0.8" onchange="updateFontSize('labels', this.value)"><span
-                            class="slider-value" id="val-font-labels">0.8em</span></div>
-                    <div class="editor-row"><span>Status:</span> <input type="range" id="sl-font-status" min="0.5"
-                            max="1.2" step="0.05" value="0.7" onchange="updateFontSize('status', this.value)"><span
-                            class="slider-value" id="val-font-status">0.7em</span></div>
-                    <div class="editor-row"><span>BPM:</span> <input type="range" id="sl-font-bpm" min="0.6" max="2"
-                            step="0.1" value="1.0" onchange="updateFontSize('bpm', this.value)"><span
-                            class="slider-value" id="val-font-bpm">1.0em</span></div>
-                    <div class="editor-row"><span>H Scale:</span> <input type="range" id="sl-font-h" min="0.7" max="1.5"
-                            step="0.05" value="1" onchange="updateFontSize('h', this.value)"><span class="slider-value"
-                            id="val-font-h">1x</span></div>
-                    <div class="editor-row"><span>W Scale:</span> <input type="range" id="sl-font-w" min="0.7" max="1.5"
-                            step="0.05" value="1" onchange="updateFontSize('w', this.value)"><span class="slider-value"
-                            id="val-font-w">1x</span></div>
-                    <h4>Buttons</h4>
-                    <div class="editor-row"><span>Size:</span> <input type="range" id="sl-btn-size" min="5" max="20"
-                            step="0.5"><span class="slider-value" id="val-btn-size"></span></div>
-                    <div class="editor-row"><span>Top Row:</span> <input type="range" id="sl-btn-y1" min="5" max="70"
-                            step="0.5"><span class="slider-value" id="val-btn-y1"></span></div>
-                    <div class="editor-row"><span>Btm Row:</span> <input type="range" id="sl-btn-y2" min="0" max="50"
-                            step="0.5"><span class="slider-value" id="val-btn-y2"></span></div>
-                    <div class="editor-row"><span>Spacing:</span> <input type="range" id="sl-btn-spacing" min="10"
-                            max="40" step="0.5"><span class="slider-value" id="val-btn-spacing"></span></div>
-                    <h4>Encoder</h4>
-                    <div class="editor-row"><span>Size:</span> <input type="range" id="sl-enc-size" min="5" max="20"
-                            step="0.5"><span class="slider-value" id="val-enc-size"></span></div>
-                    <div class="editor-row"><span>Right X:</span> <input type="range" id="sl-enc-x" min="0" max="90"
-                            step="0.5"><span class="slider-value" id="val-enc-x"></span></div>
-                    <div class="editor-row"><span>Center Y:</span> <input type="range" id="sl-enc-y" min="10" max="90"
-                            step="0.5"><span class="slider-value" id="val-enc-y"></span></div>
-                    <button onclick="copyConfig()" style="width:100%; margin-top:10px; cursor:pointer;">📋 Copy
-                        Config</button>
-                    <div id="copy-msg">Copied!</div>
-                    <button onclick="document.getElementById('sl-import-input').click()"
-                        style="width:100%; margin-top:10px; cursor:pointer;">📂 Load Config</button>
-                    <input type="file" id="sl-import-input" style="display: none;" onchange="importConfig(this)">
-                    <h4>SPM Sync</h4>
-                    <div class="editor-row">
-                        <span>Mode:</span>
-                        <select id="sel-sync-mode" onchange="setSyncMode(this.value)">
-                            <option value="NONE">None</option>
-                            <option value="SPM">SPM</option>
-                        </select>
+
+                    <!-- OLED SECTION -->
+                    <div class="accordion-section collapsed" data-section="oled">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">📺</span> OLED</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Width:</span>
+                                <input type="range" id="sl-oled-w" min="10" max="80" step="0.5">
+                                <span class="slider-value" id="val-oled-w"></span>
+                            </div>
+                            <div class="editor-row"><span>Height:</span>
+                                <input type="range" id="sl-oled-h" min="10" max="60" step="0.5">
+                                <span class="slider-value" id="val-oled-h"></span>
+                            </div>
+                            <div class="editor-row"><span>Left X:</span>
+                                <input type="range" id="sl-oled-x" min="0" max="100" step="0.5">
+                                <span class="slider-value" id="val-oled-x"></span>
+                            </div>
+                            <div class="editor-row"><span>Top Y:</span>
+                                <input type="range" id="sl-oled-y" min="0" max="80" step="0.5">
+                                <span class="slider-value" id="val-oled-y"></span>
+                            </div>
+                        </div>
                     </div>
-                    <button id="btn-spm-request" onclick="requestSpmPresetState()"
-                        style="width:100%; margin-top:5px; cursor:pointer; display:none;">🔄 Request State</button>
+
+                    <!-- TEXT SIZES SECTION -->
+                    <div class="accordion-section collapsed" data-section="text">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">🔤</span> Text Sizes</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Preset:</span>
+                                <input type="range" id="sl-font-preset" min="0.8" max="3" step="0.1" value="1.6"
+                                    onchange="updateFontSize('preset', this.value)">
+                                <span class="slider-value" id="val-font-preset">1.6em</span>
+                            </div>
+                            <div class="editor-row"><span>Labels:</span>
+                                <input type="range" id="sl-font-labels" min="0.5" max="1.5" step="0.05" value="0.8"
+                                    onchange="updateFontSize('labels', this.value)">
+                                <span class="slider-value" id="val-font-labels">0.8em</span>
+                            </div>
+                            <div class="editor-row"><span>Status:</span>
+                                <input type="range" id="sl-font-status" min="0.5" max="1.2" step="0.05" value="0.7"
+                                    onchange="updateFontSize('status', this.value)">
+                                <span class="slider-value" id="val-font-status">0.7em</span>
+                            </div>
+                            <div class="editor-row"><span>BPM:</span>
+                                <input type="range" id="sl-font-bpm" min="0.6" max="2" step="0.1" value="1.0"
+                                    onchange="updateFontSize('bpm', this.value)">
+                                <span class="slider-value" id="val-font-bpm">1.0em</span>
+                            </div>
+                            <div class="editor-row"><span>H Scale:</span>
+                                <input type="range" id="sl-font-h" min="0.7" max="1.5" step="0.05" value="1"
+                                    onchange="updateFontSize('h', this.value)">
+                                <span class="slider-value" id="val-font-h">1x</span>
+                            </div>
+                            <div class="editor-row"><span>W Scale:</span>
+                                <input type="range" id="sl-font-w" min="0.7" max="1.5" step="0.05" value="1"
+                                    onchange="updateFontSize('w', this.value)">
+                                <span class="slider-value" id="val-font-w">1x</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ENCODER SECTION -->
+                    <div class="accordion-section collapsed" data-section="encoder">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">🎚️</span> Encoder Position</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row"><span>Size:</span>
+                                <input type="range" id="sl-enc-size" min="5" max="20" step="0.5">
+                                <span class="slider-value" id="val-enc-size"></span>
+                            </div>
+                            <div class="editor-row"><span>Right X:</span>
+                                <input type="range" id="sl-enc-x" min="0" max="90" step="0.5">
+                                <span class="slider-value" id="val-enc-x"></span>
+                            </div>
+                            <div class="editor-row"><span>Center Y:</span>
+                                <input type="range" id="sl-enc-y" min="10" max="90" step="0.5">
+                                <span class="slider-value" id="val-enc-y"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- IMPORT/EXPORT SECTION -->
+                    <div class="accordion-section" data-section="export">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">📤</span> Import / Export</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <button class="designer-btn primary" onclick="exportDesign()">
+                                <span class="btn-icon">📤</span> Export Design
+                            </button>
+                            <button class="designer-btn" onclick="document.getElementById('sl-design-import').click()">
+                                <span class="btn-icon">📥</span> Import Design
+                            </button>
+                            <input type="file" id="sl-design-import" accept=".json" style="display: none;"
+                                onchange="importDesign(this)">
+                            <button class="designer-btn" onclick="document.getElementById('sl-import-input').click()">
+                                <span class="btn-icon">📂</span> Import Config Profile
+                            </button>
+                            <input type="file" id="sl-import-input" style="display: none;"
+                                onchange="importConfig(this)">
+                            <button class="designer-btn" onclick="exportImage()">
+                                <span class="btn-icon">🖼️</span> Export Image
+                            </button>
+                            <div id="copy-msg"
+                                style="color: #4ade80; display: none; margin-top: 5px; text-align: center;">✓ Saved!
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SYNC SECTION -->
+                    <div class="accordion-section collapsed" data-section="sync">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span class="section-title"><span class="section-icon">🔗</span> Sync</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="editor-row">
+                                <span>Mode:</span>
+                                <select id="sel-sync-mode" onchange="setSyncMode(this.value)">
+                                    <option value="NONE">None</option>
+                                    <option value="SPM">SPM</option>
+                                </select>
+                            </div>
+                            <button id="btn-spm-request" class="designer-btn" onclick="requestSpmPresetState()"
+                                style="display:none;">
+                                <span class="btn-icon">🔄</span> Request State
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
     </section>
 
     <!-- LOGIC -->
     <script>
+        // --- MOBILE NAVIGATION ---
+        function toggleMobileNav() {
+            const hamburger = document.querySelector('.nav-hamburger');
+            const navLinks = document.querySelector('.nav-links');
+            hamburger.classList.toggle('active');
+            navLinks.classList.toggle('active');
+        }
+
+        function closeMobileNav() {
+            const hamburger = document.querySelector('.nav-hamburger');
+            const navLinks = document.querySelector('.nav-links');
+            hamburger.classList.remove('active');
+            navLinks.classList.remove('active');
+        }
+
+        // --- ACCORDION TOGGLE ---
+        function toggleAccordion(header) {
+            const section = header.closest('.accordion-section');
+            section.classList.toggle('collapsed');
+        }
+
+        // --- TOGGLE EDITOR PANEL ---
+        function toggleEditor() {
+            const editor = document.getElementById('layout-editor');
+            editor.classList.toggle('minimized');
+        }
+
+        // --- EXPORT DESIGN (Download .json file) ---
+        function exportDesign() {
+            const config = getCurrentConfig();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Show feedback
+            const msg = document.getElementById('copy-msg');
+            msg.textContent = '✓ Design exported!';
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 2000);
+        }
+
+        // --- IMPORT DESIGN (Load .json file) ---
+        function importDesign(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    applyConfig(config);
+                    const msg = document.getElementById('copy-msg');
+                    msg.textContent = '✓ Design imported!';
+                    msg.style.display = 'block';
+                    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+                } catch (err) {
+                    alert('Error loading design file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset for re-import
+        }
+
+        // --- EXPORT IMAGE (Using html2canvas) ---
+        async function exportImage() {
+            const chassis = document.querySelector('.chassis');
+            if (!chassis) {
+                alert('Could not find chocotone element');
+                return;
+            }
+
+            try {
+                const msg = document.getElementById('copy-msg');
+                msg.textContent = '⏳ Generating image...';
+                msg.style.display = 'block';
+
+                const canvas = await html2canvas(chassis, {
+                    backgroundColor: '#050505',
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+
+                const link = document.createElement('a');
+                link.download = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                msg.textContent = '✓ Image exported!';
+                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            } catch (err) {
+                alert('Error exporting image: ' + err.message);
+            }
+        }
+
+        // --- GET CURRENT CONFIG (for Export Design) ---
+        function getCurrentConfig() {
+            const wrapper = document.querySelector('.controller-wrapper');
+            const computedStyle = getComputedStyle(wrapper);
+
+            return {
+                version: '1.0',
+                type: 'chocotone_design',
+                created: new Date().toISOString(),
+                styles: {
+                    button: document.getElementById('sel-btn-fmt')?.value || '',
+                    led: document.getElementById('sel-led-fmt')?.value || 'led-strip',
+                    encoder: document.getElementById('sel-enc-model')?.value || '',
+                    screw: document.getElementById('sel-screw-model')?.value || '',
+                    screen: document.getElementById('sel-screen-model')?.value || 'screen-amoled'
+                },
+                colors: {
+                    faceplate: document.getElementById('col-faceplate')?.value || '#1a1a1a',
+                    contour: document.getElementById('col-contour')?.value || '#333333',
+                    screw: document.getElementById('col-screw')?.value || '#888888',
+                    encoder: document.getElementById('col-encoder')?.value || '#222222',
+                    screen: document.getElementById('col-screen')?.value || '#00ffff'
+                },
+                layout: {
+                    buttonCount: document.getElementById('sl-btn-count')?.value || '8',
+                    rows: document.getElementById('sel-btn-rows')?.value || '2',
+                    height: document.getElementById('sl-ar')?.value || '',
+                    width: document.getElementById('sl-w')?.value || '',
+                    cornerRadius: document.getElementById('sl-rad')?.value || '',
+                    buttonSize: document.getElementById('sl-btn-size')?.value || '',
+                    topRow: document.getElementById('sl-btn-y1')?.value || '',
+                    bottomRow: document.getElementById('sl-btn-y2')?.value || '',
+                    spacing: document.getElementById('sl-btn-spacing')?.value || ''
+                },
+                oled: {
+                    width: document.getElementById('sl-oled-w')?.value || '',
+                    height: document.getElementById('sl-oled-h')?.value || '',
+                    x: document.getElementById('sl-oled-x')?.value || '',
+                    y: document.getElementById('sl-oled-y')?.value || ''
+                },
+                textSizes: {
+                    preset: document.getElementById('sl-font-preset')?.value || '1.6',
+                    labels: document.getElementById('sl-font-labels')?.value || '0.8',
+                    status: document.getElementById('sl-font-status')?.value || '0.7',
+                    bpm: document.getElementById('sl-font-bpm')?.value || '1.0',
+                    hScale: document.getElementById('sl-font-h')?.value || '1',
+                    wScale: document.getElementById('sl-font-w')?.value || '1'
+                },
+                encoder: {
+                    size: document.getElementById('sl-enc-size')?.value || '',
+                    x: document.getElementById('sl-enc-x')?.value || '',
+                    y: document.getElementById('sl-enc-y')?.value || ''
+                }
+            };
+        }
+
+        // --- APPLY CONFIG (for Import Design) ---
+        function applyConfig(config) {
+            if (!config || config.type !== 'chocotone_design') {
+                throw new Error('Invalid design file format');
+            }
+
+            // Apply styles
+            if (config.styles) {
+                const btnFmt = document.getElementById('sel-btn-fmt');
+                if (btnFmt && config.styles.button !== undefined) {
+                    btnFmt.value = config.styles.button;
+                    if (typeof updateStyle === 'function') updateStyle('btn', config.styles.button);
+                }
+                const ledFmt = document.getElementById('sel-led-fmt');
+                if (ledFmt && config.styles.led !== undefined) {
+                    ledFmt.value = config.styles.led;
+                    if (typeof updateStyle === 'function') updateStyle('led', config.styles.led);
+                }
+                const encModel = document.getElementById('sel-enc-model');
+                if (encModel && config.styles.encoder !== undefined) {
+                    encModel.value = config.styles.encoder;
+                    if (typeof updateStyle === 'function') updateStyle('enc', config.styles.encoder);
+                }
+                const screwModel = document.getElementById('sel-screw-model');
+                if (screwModel && config.styles.screw !== undefined) {
+                    screwModel.value = config.styles.screw;
+                    if (typeof updateStyle === 'function') updateStyle('screw', config.styles.screw);
+                }
+                const screenModel = document.getElementById('sel-screen-model');
+                if (screenModel && config.styles.screen !== undefined) {
+                    screenModel.value = config.styles.screen;
+                    if (typeof updateStyle === 'function') updateStyle('screen', config.styles.screen);
+                }
+            }
+
+            // Apply colors
+            if (config.colors) {
+                const colorMappings = [
+                    ['col-faceplate', 'faceplate'],
+                    ['col-contour', 'contour'],
+                    ['col-screw', 'screw'],
+                    ['col-encoder', 'encoder'],
+                    ['col-screen', 'screen']
+                ];
+                colorMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.colors[key] !== undefined) {
+                        el.value = config.colors[key];
+                        if (typeof updateColor === 'function') updateColor(key, config.colors[key]);
+                    }
+                });
+            }
+
+            // Apply layout sliders
+            if (config.layout) {
+                const layoutMappings = [
+                    ['sl-btn-count', 'buttonCount'],
+                    ['sl-ar', 'height'],
+                    ['sl-w', 'width'],
+                    ['sl-rad', 'cornerRadius'],
+                    ['sl-btn-size', 'buttonSize'],
+                    ['sl-btn-y1', 'topRow'],
+                    ['sl-btn-y2', 'bottomRow'],
+                    ['sl-btn-spacing', 'spacing']
+                ];
+                layoutMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.layout[key] !== undefined && config.layout[key] !== '') {
+                        el.value = config.layout[key];
+                        el.dispatchEvent(new Event('input'));
+                    }
+                });
+                const rows = document.getElementById('sel-btn-rows');
+                if (rows && config.layout.rows !== undefined) {
+                    rows.value = config.layout.rows;
+                }
+            }
+
+            // Apply OLED settings
+            if (config.oled) {
+                const oledMappings = [
+                    ['sl-oled-w', 'width'],
+                    ['sl-oled-h', 'height'],
+                    ['sl-oled-x', 'x'],
+                    ['sl-oled-y', 'y']
+                ];
+                oledMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.oled[key] !== undefined && config.oled[key] !== '') {
+                        el.value = config.oled[key];
+                        el.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+
+            // Apply text sizes
+            if (config.textSizes) {
+                const textMappings = [
+                    ['sl-font-preset', 'preset'],
+                    ['sl-font-labels', 'labels'],
+                    ['sl-font-status', 'status'],
+                    ['sl-font-bpm', 'bpm'],
+                    ['sl-font-h', 'hScale'],
+                    ['sl-font-w', 'wScale']
+                ];
+                textMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.textSizes[key] !== undefined) {
+                        el.value = config.textSizes[key];
+                        if (typeof updateFontSize === 'function') {
+                            updateFontSize(key === 'hScale' ? 'h' : key === 'wScale' ? 'w' : key, config.textSizes[key]);
+                        }
+                    }
+                });
+            }
+
+            // Apply encoder settings
+            if (config.encoder) {
+                const encMappings = [
+                    ['sl-enc-size', 'size'],
+                    ['sl-enc-x', 'x'],
+                    ['sl-enc-y', 'y']
+                ];
+                encMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.encoder[key] !== undefined && config.encoder[key] !== '') {
+                        el.value = config.encoder[key];
+                        el.dispatchEvent(new Event('input'));
+                    }
+                });
+            }
+
+            console.log('Design config applied successfully');
+        }
+
         // --- BLE MIDI LOGIC ---
         const BLEMIDI = {
             device: null,

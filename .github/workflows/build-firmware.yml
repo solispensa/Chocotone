@@ -1,0 +1,102 @@
+name: Build Firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Chocotone/**'
+      - 'manifest.json'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from manifest.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install "Adafruit GFX Library"
+          arduino-cli lib install "Adafruit SSD1306"
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "ESP32Encoder"
+          arduino-cli lib install "ArduinoJson"
+
+      - name: Compile firmware
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32 \
+            --output-dir ./build \
+            ./Chocotone/Chocotone.ino
+
+      - name: Install esptool
+        run: pip install esptool
+
+      - name: Create merged binary with version
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          python -m esptool --chip esp32 merge_bin \
+            -o ./firmware/chocotone_v${VERSION}.bin \
+            --flash_mode dio \
+            --flash_freq 40m \
+            --flash_size 4MB \
+            0x1000 ./build/Chocotone.ino.bootloader.bin \
+            0x8000 ./build/Chocotone.ino.partitions.bin \
+            0xe000 ~/.arduino15/packages/esp32/hardware/esp32/*/tools/partitions/boot_app0.bin \
+            0x10000 ./build/Chocotone.ino.bin
+
+      - name: Update firmware index
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          # Create/update firmware index JSON
+          echo "{" > ./firmware/index.json
+          echo '  "latest": "'"$VERSION"'",' >> ./firmware/index.json
+          echo '  "versions": [' >> ./firmware/index.json
+          # List all existing versions
+          FIRST=true
+          for f in ./firmware/chocotone_v*.bin; do
+            if [ -f "$f" ]; then
+              BASENAME=$(basename "$f" .bin)
+              VER=$(echo "$BASENAME" | sed 's/chocotone_v//')
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                echo ',' >> ./firmware/index.json
+              fi
+              echo -n '    {"version": "'"$VER"'", "file": "'"$BASENAME.bin"'"}' >> ./firmware/index.json
+            fi
+          done
+          echo '' >> ./firmware/index.json
+          echo '  ]' >> ./firmware/index.json
+          echo '}' >> ./firmware/index.json
+
+      - name: Commit firmware binary
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add firmware/
+          git diff --staged --quiet || git commit -m "🔧 Auto-build firmware v${VERSION}"
+          git push
