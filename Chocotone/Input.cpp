@@ -415,6 +415,12 @@ void loop_presetMode() {
                                 // No LONG_PRESS configured - fire PRESS immediately
                                 executeActionMessage(*action);
                                 
+                                // GP5 Sync: Request state after any button action to keep LEDs synced
+                                if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
+                                    delay(100);  // Give GP5 time to process the command
+                                    requestPresetState();
+                                }
+                                
                                 // Toggle alternate state if button has 2ND_PRESS
                                 if (hasAction(config, ACTION_2ND_PRESS)) {
                                     config.isAlternate = !config.isAlternate;
@@ -458,6 +464,12 @@ void loop_presetMode() {
                             if (pressAction && pressAction->type != TAP_TEMPO) {
                                 Serial.printf("BTN %d: Firing deferred PRESS on release\n", i);
                                 executeActionMessage(*pressAction);
+                                
+                                // GP5 Sync: Request state after any button action
+                                if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
+                                    delay(100);
+                                    requestPresetState();
+                                }
                                 
                                 // Toggle alternate state if button has 2ND_PRESS
                                 if (hasAction(config, ACTION_2ND_PRESS)) {
@@ -531,6 +543,13 @@ void loop_presetMode() {
                     safeDisplayOLED();
                     
                     executeActionMessage(*longPress);
+                    
+                    // GP5 Sync: Request state after any button action
+                    if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
+                        delay(100);
+                        requestPresetState();
+                    }
+                    
                     buttonHoldFired[i] = true;
                     Serial.printf("BTN %d LONG_PRESS fired\n", i);
                     updateLeds();
