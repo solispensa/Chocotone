@@ -649,7 +649,7 @@
                 builds: [{
                     chipFamily: "ESP32",
                     parts: [{
-                        path: `${FIRMWARE_BASE}/${filename}`,
+                        path: new URL(filename, new URL(FIRMWARE_BASE, window.location.href).href).href,
                         offset: 0
                     }]
                 }]
