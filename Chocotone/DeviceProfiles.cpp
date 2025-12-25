@@ -180,6 +180,12 @@ static void gp5_preset_change(uint8_t presetNum) {
     if (presetNum >= 100) presetNum = 99;
     sendMidiCC(systemConfig.midiChannel, 127, presetNum);
     Serial.printf("GP5: Preset change to %d\n", presetNum);
+    
+    // Request new preset state to refresh effect LEDs
+    // This ensures sync works the same whether GP5 changes preset or Chocotone does
+    delay(100);  // Give GP5 time to switch presets
+    gp5_request_current_preset();
+    Serial.println("GP5: Requested state for new preset");
 }
 
 const DeviceProfile PROFILE_GP5 = {

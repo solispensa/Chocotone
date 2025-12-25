@@ -339,6 +339,12 @@ void gp5_select_preset(uint8_t presetNum) {
     sendMidiCC(systemConfig.midiChannel, GP5MidiCC::PRESET_SELECT, presetNum);
     
     Serial.printf("GP5: Selected preset %d\n", presetNum);
+    
+    // Request new preset state to refresh effect LEDs
+    // This ensures sync works the same whether GP5 changes preset or Chocotone does
+    delay(100);  // Give GP5 time to switch presets
+    gp5_request_current_preset();
+    Serial.println("GP5: Requested state for new preset");
 }
 
 /**
