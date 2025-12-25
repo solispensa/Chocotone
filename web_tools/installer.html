@@ -50,9 +50,7 @@
             padding: 2rem;
         }
 
-        /* ============================================
-           CHOCOTONE HEADER / LOGO
-           ============================================ */
+        /* HEADER */
         .header {
             text-align: center;
             margin-bottom: 24px;
@@ -87,9 +85,7 @@
             margin-top: 8px;
         }
 
-        /* ============================================
-           SECTION CARDS
-           ============================================ */
+        /* CARDS */
         .section {
             background: var(--card);
             border-radius: var(--radius);
@@ -107,9 +103,7 @@
             font-weight: 600;
         }
 
-        /* ============================================
-           INSTALL CARD (MAIN CTA)
-           ============================================ */
+        /* CTA CARD */
         .install-card {
             text-align: center;
             padding: 32px;
@@ -127,7 +121,7 @@
             margin-bottom: 24px;
         }
 
-        /* Version Selector */
+        /* VERSION SELECTOR */
         .version-selector {
             display: flex;
             align-items: center;
@@ -169,7 +163,7 @@
             text-transform: uppercase;
         }
 
-        /* ESP Web Tools Button Styling */
+        /* INSTALL BUTTON */
         esp-web-install-button {
             display: inline-block;
         }
@@ -192,7 +186,24 @@
             transform: translateY(-2px);
         }
 
-        /* Browser Warning */
+        /* SERIAL MONITOR */
+        .terminal-container {
+            background: #000;
+            border: 1px solid var(--brd);
+            border-radius: 6px;
+            height: 300px;
+            position: relative;
+            /* Ensure terminal renders properly */
+            display: flex;
+            flex-direction: column;
+        }
+
+        esp-web-terminal {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* WARNINGS */
         .browser-warning {
             background: rgba(245, 158, 11, 0.1);
             border: 1px solid rgba(245, 158, 11, 0.3);
@@ -215,9 +226,7 @@
             margin: 0;
         }
 
-        /* ============================================
-           REQUIREMENTS GRID
-           ============================================ */
+        /* GRIDS */
         .requirement-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -243,9 +252,6 @@
             font-size: 0.85rem;
         }
 
-        /* ============================================
-           STEPS GRID
-           ============================================ */
         .step-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -291,9 +297,7 @@
             line-height: 1.5;
         }
 
-        /* ============================================
-           TROUBLESHOOTING ACCORDION
-           ============================================ */
+        /* TROUBLESHOOTING */
         .trouble-item {
             background: var(--inp);
             border: 1px solid var(--brd);
@@ -340,9 +344,7 @@
             text-decoration: underline;
         }
 
-        /* ============================================
-           DOWNLOAD SECTION
-           ============================================ */
+        /* DOWNLOAD */
         .download-section {
             text-align: center;
         }
@@ -386,9 +388,7 @@
             background: var(--card-hover);
         }
 
-        /* ============================================
-           FOOTER
-           ============================================ */
+        /* FOOTER */
         .footer {
             text-align: center;
             color: #555;
@@ -411,9 +411,6 @@
             margin: 4px 0;
         }
 
-        /* ============================================
-           RESPONSIVE
-           ============================================ */
         @media (max-width: 600px) {
             .container {
                 padding: 1rem;
@@ -446,9 +443,7 @@
 
 <body>
     <div class="container">
-        <!-- ============================================
-             CHOCOTONE HEADER
-             ============================================ -->
+        <!-- HEADER -->
         <header class="header">
             <h1 class="logo-text">
                 <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
@@ -456,7 +451,7 @@
             <div class="logo-subline">ESP32 FIRMWARE INSTALLER</div>
         </header>
 
-        <!-- Main Install Card -->
+        <!-- INSTALL CARD -->
         <div class="section install-card">
             <h2>Install Firmware</h2>
             <p>Connect your ESP32 board via USB and click the button below.</p>
@@ -476,25 +471,36 @@
                     <div class="browser-warning">
                         <span>⚠️</span>
                         <p>Your browser doesn't support Web Serial. Use <strong>Chrome</strong>, <strong>Edge</strong>,
-                            or <strong>Brave</strong> on desktop.</p>
+                            or <strong>Brave</strong>.</p>
                     </div>
                 </span>
                 <span slot="not-allowed">
                     <div class="browser-warning">
                         <span>🔒</span>
-                        <p>Serial access blocked. This page must be served over HTTPS or localhost.</p>
+                        <p>Serial access blocked. Must serve over HTTPS or localhost.</p>
                     </div>
                 </span>
             </esp-web-install-button>
         </div>
 
-        <!-- Requirements -->
+        <!-- SERIAL MONITOR -->
+        <div class="section">
+            <div class="section-title">📺 Serial Monitor</div>
+            <p style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-dim);">
+                Check here for debug logs if something goes wrong.
+            </p>
+            <div class="terminal-container">
+                <esp-web-terminal></esp-web-terminal>
+            </div>
+        </div>
+
+        <!-- REQUIREMENTS -->
         <div class="section">
             <div class="section-title">📋 What You Need</div>
             <div class="requirement-grid">
                 <div class="requirement">
                     <span class="icon">💻</span>
-                    <span>Chrome, Edge, or Brave</span>
+                    <span>Chrome / Edge / Brave</span>
                 </div>
                 <div class="requirement">
                     <span class="icon">🔌</span>
@@ -511,7 +517,7 @@
             </div>
         </div>
 
-        <!-- Steps -->
+        <!-- STEPS -->
         <div class="section">
             <div class="section-title">📝 How It Works</div>
             <div class="step-grid">
@@ -523,7 +529,7 @@
                 <div class="step">
                     <div class="step-number">2</div>
                     <h3>Select Version</h3>
-                    <p>Choose a firmware version from the dropdown (latest recommended).</p>
+                    <p>Choose the latest firmware version from the dropdown.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
@@ -533,55 +539,48 @@
                 <div class="step">
                     <div class="step-number">4</div>
                     <h3>Done!</h3>
-                    <p>Wait ~30s. Your controller is ready when OLED shows "Chocotone".</p>
+                    <p>Wait ~30s. Controller is ready when OLED shows "Chocotone".</p>
                 </div>
             </div>
         </div>
 
-        <!-- Troubleshooting -->
+        <!-- TROUBLESHOOTING -->
         <div class="section">
             <div class="section-title">🔧 Troubleshooting</div>
 
             <details class="trouble-item">
-                <summary>ESP32 not showing in the device list</summary>
-                <p>Use a <strong>data cable</strong>, not charge-only. Try another USB port. On Windows, install <a
+                <summary>ESP32 not showing in list</summary>
+                <p>Use a <strong>data cable</strong>, not charge-only. Try another USB port. Windows users: install <a
                         href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers" target="_blank">CP210x
                         drivers</a>.</p>
             </details>
 
             <details class="trouble-item">
-                <summary>Installation fails or times out</summary>
-                <p>Hold the <strong>BOOT</strong> button on your ESP32 while clicking "Install". Release after
-                    programming starts.</p>
+                <summary>Installation fails / Packet Error</summary>
+                <p>Hold the <strong>BOOT</strong> button on your ESP32 while clicking "Install". Release after "Erasing"
+                    appears.</p>
             </details>
 
             <details class="trouble-item">
-                <summary>"Failed to connect" error</summary>
-                <p>Close other programs using the serial port (Arduino IDE, etc.). Unplug/replug the ESP32 and try
-                    again.</p>
-            </details>
-
-            <details class="trouble-item">
-                <summary>Browser shows "Not supported"</summary>
-                <p>Web Serial only works in <strong>Chrome</strong>, <strong>Edge</strong>, <strong>Brave</strong>,
-                    <strong>Arc</strong>, or <strong>Opera</strong>. Firefox and Safari are not supported.</p>
+                <summary>"Failed to connect"</summary>
+                <p>Close Arduino IDE or other serial monitors. Unplug/replug the ESP32 and try again.</p>
             </details>
         </div>
 
-        <!-- Download -->
+        <!-- DOWNLOAD -->
         <div class="section download-section">
-            <h3>📥 Alternative Download</h3>
-            <p>Prefer to flash manually with Arduino IDE or esptool?</p>
+            <h3>📥 Manual Download</h3>
+            <p>Flash manually with esptool?</p>
             <a href="#" id="download-link" download class="btn secondary">
                 <span>⬇️</span> <span id="download-text">Download .bin</span>
             </a>
         </div>
 
-        <!-- Footer -->
+        <!-- FOOTER -->
         <footer class="footer">
             <p>
                 <a href="https://github.com/solispensa/Chocotone" target="_blank">GitHub</a> ·
-                <a href="docs/BEGINNER_GUIDE.md" target="_blank">Beginner's Guide</a> ·
+                <a href="../docs/BEGINNER_GUIDE.md" target="_blank">Beginner's Guide</a> ·
                 <a href="https://www.facebook.com/groups/1950814575859830/" target="_blank">Community</a>
             </p>
             <p>Made with ❤️ for the MIDI community</p>
@@ -589,13 +588,13 @@
     </div>
 
     <script>
-        // Firmware version management
-        const FIRMWARE_INDEX_URL = 'firmware/index.json';
+        // Adjust paths since file is in web_tools/
+        const FIRMWARE_BASE = '../firmware';
+        const FIRMWARE_INDEX_URL = `${FIRMWARE_BASE}/index.json`;
 
         let firmwareData = null;
         let selectedVersion = null;
 
-        // Load firmware index
         async function loadFirmwareIndex() {
             const select = document.getElementById('version-select');
             const latestBadge = document.getElementById('latest-badge');
@@ -605,11 +604,9 @@
                 if (!response.ok) throw new Error('Failed to load firmware index');
 
                 firmwareData = await response.json();
+                select.innerHTML = ''; // Clear loading
 
-                // Clear loading option
-                select.innerHTML = '';
-
-                // Add versions (latest first)
+                // Sort versions descending
                 const sortedVersions = [...firmwareData.versions].sort((a, b) =>
                     b.version.localeCompare(a.version, undefined, { numeric: true })
                 );
@@ -622,55 +619,49 @@
                     select.appendChild(option);
                 });
 
-                // Set initial version
+                // Select latest by default
                 selectedVersion = sortedVersions[0]?.version || firmwareData.latest;
                 updateManifest(selectedVersion);
                 updateDownloadLink(selectedVersion);
 
-                // Show latest badge if selected version is latest
                 if (selectedVersion === firmwareData.latest) {
                     latestBadge.style.display = 'inline';
                 }
 
             } catch (error) {
                 console.error('Error loading firmware index:', error);
-                // Fallback to default
-                select.innerHTML = '<option value="1.1.0">v1.1.0 (Latest)</option>';
+                select.innerHTML = '<option value="1.1.0">v1.1.0 (Fallback)</option>';
                 selectedVersion = '1.1.0';
                 updateManifest(selectedVersion);
                 updateDownloadLink(selectedVersion);
             }
         }
 
-        // Update manifest dynamically
         function updateManifest(version) {
             const firmware = firmwareData?.versions.find(v => v.version === version);
+            // Use the file from index.json, or fallback to standard naming
             const filename = firmware?.file || `chocotone_v${version}.bin`;
 
-            // Create dynamic manifest
             const manifest = {
                 name: "Chocotone MIDI Controller",
                 version: version,
-                new_install_prompt_erase: true,
+                new_install_prompt_erase: true, // Prompt user to wipe
                 builds: [{
                     chipFamily: "ESP32",
                     parts: [{
-                        path: `firmware/${filename}`,
+                        path: `${FIRMWARE_BASE}/${filename}`,
                         offset: 0
                     }]
                 }]
             };
 
-            // Create blob URL for manifest
             const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
             const manifestUrl = URL.createObjectURL(blob);
 
-            // Update button manifest
             const installButton = document.getElementById('install-button');
             installButton.setAttribute('manifest', manifestUrl);
         }
 
-        // Update download link
         function updateDownloadLink(version) {
             const firmware = firmwareData?.versions.find(v => v.version === version);
             const filename = firmware?.file || `chocotone_v${version}.bin`;
@@ -678,11 +669,10 @@
             const downloadLink = document.getElementById('download-link');
             const downloadText = document.getElementById('download-text');
 
-            downloadLink.href = `firmware/${filename}`;
+            downloadLink.href = `${FIRMWARE_BASE}/${filename}`;
             downloadText.textContent = `Download ${filename}`;
         }
 
-        // Handle version change
         document.getElementById('version-select').addEventListener('change', (e) => {
             selectedVersion = e.target.value;
             const latestBadge = document.getElementById('latest-badge');
@@ -690,11 +680,9 @@
             updateManifest(selectedVersion);
             updateDownloadLink(selectedVersion);
 
-            // Toggle latest badge
             latestBadge.style.display = (selectedVersion === firmwareData?.latest) ? 'inline' : 'none';
         });
 
-        // Initialize
         loadFirmwareIndex();
     </script>
 </body>

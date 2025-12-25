@@ -4,6 +4,7 @@
 
 **A powerful, customizable ESP32-based BLE MIDI controller designed for wireless control of BLE MIDI devices like the Sonicake Pocket Master and Valeton GP-5.**
 
+![Version](https://img.shields.io/badge/version-1.4.0-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Arduino](https://img.shields.io/badge/Framework-Arduino-00979D.svg)](https://www.arduino.cc/)
@@ -17,6 +18,8 @@
 ## 🚀 Easy Install (No Coding Required!)
 
 **New to ESP32?** Use our web-based installer to flash the firmware directly from your browser!
+
+### [🚀 Open Web Installer](https://solispensa.github.io/Chocotone/web_tools/installer.html) | [📘 Beginner's Guide](docs/BEGINNER_GUIDE.md)
 
 | | |
 |---|---|

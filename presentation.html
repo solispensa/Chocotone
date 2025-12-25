@@ -685,7 +685,9 @@
             flex-direction: column;
             justify-content: space-between;
             padding: 3px 5px;
-            font-size: 1.1rem;
+            /* Font size scaling for mobile responsiveness */
+            font-size: clamp(8px, 1.2cqw, 14px);
+            container-type: inline-size;
             line-height: 1;
         }
 
@@ -1400,17 +1402,13 @@
         /* LAYOUT EDITOR Styles */
         #virtual-controller {
             position: relative;
+            text-align: center;
         }
 
         #layout-editor {
-            position: absolute;
-            top: 130px;
-            right: 0;
-            left: auto;
-            transform: none;
-            margin-left: 0;
-            margin-right: 20px;
-            bottom: auto;
+            position: relative;
+            display: block;
+            margin: 2rem auto;
             background: rgba(20, 20, 30, 0.85);
             backdrop-filter: blur(15px);
             border: 1px solid rgba(187, 134, 252, 0.3);
@@ -1421,7 +1419,7 @@
             font-family: 'Outfit', sans-serif;
             font-size: 0.85rem;
             width: 320px;
-            max-height: 85%;
+            max-height: 600px;
             overflow-y: auto;
             overflow-x: hidden;
             transition: all 0.3s ease;
@@ -1443,12 +1441,11 @@
         }
 
         #layout-editor.minimized {
-            width: 50px;
-            height: 50px;
-            padding: 0;
-            border-radius: 8px 0 0 8px;
-            /* Tab shape */
-            display: flex;
+            width: auto;
+            height: auto;
+            padding: 12px 20px;
+            border-radius: 50px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -1678,7 +1675,6 @@
             z-index: 1;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr);
             gap: 2.4% 1%;
             flex: 1;
             min-height: 0;
@@ -1789,6 +1785,7 @@
                 padding: 0.5rem 1rem;
                 border-radius: 16px;
                 width: 95%;
+                z-index: 10002;
             }
 
             .nav-hamburger {
@@ -1810,7 +1807,7 @@
                 opacity: 0;
                 pointer-events: none;
                 transition: opacity 0.3s ease;
-                z-index: 999;
+                z-index: 10001;
             }
 
             .nav-links.active {
@@ -1854,8 +1851,20 @@
             }
 
             .slide-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
                 gap: 3%;
+            }
+
+            /* Fix OLED Mockup Overlap on Tablet/Mobile */
+            .slide-card-oled-mockup {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                left: auto !important;
+                margin-top: 1rem;
+                width: 100% !important;
+                height: auto !important;
+                aspect-ratio: 2/1;
             }
 
             .slide-card {
@@ -1903,12 +1912,34 @@
                 bottom: 0;
                 width: 100%;
                 max-width: 100%;
-                max-height: 70vh;
+                max-height: 60vh;
+                /* Reduced to keep Chocotone visible */
                 border-radius: 20px 20px 0 0;
                 margin: 0;
                 transform: translateY(calc(100% - 50px));
-                transition: transform 0.3s ease;
+                transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
                 z-index: 10000;
+                /* Premium Glassmorphism */
+                background: rgba(20, 20, 30, 0.65);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-bottom: none;
+                box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+            }
+
+            /* Drag Handle Indicator */
+            #layout-editor::before {
+                content: '';
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
+                pointer-events: none;
             }
 
             #layout-editor.minimized {
@@ -1917,6 +1948,11 @@
                 min-height: 50px;
                 border-radius: 20px 20px 0 0;
                 transform: translateY(calc(100% - 50px));
+                display: block;
+                /* Override flex from desktop */
+                padding: 0;
+                /* Reset padding */
+                background: rgba(20, 20, 30, 0.8);
             }
 
             #layout-editor:not(.minimized) {
@@ -1976,7 +2012,19 @@
         /* Tablet adjustments */
         @media (max-width: 1024px) and (min-width: 769px) {
             .slide-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
+            }
+
+            /* Fix OLED Mockup Overlap on Tablet/Mobile */
+            .slide-card-oled-mockup {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                left: auto !important;
+                margin-top: 1rem;
+                width: 100% !important;
+                height: auto !important;
+                aspect-ratio: 2/1;
             }
 
             #layout-editor {
@@ -1990,9 +2038,7 @@
 
         /* Small mobile */
         @media (max-width: 480px) {
-            .slide-grid {
-                grid-template-columns: 1fr;
-            }
+
 
             .slide-card-icon {
                 font-size: 1.5rem;
@@ -2007,13 +2053,37 @@
             }
 
             #layout-editor .editor-row {
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
+                /* Keep side-by-side */
             }
 
             #layout-editor .editor-row span:first-child {
-                width: 100%;
-                margin-bottom: 4px;
+                width: auto;
+                margin-bottom: 0;
+                font-size: 0.85rem;
+                flex: 0 0 auto;
+                margin-right: 10px;
             }
+
+            /* Larger Touch Targets */
+            /* Compact Touch Targets */
+            #layout-editor select {
+                padding: 8px 10px;
+                /* Slightly tighter than 12px */
+                font-size: 0.9rem;
+            }
+
+            #layout-editor input[type="range"] {
+                height: 24px;
+            }
+
+            /* Buttons in editor */
+            #layout-editor button {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+
         }
 
         /* ============================================
@@ -2109,6 +2179,72 @@
         .designer-btn:active {
             transform: translateY(0);
         }
+
+        /* Grid Tabs Style */
+        #editor-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .tab-btn {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(187, 134, 252, 0.2);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(187, 134, 252, 0.1);
+        }
+
+        .tab-icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .tab-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .tab-btn.active .tab-label {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .editor-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .editor-section:not(.hidden) {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
 
         .designer-btn.primary {
             background: linear-gradient(135deg, var(--brand-lavender), var(--brand-lavender-dim));
@@ -2210,7 +2346,7 @@
                         <p class="slide-card-text">128x64 pixel screen for real-time status, presets, and menu
                             navigation.</p>
                         <!-- Mini pixel art mockup simplified -->
-                        <div
+                        <div class="slide-card-oled-mockup"
                             style="background: #000; border: 2px solid #222; border-radius: 6px; padding: 4px 6px; font-family: 'VT323', monospace; color: #00ffff; text-shadow: 0 0 2px rgba(0, 255, 255, 0.6); font-size: 12px; line-height: 1; display: flex; flex-direction: column; justify-content: space-between; height: 80px; width: 120px; position: absolute; top: 28px; right: 28px; box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.05); letter-spacing: 0.5px;">
                             <div style="display: flex; justify-content: space-between; width: 100%;">
                                 <span>EQ</span><span>FX2</span><span>DLY</span><span>RVB</span>
@@ -2368,13 +2504,46 @@
                         Chocotone Designer</span></h3>
 
                 <div class="layout-content">
-                    <!-- COMPONENTS SECTION -->
-                    <div class="accordion-section" data-section="components">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">🎛️</span> Components</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                    <!-- TABS GRID -->
+                    <div id="editor-tabs">
+                        <button class="tab-btn active" onclick="switchTab('components')">
+                            <span class="tab-icon">🎛️</span>
+                            <span class="tab-label">Components</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('colors')">
+                            <span class="tab-icon">🎨</span>
+                            <span class="tab-label">Colors</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('layout')">
+                            <span class="tab-icon">📐</span>
+                            <span class="tab-label">Layout</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('oled')">
+                            <span class="tab-icon">📺</span>
+                            <span class="tab-label">OLED</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('text')">
+                            <span class="tab-icon">🔤</span>
+                            <span class="tab-label">Text</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('encoder')">
+                            <span class="tab-icon">🎚️</span>
+                            <span class="tab-label">Encoder</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('sync')">
+                            <span class="tab-icon">🔗</span>
+                            <span class="tab-label">Sync</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('export')">
+                            <span class="tab-icon">📤</span>
+                            <span class="tab-label">Import/Data</span>
+                        </button>
+                    </div>
+
+                    <!-- EDITOR PANEL (Content Area) -->
+                    <div id="editor-panel">
+                        <!-- COMPONENTS SECTION -->
+                        <div class="editor-section" id="sec-components">
                             <div class="editor-row"><span>Button:</span>
                                 <select id="sel-btn-fmt" onchange="updateStyle('btn', this.value)">
                                     <option value="">Round</option>
@@ -2432,15 +2601,9 @@
                                 </select>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- COLORS SECTION -->
-                    <div class="accordion-section collapsed" data-section="colors">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">🎨</span> Colors</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- COLORS SECTION -->
+                        <div class="editor-section hidden" id="sec-colors">
                             <div class="editor-row"><span>Faceplate:</span>
                                 <input type="color" id="col-faceplate" value="#1a1a1a"
                                     onchange="updateColor('faceplate', this.value)">
@@ -2489,15 +2652,9 @@
                                 <span class="slider-value" id="val-slope-angle">25&deg;</span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- LAYOUT SECTION -->
-                    <div class="accordion-section collapsed" data-section="layout">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">📐</span> Layout</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- LAYOUT SECTION -->
+                        <div class="editor-section hidden" id="sec-layout">
                             <div class="editor-row"><span>Buttons #:</span>
                                 <input type="range" id="sl-btn-count" min="1" max="12" step="1" value="8"
                                     onchange="updateButtonCount(this.value)">
@@ -2540,15 +2697,9 @@
                                 <span class="slider-value" id="val-btn-spacing"></span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- OLED SECTION -->
-                    <div class="accordion-section collapsed" data-section="oled">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">📺</span> OLED</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- OLED SECTION -->
+                        <div class="editor-section hidden" id="sec-oled">
                             <div class="editor-row"><span>Width:</span>
                                 <input type="range" id="sl-oled-w" min="10" max="80" step="0.5">
                                 <span class="slider-value" id="val-oled-w"></span>
@@ -2566,15 +2717,9 @@
                                 <span class="slider-value" id="val-oled-y"></span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- TEXT SIZES SECTION -->
-                    <div class="accordion-section collapsed" data-section="text">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">🔤</span> Text Sizes</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- TEXT SIZES SECTION -->
+                        <div class="editor-section hidden" id="sec-text">
                             <div class="editor-row"><span>Preset:</span>
                                 <input type="range" id="sl-font-preset" min="0.8" max="3" step="0.1" value="1.6"
                                     onchange="updateFontSize('preset', this.value)">
@@ -2606,15 +2751,9 @@
                                 <span class="slider-value" id="val-font-w">1x</span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- ENCODER SECTION -->
-                    <div class="accordion-section collapsed" data-section="encoder">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">🎚️</span> Encoder Position</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- ENCODER SECTION -->
+                        <div class="editor-section hidden" id="sec-encoder">
                             <div class="editor-row"><span>Size:</span>
                                 <input type="range" id="sl-enc-size" min="5" max="20" step="0.5">
                                 <span class="slider-value" id="val-enc-size"></span>
@@ -2628,15 +2767,9 @@
                                 <span class="slider-value" id="val-enc-y"></span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- IMPORT/EXPORT SECTION -->
-                    <div class="accordion-section" data-section="export">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">📤</span> Import / Export</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- IMPORT/EXPORT SECTION -->
+                        <div class="editor-section hidden" id="sec-export">
                             <button class="designer-btn primary" onclick="exportDesign()">
                                 <span class="btn-icon">📤</span> Export Design
                             </button>
@@ -2657,15 +2790,9 @@
                                 style="color: #4ade80; display: none; margin-top: 5px; text-align: center;">✓ Saved!
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SYNC SECTION -->
-                    <div class="accordion-section collapsed" data-section="sync">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span class="section-title"><span class="section-icon">🔗</span> Sync</span>
-                            <span class="toggle-icon">▼</span>
-                        </div>
-                        <div class="accordion-content">
+                        <!-- SYNC SECTION -->
+                        <div class="editor-section hidden" id="sec-sync">
                             <div class="editor-row">
                                 <span>Mode:</span>
                                 <select id="sel-sync-mode" onchange="setSyncMode(this.value)">
@@ -2700,6 +2827,27 @@
             navLinks.classList.remove('active');
         }
 
+        // TAB SWITCHING Logic
+        function switchTab(tabName) {
+            // Hide all sections
+            document.querySelectorAll('.editor-section').forEach(el => el.classList.add('hidden'));
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            // Show target section
+            const targetSec = document.getElementById('sec-' + tabName);
+            if (targetSec) targetSec.classList.remove('hidden');
+
+            // Set active tab styling
+            // Find button by onclick attribute content as a simple way, or use event delegation
+            const buttons = document.querySelectorAll('.tab-btn');
+            for (let btn of buttons) {
+                if (btn.getAttribute('onclick').includes(tabName)) {
+                    btn.classList.add('active');
+                    break;
+                }
+            }
+        }
         // --- ACCORDION TOGGLE ---
         function toggleAccordion(header) {
             const section = header.closest('.accordion-section');
@@ -2710,6 +2858,28 @@
         function toggleEditor() {
             const editor = document.getElementById('layout-editor');
             editor.classList.toggle('minimized');
+
+            // Save state
+            const isMin = editor.classList.contains('minimized');
+            localStorage.setItem('chocotone_editor_minimized', isMin);
+
+            // Auto-scroll on mobile/tablet when opening
+            if (!isMin && window.innerWidth <= 1024) {
+                setTimeout(() => {
+                    const controllerSection = document.getElementById('virtual-controller');
+                    if (controllerSection) {
+                        // Scroll nicely to show the controller above the editor
+                        const offset = 20; // top padding
+                        const elemPos = controllerSection.getBoundingClientRect().top;
+                        const offsetPosition = elemPos + window.pageYOffset - offset;
+
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: "smooth"
+                        });
+                    }
+                }, 300); // Wait for transition
+            }
         }
 
         // --- EXPORT DESIGN (Download .json file) ---
@@ -6419,9 +6589,10 @@
                 </div>
             </div>
 
-            <p style="color: #888; font-size: 0.9rem;">Use the Web App Editor (<code>chocotone_midi_editor.html</code>)
-                for
-                full access to all configuration options including JSON import/export.</p>
+            <p style="color: #888; font-size: 0.9rem;">Use the <a
+                    href="https://solispensa.github.io/Chocotone/web_tools/chocotone_midi_editor.html" target="_blank"
+                    style="color: var(--accent); text-decoration: none;">Web App Editor</a>
+                for full access to all configuration options including JSON import/export.</p>
         </div>
     </section>
 
