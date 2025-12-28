@@ -447,9 +447,16 @@
             --btn-y-btm: 6%;
             --btn-spacing: 25%;
             --btn-size: 9%;
+            --btn-x-offset: 0%;
             --enc-x: 7%;
             --enc-y: 50%;
             --enc-size: 7%;
+            /* Potentiometer knobs */
+            --pot-size: 5%;
+            --pot-start-x: 5%;
+            --pot-start-y: 20%;
+            --pot-spacing-x: 10%;
+            --pot-spacing-y: 20%;
         }
 
         .chassis {
@@ -468,7 +475,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: #1a1a1a;
+            background: #141414;
             border-radius: var(--chassis-rad);
             box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #333;
             z-index: 1;
@@ -544,42 +551,42 @@
         /* Button Positions via Vars (Uniform Spacing) */
         #btn-5 {
             top: var(--btn-y-top);
-            left: calc(50% - 1.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) - 1.5 * var(--btn-spacing));
         }
 
         #btn-6 {
             top: var(--btn-y-top);
-            left: calc(50% - 0.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) - 0.5 * var(--btn-spacing));
         }
 
         #btn-7 {
             top: var(--btn-y-top);
-            left: calc(50% + 0.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) + 0.5 * var(--btn-spacing));
         }
 
         #btn-8 {
             top: var(--btn-y-top);
-            left: calc(50% + 1.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) + 1.5 * var(--btn-spacing));
         }
 
         #btn-1 {
             bottom: var(--btn-y-btm);
-            left: calc(50% - 1.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) - 1.5 * var(--btn-spacing));
         }
 
         #btn-2 {
             bottom: var(--btn-y-btm);
-            left: calc(50% - 0.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) - 0.5 * var(--btn-spacing));
         }
 
         #btn-3 {
             bottom: var(--btn-y-btm);
-            left: calc(50% + 0.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) + 0.5 * var(--btn-spacing));
         }
 
         #btn-4 {
             bottom: var(--btn-y-btm);
-            left: calc(50% + 1.5 * var(--btn-spacing));
+            left: calc(50% + var(--btn-x-offset) + 1.5 * var(--btn-spacing));
         }
 
         .footswitch {
@@ -649,6 +656,32 @@
             height: 30%;
             background: #888;
             transform: translateX(-50%);
+        }
+
+        /* Potentiometer Knobs */
+        .pot-unit {
+            position: absolute;
+            width: var(--pot-size);
+            padding-bottom: var(--pot-size);
+            cursor: grab;
+            z-index: 10;
+        }
+
+        .pot-unit:active {
+            cursor: grabbing;
+        }
+
+        .pot-unit.dragging {
+            z-index: 100;
+            opacity: 0.9;
+        }
+
+        .pot-unit .knob-cap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
         /* OLED */
@@ -1418,7 +1451,8 @@
             z-index: 9999;
             font-family: 'Outfit', sans-serif;
             font-size: 0.85rem;
-            width: 320px;
+            width: 100%;
+            max-width: var(--container-width, 1200px);
             max-height: 600px;
             overflow-y: auto;
             overflow-x: hidden;
@@ -2190,7 +2224,6 @@
         }
 
         .tab-btn {
-            aspect-ratio: 1;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
@@ -2200,6 +2233,8 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
+            padding: 12px 10px;
+            min-height: 80px;
         }
 
         .tab-btn.active {
@@ -2530,6 +2565,10 @@
                             <span class="tab-icon">🎚️</span>
                             <span class="tab-label">Encoder</span>
                         </button>
+                        <button class="tab-btn" onclick="switchTab('knobs')">
+                            <span class="tab-icon">🎛️</span>
+                            <span class="tab-label">Knobs</span>
+                        </button>
                         <button class="tab-btn" onclick="switchTab('sync')">
                             <span class="tab-icon">🔗</span>
                             <span class="tab-label">Sync</span>
@@ -2605,7 +2644,7 @@
                         <!-- COLORS SECTION -->
                         <div class="editor-section hidden" id="sec-colors">
                             <div class="editor-row"><span>Faceplate:</span>
-                                <input type="color" id="col-faceplate" value="#1a1a1a"
+                                <input type="color" id="col-faceplate" value="#141414"
                                     onchange="updateColor('faceplate', this.value)">
                             </div>
                             <div class="editor-row"><span>Contour:</span>
@@ -2625,9 +2664,9 @@
                                     onchange="updateColor('screen', this.value)">
                             </div>
                             <div class="editor-row"><span>Contour Th:</span>
-                                <input type="range" id="sl-contour-th" min="1" max="10" step="1" value="2"
+                                <input type="range" id="sl-contour-th" min="1" max="10" step="1" value="10"
                                     onchange="updateSizeControl('contour', this.value)">
-                                <span class="slider-value" id="val-contour-th">2px</span>
+                                <span class="slider-value" id="val-contour-th">10px</span>
                             </div>
                             <div class="editor-row"><span>Screw Size:</span>
                                 <input type="range" id="sl-screw-size" min="0.5" max="3" step="0.1" value="1.5"
@@ -2696,6 +2735,10 @@
                                 <input type="range" id="sl-btn-spacing" min="10" max="40" step="0.5">
                                 <span class="slider-value" id="val-btn-spacing"></span>
                             </div>
+                            <div class="editor-row"><span>X Offset:</span>
+                                <input type="range" id="sl-btn-x-offset" min="-50" max="50" step="1" value="0">
+                                <span class="slider-value" id="val-btn-x-offset">0%</span>
+                            </div>
                         </div>
 
                         <!-- OLED SECTION -->
@@ -2726,9 +2769,9 @@
                                 <span class="slider-value" id="val-font-preset">1.6em</span>
                             </div>
                             <div class="editor-row"><span>Labels:</span>
-                                <input type="range" id="sl-font-labels" min="0.5" max="1.5" step="0.05" value="0.8"
+                                <input type="range" id="sl-font-labels" min="0.5" max="1.5" step="0.05" value="1.15"
                                     onchange="updateFontSize('labels', this.value)">
-                                <span class="slider-value" id="val-font-labels">0.8em</span>
+                                <span class="slider-value" id="val-font-labels">1.15em</span>
                             </div>
                             <div class="editor-row"><span>Status:</span>
                                 <input type="range" id="sl-font-status" min="0.5" max="1.2" step="0.05" value="0.7"
@@ -2765,6 +2808,57 @@
                             <div class="editor-row"><span>Center Y:</span>
                                 <input type="range" id="sl-enc-y" min="10" max="90" step="0.5">
                                 <span class="slider-value" id="val-enc-y"></span>
+                            </div>
+                        </div>
+
+                        <!-- KNOBS SECTION -->
+                        <div class="editor-section hidden" id="sec-knobs">
+                            <div class="editor-row"><span>X Count:</span>
+                                <input type="range" id="sl-pot-count-x" min="0" max="10" step="1" value="0"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-count-x">0</span>
+                            </div>
+                            <div class="editor-row"><span>Y Count:</span>
+                                <input type="range" id="sl-pot-count-y" min="1" max="5" step="1" value="1"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-count-y">1</span>
+                            </div>
+                            <div class="editor-row"><span>X Spacing:</span>
+                                <input type="range" id="sl-pot-spacing-x" min="5" max="40" step="0.5" value="10"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-spacing-x">10%</span>
+                            </div>
+                            <div class="editor-row"><span>Y Spacing:</span>
+                                <input type="range" id="sl-pot-spacing-y" min="5" max="40" step="0.5" value="20"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-spacing-y">20%</span>
+                            </div>
+                            <div class="editor-row"><span>Size:</span>
+                                <input type="range" id="sl-pot-size" min="3" max="15" step="0.5" value="5"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-size">5%</span>
+                            </div>
+                            <div class="editor-row"><span>Start X:</span>
+                                <input type="range" id="sl-pot-start-x" min="0" max="90" step="0.5" value="5"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-start-x">5%</span>
+                            </div>
+                            <div class="editor-row"><span>Start Y:</span>
+                                <input type="range" id="sl-pot-start-y" min="10" max="90" step="0.5" value="20"
+                                    onchange="updateKnobs()">
+                                <span class="slider-value" id="val-pot-start-y">20%</span>
+                            </div>
+                            <div class="editor-row"><span>Model:</span>
+                                <select id="sel-pot-model" onchange="updateKnobs()">
+                                    <option value="">Default</option>
+                                    <option value="enc-2">Silver</option>
+                                    <option value="enc-3">Grip</option>
+                                    <option value="enc-4">Square</option>
+                                    <option value="enc-5">Sphere</option>
+                                    <option value="enc-6">Knurled</option>
+                                    <option value="enc-7">Copper</option>
+                                    <option value="enc-8">Gamer</option>
+                                </select>
                             </div>
                         </div>
 
@@ -2883,23 +2977,53 @@
         }
 
         // --- EXPORT DESIGN (Download .json file) ---
-        function exportDesign() {
+        async function exportDesign() {
             const config = getCurrentConfig();
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const jsonString = JSON.stringify(config, null, 2);
+            const filename = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.json';
+            const msg = document.getElementById('copy-msg');
+
+            // Try File System Access API (native save dialog)
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: 'JSON Files',
+                            accept: { 'application/json': ['.json'] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(jsonString);
+                    await writable.close();
+
+                    msg.textContent = '✓ Design saved successfully!';
+                    msg.style.display = 'block';
+                    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                    return;
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.log('File System API failed:', err);
+                    } else {
+                        return; // User cancelled
+                    }
+                }
+            }
+
+            // Fallback: Blob download
+            const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.json';
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-            // Show feedback
-            const msg = document.getElementById('copy-msg');
             msg.textContent = '✓ Design exported!';
             msg.style.display = 'block';
-            setTimeout(() => { msg.style.display = 'none'; }, 2000);
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
         }
 
         // --- IMPORT DESIGN (Load .json file) ---
@@ -2931,8 +3055,9 @@
                 return;
             }
 
+            const msg = document.getElementById('copy-msg');
+
             try {
-                const msg = document.getElementById('copy-msg');
                 msg.textContent = '⏳ Generating image...';
                 msg.style.display = 'block';
 
@@ -2943,15 +3068,52 @@
                     logging: false
                 });
 
+                const filename = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.png';
+
+                // Try File System Access API (native save dialog)
+                if (window.showSaveFilePicker) {
+                    try {
+                        const handle = await window.showSaveFilePicker({
+                            suggestedName: filename,
+                            types: [{
+                                description: 'PNG Images',
+                                accept: { 'image/png': ['.png'] }
+                            }]
+                        });
+
+                        // Convert canvas to blob
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                        const writable = await handle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+
+                        msg.textContent = '✓ Image saved successfully!';
+                        setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                        return;
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            msg.style.display = 'none';
+                            return; // User cancelled
+                        }
+                        console.log('File System API failed:', err);
+                    }
+                }
+
+                // Fallback: Data URL download
+                const dataUrl = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
-                link.download = 'chocotone_design_' + new Date().toISOString().slice(0, 10) + '.png';
-                link.href = canvas.toDataURL('image/png');
+                link.href = dataUrl;
+                link.download = filename;
+                document.body.appendChild(link);
                 link.click();
+                document.body.removeChild(link);
 
                 msg.textContent = '✓ Image exported!';
-                setTimeout(() => { msg.style.display = 'none'; }, 2000);
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+
             } catch (err) {
                 alert('Error exporting image: ' + err.message);
+                msg.style.display = 'none';
             }
         }
 
@@ -2972,7 +3134,7 @@
                     screen: document.getElementById('sel-screen-model')?.value || 'screen-amoled'
                 },
                 colors: {
-                    faceplate: document.getElementById('col-faceplate')?.value || '#1a1a1a',
+                    faceplate: document.getElementById('col-faceplate')?.value || '#141414',
                     contour: document.getElementById('col-contour')?.value || '#333333',
                     screw: document.getElementById('col-screw')?.value || '#888888',
                     encoder: document.getElementById('col-encoder')?.value || '#222222',
@@ -2987,7 +3149,17 @@
                     buttonSize: document.getElementById('sl-btn-size')?.value || '',
                     topRow: document.getElementById('sl-btn-y1')?.value || '',
                     bottomRow: document.getElementById('sl-btn-y2')?.value || '',
-                    spacing: document.getElementById('sl-btn-spacing')?.value || ''
+                    spacing: document.getElementById('sl-btn-spacing')?.value || '',
+                    xOffset: document.getElementById('sl-btn-x-offset')?.value || '0'
+                },
+                details: {
+                    contourThickness: document.getElementById('sl-contour-th')?.value || '',
+                    screwSize: document.getElementById('sl-screw-size')?.value || '',
+                    chamferEnabled: document.getElementById('chk-chamfer')?.checked || false,
+                    chamferSize: document.getElementById('sl-chamfer')?.value || '',
+                    slopeEnabled: document.getElementById('chk-slope')?.checked || false,
+                    slopeY: document.getElementById('sl-slope-y')?.value || '',
+                    slopeAngle: document.getElementById('sl-slope-angle')?.value || ''
                 },
                 oled: {
                     width: document.getElementById('sl-oled-w')?.value || '',
@@ -2997,7 +3169,7 @@
                 },
                 textSizes: {
                     preset: document.getElementById('sl-font-preset')?.value || '1.6',
-                    labels: document.getElementById('sl-font-labels')?.value || '0.8',
+                    labels: document.getElementById('sl-font-labels')?.value || '1.15',
                     status: document.getElementById('sl-font-status')?.value || '0.7',
                     bpm: document.getElementById('sl-font-bpm')?.value || '1.0',
                     hScale: document.getElementById('sl-font-h')?.value || '1',
@@ -3007,7 +3179,18 @@
                     size: document.getElementById('sl-enc-size')?.value || '',
                     x: document.getElementById('sl-enc-x')?.value || '',
                     y: document.getElementById('sl-enc-y')?.value || ''
-                }
+                },
+                knobs: {
+                    countX: document.getElementById('sl-pot-count-x')?.value || '0',
+                    countY: document.getElementById('sl-pot-count-y')?.value || '1',
+                    spacingX: document.getElementById('sl-pot-spacing-x')?.value || '10',
+                    spacingY: document.getElementById('sl-pot-spacing-y')?.value || '20',
+                    size: document.getElementById('sl-pot-size')?.value || '5',
+                    startX: document.getElementById('sl-pot-start-x')?.value || '5',
+                    startY: document.getElementById('sl-pot-start-y')?.value || '20',
+                    model: document.getElementById('sel-pot-model')?.value || ''
+                },
+                syncMode: document.getElementById('sel-sync-mode')?.value || ''
             };
         }
 
@@ -3059,6 +3242,7 @@
                     const el = document.getElementById(id);
                     if (el && config.colors[key] !== undefined) {
                         el.value = config.colors[key];
+                        el.dispatchEvent(new Event('input'));
                         if (typeof updateColor === 'function') updateColor(key, config.colors[key]);
                     }
                 });
@@ -3074,18 +3258,21 @@
                     ['sl-btn-size', 'buttonSize'],
                     ['sl-btn-y1', 'topRow'],
                     ['sl-btn-y2', 'bottomRow'],
-                    ['sl-btn-spacing', 'spacing']
+                    ['sl-btn-spacing', 'spacing'],
+                    ['sl-btn-x-offset', 'xOffset']
                 ];
                 layoutMappings.forEach(([id, key]) => {
                     const el = document.getElementById(id);
                     if (el && config.layout[key] !== undefined && config.layout[key] !== '') {
                         el.value = config.layout[key];
                         el.dispatchEvent(new Event('input'));
+                        el.dispatchEvent(new Event('change'));
                     }
                 });
                 const rows = document.getElementById('sel-btn-rows');
                 if (rows && config.layout.rows !== undefined) {
                     rows.value = config.layout.rows;
+                    rows.dispatchEvent(new Event('change'));
                 }
             }
 
@@ -3102,6 +3289,7 @@
                     if (el && config.oled[key] !== undefined && config.oled[key] !== '') {
                         el.value = config.oled[key];
                         el.dispatchEvent(new Event('input'));
+                        el.dispatchEvent(new Event('change'));
                     }
                 });
             }
@@ -3139,8 +3327,86 @@
                     if (el && config.encoder[key] !== undefined && config.encoder[key] !== '') {
                         el.value = config.encoder[key];
                         el.dispatchEvent(new Event('input'));
+                        el.dispatchEvent(new Event('change'));
                     }
                 });
+            }
+
+            // Apply knobs settings
+            if (config.knobs) {
+                const knobMappings = [
+                    ['sl-pot-count-x', 'countX'],
+                    ['sl-pot-count-y', 'countY'],
+                    ['sl-pot-spacing-x', 'spacingX'],
+                    ['sl-pot-spacing-y', 'spacingY'],
+                    ['sl-pot-size', 'size'],
+                    ['sl-pot-start-x', 'startX'],
+                    ['sl-pot-start-y', 'startY']
+                ];
+                knobMappings.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.knobs[key] !== undefined && config.knobs[key] !== '') {
+                        el.value = config.knobs[key];
+                    }
+                });
+                // Apply model
+                const modelEl = document.getElementById('sel-pot-model');
+                if (modelEl && config.knobs.model !== undefined) {
+                    modelEl.value = config.knobs.model;
+                }
+                // Trigger knobs update
+                if (typeof updateKnobs === 'function') {
+                    updateKnobs();
+                }
+            }
+
+            // Apply details settings (contour, screw, chamfer, slope)
+            if (config.details) {
+                const detailSliders = [
+                    ['sl-contour-th', 'contourThickness'],
+                    ['sl-screw-size', 'screwSize'],
+                    ['sl-chamfer', 'chamferSize'],
+                    ['sl-slope-y', 'slopeY'],
+                    ['sl-slope-angle', 'slopeAngle']
+                ];
+                detailSliders.forEach(([id, key]) => {
+                    const el = document.getElementById(id);
+                    if (el && config.details[key] !== undefined && config.details[key] !== '') {
+                        el.value = config.details[key];
+                        el.dispatchEvent(new Event('input'));
+                        el.dispatchEvent(new Event('change'));
+                    }
+                });
+
+                // Apply checkboxes
+                const chamferChk = document.getElementById('chk-chamfer');
+                if (chamferChk && config.details.chamferEnabled !== undefined) {
+                    chamferChk.checked = config.details.chamferEnabled;
+                    chamferChk.dispatchEvent(new Event('change'));
+                }
+                const slopeChk = document.getElementById('chk-slope');
+                if (slopeChk && config.details.slopeEnabled !== undefined) {
+                    slopeChk.checked = config.details.slopeEnabled;
+                    slopeChk.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // Apply sync mode
+            if (config.syncMode !== undefined) {
+                const syncEl = document.getElementById('sel-sync-mode');
+                if (syncEl) {
+                    syncEl.value = config.syncMode;
+                    syncEl.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // Final refresh: re-apply button count to use the now-updated CSS variables
+            // This ensures buttons use the imported spacing, size, and offset values
+            // Pass skipRestore=true to prevent clamping/restore from overriding imported values
+            if (config.layout && config.layout.buttonCount !== undefined) {
+                if (typeof updateButtonCount === 'function') {
+                    updateButtonCount(config.layout.buttonCount, true);
+                }
             }
 
             console.log('Design config applied successfully');
@@ -4885,6 +5151,7 @@
             '--btn-y-top': ['sl-btn-y1', '%'],
             '--btn-y-btm': ['sl-btn-y2', '%'],
             '--btn-spacing': ['sl-btn-spacing', '%'],
+            '--btn-x-offset': ['sl-btn-x-offset', '%'],
             '--enc-size': ['sl-enc-size', '%'],
             '--enc-x': ['sl-enc-x', '%'],
             '--enc-y': ['sl-enc-y', '%']
@@ -4944,11 +5211,61 @@
 
         // Apply default component styles on page load
         document.addEventListener('DOMContentLoaded', function () {
-            updateStyle('led', 'led-strip');
-            updateStyle('screen', 'screen-amoled');
+            // Apply component styles
+            updateStyle('led', document.getElementById('sel-led-fmt')?.value || 'led-strip');
+            updateStyle('screen', document.getElementById('sel-screen-model')?.value || 'screen-amoled');
+            updateStyle('enc', document.getElementById('sel-enc-model')?.value || '');
+            updateStyle('screw', document.getElementById('sel-screw-model')?.value || '');
+            updateStyle('btn', document.getElementById('sel-btn-fmt')?.value || '');
+
+            // Apply default colors
+            const faceplateColor = document.getElementById('col-faceplate')?.value || '#141414';
+            const contourColor = document.getElementById('col-contour')?.value || '#333333';
+            const screwColor = document.getElementById('col-screw')?.value || '#888888';
+            const encoderColor = document.getElementById('col-encoder')?.value || '#222222';
+            updateColor('faceplate', faceplateColor);
+            updateColor('contour', contourColor);
+            updateColor('screw', screwColor);
+            updateColor('encoder', encoderColor);
+
+            // Apply contour thickness
+            const contourThickness = document.getElementById('sl-contour-th')?.value || '10';
+            updateSizeControl('contour', contourThickness);
+
+            // Apply screw size
+            const screwSize = document.getElementById('sl-screw-size')?.value || '1.5';
+            updateSizeControl('screw', screwSize);
+
             // Init Screen Color state
-            state.screenColor = document.getElementById('col-screen').value;
+            state.screenColor = document.getElementById('col-screen')?.value || '#00ffff';
             applyScreenColor(state.screenColor);
+
+            // Apply font sizes
+            const fontPreset = document.getElementById('sl-font-preset')?.value || '1.6';
+            const fontLabels = document.getElementById('sl-font-labels')?.value || '1.15';
+            const fontStatus = document.getElementById('sl-font-status')?.value || '0.7';
+            const fontBpm = document.getElementById('sl-font-bpm')?.value || '1';
+            const fontH = document.getElementById('sl-font-h')?.value || '1';
+            const fontW = document.getElementById('sl-font-w')?.value || '1';
+            if (typeof updateFontSize === 'function') {
+                updateFontSize('preset', fontPreset);
+                updateFontSize('labels', fontLabels);
+                updateFontSize('status', fontStatus);
+                updateFontSize('bpm', fontBpm);
+                updateFontSize('h', fontH);
+                updateFontSize('w', fontW);
+            }
+
+            // Regenerate buttons with correct CSS variable values (spacing, size, offset)
+            const buttonCount = document.getElementById('sl-btn-count')?.value || '8';
+            if (typeof updateButtonCount === 'function') {
+                updateButtonCount(buttonCount);
+            }
+
+            // Initialize knobs
+            if (typeof updateKnobs === 'function') {
+                updateKnobs();
+            }
         });
 
         function updateColor(target, color) {
@@ -5111,7 +5428,124 @@
             }
         }
 
-        function updateButtonCount(count) {
+        // ============================================
+        // POTENTIOMETER KNOBS
+        // ============================================
+        const potRotations = {}; // Track rotation per knob
+
+        function updateKnobs() {
+            const countX = parseInt(document.getElementById('sl-pot-count-x').value) || 0;
+            const countY = parseInt(document.getElementById('sl-pot-count-y').value) || 1;
+            const spacingX = parseFloat(document.getElementById('sl-pot-spacing-x').value) || 10;
+            const spacingY = parseFloat(document.getElementById('sl-pot-spacing-y').value) || 20;
+            const size = parseFloat(document.getElementById('sl-pot-size').value) || 5;
+            const startX = parseFloat(document.getElementById('sl-pot-start-x').value) || 5;
+            const startY = parseFloat(document.getElementById('sl-pot-start-y').value) || 20;
+            const model = document.getElementById('sel-pot-model').value || '';
+
+            // Update display values
+            document.getElementById('val-pot-count-x').textContent = countX;
+            document.getElementById('val-pot-count-y').textContent = countY;
+            document.getElementById('val-pot-spacing-x').textContent = spacingX + '%';
+            document.getElementById('val-pot-spacing-y').textContent = spacingY + '%';
+            document.getElementById('val-pot-size').textContent = size + '%';
+            document.getElementById('val-pot-start-x').textContent = startX + '%';
+            document.getElementById('val-pot-start-y').textContent = startY + '%';
+
+            const wrapper = document.querySelector('.controller-wrapper');
+            const components = document.querySelector('.chassis-components');
+
+            // Update CSS variables
+            wrapper.style.setProperty('--pot-size', size + '%');
+            wrapper.style.setProperty('--pot-start-x', startX + '%');
+            wrapper.style.setProperty('--pot-start-y', startY + '%');
+            wrapper.style.setProperty('--pot-spacing-x', spacingX + '%');
+            wrapper.style.setProperty('--pot-spacing-y', spacingY + '%');
+
+            // Remove existing pot units
+            components.querySelectorAll('.pot-unit').forEach(p => p.remove());
+
+            // Create knobs in grid pattern
+            let potNum = 0;
+            for (let y = 0; y < countY; y++) {
+                for (let x = 0; x < countX; x++) {
+                    potNum++;
+                    const pot = createPotElement(potNum, startX + x * spacingX, startY + y * spacingY, size, model);
+                    components.appendChild(pot);
+                }
+            }
+        }
+
+        function createPotElement(num, xPos, yPos, size, model) {
+            const pot = document.createElement('div');
+            pot.className = 'pot-unit' + (model ? ' ' + model : '');
+            pot.id = `pot-${num}`;
+            pot.style.cssText = `left: ${xPos}%; top: ${yPos}%; width: ${size}%; padding-bottom: ${size}%;`;
+            pot.dataset.x = xPos;
+            pot.dataset.y = yPos;
+
+            const knobCap = document.createElement('div');
+            knobCap.className = 'knob-cap';
+            knobCap.style.transition = 'transform 0.1s ease-out';
+
+            // Initialize rotation
+            if (!potRotations[num]) potRotations[num] = 0;
+            knobCap.style.transform = `rotate(${potRotations[num]}deg)`;
+
+            pot.appendChild(knobCap);
+
+            // Rotation on scroll
+            pot.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const delta = e.deltaY > 0 ? 15 : -15;
+                potRotations[num] = (potRotations[num] || 0) + delta;
+                knobCap.style.transform = `rotate(${potRotations[num]}deg)`;
+            });
+
+            // Drag to position
+            let isDragging = false;
+            let startMouseX, startMouseY, startPotX, startPotY;
+
+            pot.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                pot.classList.add('dragging');
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                startPotX = parseFloat(pot.dataset.x);
+                startPotY = parseFloat(pot.dataset.y);
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const wrapper = document.querySelector('.controller-wrapper');
+                const rect = wrapper.getBoundingClientRect();
+
+                // Calculate movement as percentage of wrapper
+                const deltaX = ((e.clientX - startMouseX) / rect.width) * 100;
+                const deltaY = ((e.clientY - startMouseY) / rect.height) * 100;
+
+                const newX = Math.max(0, Math.min(95, startPotX + deltaX));
+                const newY = Math.max(5, Math.min(95, startPotY + deltaY));
+
+                pot.style.left = newX + '%';
+                pot.style.top = newY + '%';
+                pot.dataset.x = newX;
+                pot.dataset.y = newY;
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    pot.classList.remove('dragging');
+                }
+            });
+
+            return pot;
+        }
+
+        function updateButtonCount(count, skipRestore = false) {
             count = parseInt(count);
             document.getElementById('val-btn-count').textContent = count;
 
@@ -5144,71 +5578,7 @@
                 rowDistribution = [btm, mid, top]; // bottom, middle, top
             }
 
-            // SAFETY: For 10 buttons, ensure layout fits by clamping values.
-            // Restore original user values when returning to < 10.
-            if (count >= 10) {
-                // Save current values if not already saved (and only if we are actually clamping something, 
-                // but simpler to just save current state if we are entering high-density mode)
-                if (!wrapper.dataset.savedSettings) {
-                    wrapper.dataset.savedSettings = JSON.stringify({
-                        spacing: document.getElementById('sl-btn-spacing').value,
-                        size: document.getElementById('sl-btn-size').value,
-                        encX: document.getElementById('sl-enc-x').value
-                    });
-                }
-
-                // 1. Clamp Spacing
-                const spacingSlider = document.getElementById('sl-btn-spacing');
-                if (parseFloat(spacingSlider.value) > 17) {
-                    spacingSlider.value = 17;
-                    document.getElementById('val-btn-spacing').textContent = '17%';
-                    wrapper.style.setProperty('--btn-spacing', '17%');
-                }
-
-                // 2. Reduce Button Size
-                const sizeSlider = document.getElementById('sl-btn-size');
-                if (parseFloat(sizeSlider.value) > 7.5) {
-                    sizeSlider.value = 7.5;
-                    document.getElementById('val-btn-size').textContent = '7.5%';
-                    wrapper.style.setProperty('--btn-size', '7.5%');
-                }
-
-                // 3. Move Encoder to Edge
-                const encXSlider = document.getElementById('sl-enc-x');
-                if (parseFloat(encXSlider.value) > 2.5) {
-                    encXSlider.value = 2.5;
-                    document.getElementById('val-enc-x').textContent = '2.5%';
-                    wrapper.style.setProperty('--enc-x', '2.5%');
-                }
-            } else {
-                // Restore values if they were saved (exiting high-density mode)
-                if (wrapper.dataset.savedSettings) {
-                    try {
-                        const saved = JSON.parse(wrapper.dataset.savedSettings);
-
-                        // Restore Spacing
-                        const spacingSlider = document.getElementById('sl-btn-spacing');
-                        spacingSlider.value = saved.spacing;
-                        document.getElementById('val-btn-spacing').textContent = saved.spacing + '%';
-                        wrapper.style.setProperty('--btn-spacing', saved.spacing + '%');
-
-                        // Restore Size
-                        const sizeSlider = document.getElementById('sl-btn-size');
-                        sizeSlider.value = saved.size;
-                        document.getElementById('val-btn-size').textContent = saved.size + '%';
-                        wrapper.style.setProperty('--btn-size', saved.size + '%');
-
-                        // Restore Encoder
-                        const encXSlider = document.getElementById('sl-enc-x');
-                        encXSlider.value = saved.encX;
-                        document.getElementById('val-enc-x').textContent = saved.encX + '%';
-                        wrapper.style.setProperty('--enc-x', saved.encX + '%');
-
-                    } catch (e) { console.error("Error restoring settings", e); }
-
-                    delete wrapper.dataset.savedSettings;
-                }
-            }
+            // Clamping removed - user has full control over layout parameters
 
             // Get current styles
             const btnStyle = document.getElementById('sel-btn-fmt')?.value || '';
@@ -5275,12 +5645,12 @@
             // Need to set bottom:auto for top/mid rows to override static CSS rules for #btn-1 through #btn-4
             // Need to set top:auto for bottom row to override static CSS rules for #btn-5 through #btn-8
             if (row === 'top') {
-                btn.style.cssText = `position:absolute; top:var(--btn-y-top); bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+                btn.style.cssText = `position:absolute; top:var(--btn-y-top); bottom:auto; left:calc(50% + var(--btn-x-offset) + ${multiplier} * var(--btn-spacing));`;
             } else if (row === 'mid') {
                 // top:50% + the existing translate(-50%,-50%) centers the button vertically
-                btn.style.cssText = `position:absolute; top:50%; bottom:auto; left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+                btn.style.cssText = `position:absolute; top:50%; bottom:auto; left:calc(50% + var(--btn-x-offset) + ${multiplier} * var(--btn-spacing));`;
             } else {
-                btn.style.cssText = `position:absolute; top:auto; bottom:var(--btn-y-btm); left:calc(50% + ${multiplier} * var(--btn-spacing));`;
+                btn.style.cssText = `position:absolute; top:auto; bottom:var(--btn-y-btm); left:calc(50% + var(--btn-x-offset) + ${multiplier} * var(--btn-spacing));`;
             }
 
             const footswitch = document.createElement('div');
