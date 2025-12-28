@@ -589,8 +589,8 @@
 
     <script>
         // Adjust paths since file is in web_tools/
-        const FIRMWARE_BASE = '../firmware';
-        const FIRMWARE_INDEX_URL = `${FIRMWARE_BASE}/index.json`;
+        const FIRMWARE_BASE = '../firmware/';
+        const FIRMWARE_INDEX_URL = `${FIRMWARE_BASE}index.json`;
 
         let firmwareData = null;
         let selectedVersion = null;
@@ -669,7 +669,7 @@
             const downloadLink = document.getElementById('download-link');
             const downloadText = document.getElementById('download-text');
 
-            downloadLink.href = `${FIRMWARE_BASE}/${filename}`;
+            downloadLink.href = `${FIRMWARE_BASE}${filename}`;
             downloadText.textContent = `Download ${filename}`;
         }
 
