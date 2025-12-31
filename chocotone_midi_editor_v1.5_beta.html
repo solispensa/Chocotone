@@ -1,0 +1,3246 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1'>
+    <title>Chocotone MIDI Editor</title>
+    <style>
+        /* Import Montserrat Font */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+
+        :root {
+            --bg: #000000;
+            --card: #111111;
+            --card-hover: #1a1a1a;
+            --text: #e5fff2;
+            --text-dim: #8ffdff;
+            --acc: #8c81df;
+            --acc-dim: #6b62b0;
+            --inp: #1a1a1a;
+            --brd: #333333;
+            --success: #22c55e;
+            --warning: #8c81df;
+            --danger: #ef4444;
+            --radius: 10px;
+            --cyan: #8ffdff;
+            --mint: #e5fff2;
+            --orange: #8c81df;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header / Logo */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--brd);
+        }
+
+        .logo-text {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .logo-part-1 {
+            color: var(--mint);
+        }
+
+        .logo-part-2 {
+            color: var(--orange);
+        }
+
+        .logo-subline {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--cyan);
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin-top: 6px;
+        }
+
+        /* Two-Column Desktop Layout */
+        .two-col-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .col-left,
+        .col-right {
+            flex: 1;
+            min-width: 0;
+        }
+
+        @media (min-width: 1024px) {
+            .two-col-layout {
+                flex-direction: row;
+                gap: 12px;
+            }
+
+            .col-left,
+            .col-right {
+                flex: 0 0 calc(50% - 6px);
+                width: calc(50% - 6px);
+                min-width: 280px;
+            }
+        }
+
+        /* Wide Desktop 16:9 optimization */
+        @media (min-width: 1400px) {
+            body {
+                max-width: 1400px;
+                padding: 30px 50px;
+            }
+        }
+
+        /* Connection Cards */
+        .conn-card-usb {
+            border-color: var(--orange) !important;
+        }
+
+        .conn-card-ble {
+            border-color: var(--cyan) !important;
+        }
+
+        /* Section Cards */
+        .section {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--brd);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--acc);
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Row layouts - CSS Grid */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        /* Form Fields */
+        .field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .field label {
+            width: 55px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        /* Inputs */
+        .field input,
+        .field select {
+            width: 100%;
+            min-width: 0;
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border 0.1s;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--acc);
+        }
+
+        .field input[type="color"] {
+            height: 34px;
+            padding: 2px;
+            cursor: pointer;
+        }
+
+        .field input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex: none;
+        }
+
+        .field.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* Button Quick Menu - 2 rows layout */
+        .btn-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn-tile {
+            background: var(--inp);
+            border: 2px solid var(--brd);
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            /* Desktop: vertically center contents */
+            justify-content: space-between;
+        }
+
+        .btn-tile:hover {
+            background: var(--card-hover);
+            border-color: var(--acc-dim);
+        }
+
+        .btn-tile.active {
+            border-color: var(--acc);
+            background: var(--card-hover);
+        }
+
+        .btn-tile .num {
+            font-size: 0.9rem;
+            /* Small Number (Base) */
+            font-weight: bold;
+            color: var(--text-dim);
+        }
+
+        .btn-tile .name {
+            font-size: 1.2rem;
+            /* Big Label (Base) */
+            font-weight: 600;
+            margin: 2px 0;
+            white-space: normal;
+            /* Wrap text */
+            line-height: 1.1;
+        }
+
+        .btn-tile .info {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .btn-tile .color-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #fff3;
+            flex-shrink: 0;
+            margin-left: 8px;
+            /* Desktop: vertically centered by parent's align-items: center */
+        }
+
+        /* System Tile - Full width, outside cards */
+        .sys-tile-wrap {
+            margin: 16px 0;
+        }
+
+        .sys-tile {
+            background: var(--card);
+            border: 1px solid var(--brd);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .sys-tile:hover {
+            border-color: var(--acc);
+            background: var(--card-hover);
+        }
+
+        .sys-tile.active {
+            border-color: var(--acc);
+            background: linear-gradient(135deg, var(--acc-dim), var(--acc));
+        }
+
+        .sys-tile .icon {
+            font-size: 1.2rem;
+        }
+
+        .sys-tile .label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* Message Box */
+        .msg-box {
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .msg-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--acc);
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--brd);
+            padding-bottom: 6px;
+        }
+
+        /* Delete button */
+        .msg-box .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .msg-box .remove-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn.primary {
+            background: var(--acc);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            background: var(--acc-dim);
+        }
+
+        .btn.secondary {
+            background: var(--inp);
+            color: var(--text);
+            border: 1px solid var(--brd);
+        }
+
+        .btn.success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn.warning {
+            background: var(--warning);
+            color: #000;
+        }
+
+        .btn.sm {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+        }
+
+        /* JSON Area */
+        .json-area {
+            width: 100%;
+            height: 120px;
+            background: var(--inp);
+            border: 1px solid var(--brd);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .logo-text {
+                font-size: 32px;
+            }
+
+            .logo-subline {
+                font-size: 11px;
+                letter-spacing: 2px;
+            }
+        }
+
+        /* Desktop - wider layout */
+        @media (min-width: 1024px) {
+            body {
+                padding: 30px 40px;
+            }
+
+            .desktop-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+
+            .row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+    <style>
+        /* Mobile Layout Refinements */
+        @media (max-width: 600px) {
+            .btn-tile {
+                padding: 10px 12px;
+                align-items: flex-start;
+                /* Mobile: align to top */
+            }
+
+            .btn-tile .color-dot {
+                width: 16px;
+                height: 16px;
+                margin-top: -4px;
+                /* Pull closer to top edge */
+                margin-right: -6px;
+                /* Pull closer to right edge */
+                align-self: flex-start;
+                /* Mobile: top-right aligned */
+            }
+        }
+    </style>
+    <script src="devices_database.js"></script>
+</head>
+
+<body>
+    <div class="header">
+        <h1 class="logo-text">
+            <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
+        </h1>
+        <div class="logo-subline">OPEN MIDI CONTROLLER</div>
+    </div>
+
+    <div id="app"></div>
+
+    <script>
+        // ===============================================================
+        // STATE
+        // ===============================================================
+        var selectedBtn = 0;
+        var selectedAnalogInput = -1;  // -1 = none selected
+        var showSystem = false;
+        var showOledConfigPanel = false; // OLED config panel toggle state
+
+        // --- NEW OLED OVERLAY STATE ---
+        var oledOverlayState = {
+            active: false,
+            label: '',
+            timer: null
+        };
+
+        // Helper to log to on-screen serial monitor
+        function logDebug(msg) {
+            var el = document.getElementById('serialLog');
+            if (el) el.value = Date.now() + ': ' + msg + '\n' + el.value;
+            console.log(msg);
+        }
+
+        // Trigger OLED Overlay (State-Driven)
+        function triggerOledOverlay(label) {
+            logDebug('triggerOledOverlay: ' + label);
+
+            // 1. Update State
+            oledOverlayState.active = true;
+            oledOverlayState.label = label;
+
+            // 2. Clear existing timer
+            if (oledOverlayState.timer) clearTimeout(oledOverlayState.timer);
+
+            // 3. Set expiry timer
+            oledOverlayState.timer = setTimeout(function () {
+                logDebug('Overlay expired');
+                oledOverlayState.active = false;
+                renderOledPreview(); // Redraw main screen
+            }, 1000); // 1 second
+        }
+
+        // Toggle OLED config panel visibility
+        function toggleOledConfig() {
+            showOledConfigPanel = !showOledConfigPanel;
+            var panel = document.getElementById('oledConfigPanel');
+            if (panel) panel.style.display = showOledConfigPanel ? 'block' : 'none';
+        }
+
+        // Select button and show overlay
+        function selBtn(idx) {
+            selectedBtn = idx;
+            selectedAnalogInput = -1;
+            showSystem = false;
+            var preset = presetData.presets[presetData.currentPreset];
+            var btn = preset && preset.buttons && preset.buttons[idx];
+
+            // Update overlay state immediately
+            if (btn) {
+                triggerOledOverlay(btn.name);
+            } else {
+                logDebug('selBtn FAILED: idx=' + idx + ' currentPreset=' + presetData.currentPreset + ' preset=' + (preset ? 'OK' : 'NULL') + ' btn=NULL');
+                console.log('presetData:', presetData);
+            }
+
+            render(); // Rebuild DOM (auto-refresh will pick up state)
+        }
+
+        // Select analog input and show overlay
+        function selAnalog(idx) {
+            selectedAnalogInput = idx;
+            selectedBtn = -1;
+            showSystem = false;
+            var ainp = presetData.analogInputs && presetData.analogInputs[idx];
+
+            // Update overlay state immediately
+            var label = ainp ? ainp.name || 'A' + (idx + 1) : 'A' + (idx + 1);
+            triggerOledOverlay(label);
+
+            render(); // Rebuild DOM (auto-refresh will pick up state)
+        }
+
+        var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
+        var midiTypes = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
+        var analogActionTypes = ['linear_linear', 'log_linear', 'linear_log', 'joystick'];
+        var analogActionLabels = {
+            'linear_linear': 'Linear → Linear',
+            'log_linear': 'Log → Linear',
+            'linear_log': 'Linear → Log',
+            'joystick': 'Joystick (Centered)'
+        };
+
+        // ===============================================================
+        // DATA
+        // ===============================================================
+        var presetData = {
+            configName: "My Chocotone Config",
+            lastModified: "",
+            presets: [
+                {
+                    name: "STOMP", presetLedMode: "NORMAL", syncMode: "SPM", buttons: [
+                        { name: "NR", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 43, data2: 127, rgb: "#ffffff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 43, data2: 0, rgb: "#ffffff" }] },
+                        { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
+                        { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
+                        { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 13, data2: 127, rhythmPrev: 0, rhythmNext: 4, tapLock: 7, rgb: "#ffffff" }] },
+                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, label: "" }] },
+                        { name: "FX2", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 49, data2: 127, rgb: "#11f3ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 49, data2: 0, rgb: "#11f3ff" }] },
+                        { name: "DLY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#332aff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#332aff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE", channel: 1, data1: 0, data2: 0, label: "" }] },
+                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }, { action: "COMBO", partner: 3, type: "PRESET_UP", channel: 1, data1: 0, data2: 0, label: "" }] }
+                    ]
+                },
+                {
+                    name: "BANKS 1-8", presetLedMode: "SELECTION", buttons: [
+                        { name: "B1", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 1, rgb: "#ffffff" }] },
+                        { name: "B2", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 2, rgb: "#ffffff" }] },
+                        { name: "B3", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 3, rgb: "#ffffff" }] },
+                        { name: "B4", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 4, rgb: "#ffffff" }] },
+                        { name: "B5", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 5, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B6", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 6, rgb: "#0af500" }] },
+                        { name: "B7", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 7, rgb: "#0af500" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "B8", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 8, rgb: "#0af500" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                },
+                {
+                    name: "BANKS 9-16", presetLedMode: "SELECTION", buttons: [
+                        { name: "B9", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 9, rgb: "#11f3ff" }] },
+                        { name: "B10", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 10, rgb: "#11f3ff" }] },
+                        { name: "B11", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 11, rgb: "#11f3ff" }] },
+                        { name: "B12", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 12, rgb: "#11f3ff" }] },
+                        { name: "B13", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 13, rgb: "#aa00ff" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B14", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 14, rgb: "#aa00ff" }] },
+                        { name: "B15", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 15, rgb: "#aa00ff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "B16", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 16, rgb: "#aa00ff" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                },
+                {
+                    name: "Note", presetLedMode: "SELECTION", buttons: [
+                        { name: "1st", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 60, data2: 127, rgb: "#fd0000" }] },
+                        { name: "2nd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 62, data2: 127, rgb: "#fd0000" }] },
+                        { name: "3rd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 64, data2: 127, rgb: "#fd0000" }] },
+                        { name: "4th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 65, data2: 127, rgb: "#fd0000" }] },
+                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 67, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "6th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 69, data2: 127, rgb: "#fd0000" }] },
+                        { name: "7th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 71, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
+                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 72, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                    ]
+                }
+            ],
+            currentPreset: 0,
+            system: {
+                bleDeviceName: "CHOCOTONE",
+                apSSID: "CHOCOTONE",
+                apPassword: "12345678",
+                buttonCount: 8,
+                buttonPins: "14,27,26,25,33,32,16,17",
+                ledPin: 15,
+                ledsPerButton: 1,
+                ledMap: "0,1,2,3,7,6,5,4,8,9",
+                encoderA: 18,
+                encoderB: 19,
+                encoderBtn: 23,
+                bleMode: "CLIENT",
+                brightness: 220,
+                brightnessDim: 20,
+                // Analog Input System (v1.5)
+                analogInputCount: 0,
+                fsrThreshold: 100, // Default for FSR input mode
+                multiplexer: {
+                    enabled: false,
+                    type: "cd74hc4067",
+                    signalPin: 34,
+                    selectPins: [26, 27, 14, 12],
+                    useFor: "analog"
+                },
+                // OLED Display Configuration (v1.5)
+                oled: {
+                    type: "128x64",
+                    rotation: 0,
+                    screens: {
+                        main: {
+                            labelSize: 1,
+                            titleSize: 2,
+                            statusSize: 1,
+                            topRowY: 0,
+                            titleY: 14,
+                            statusY: 32,
+                            bottomRowY: 56,
+                            showBpm: true,
+                            showAnalog: false
+                        },
+                        menu: {
+                            headerSize: 1,
+                            itemSize: 1,
+                            headerY: 0,
+                            itemStartY: 14
+                        },
+                        tap: {
+                            labelSize: 1,
+                            bpmSize: 3,
+                            patternSize: 1,
+                            labelTopY: 0,
+                            bpmY: 16,
+                            patternY: 46,
+                            labelBottomY: 56
+                        },
+                        overlay: {
+                            textSize: 2
+                        }
+                    }
+                }
+            },
+            // Analog Inputs (0-16)
+            analogInputs: []
+        };
+
+        function fillEmptyPresets() {
+            for (let p = 0; p < presetData.presets.length; p++) {
+                if (!presetData.presets[p].buttons.length) {
+                    var cnt = presetData.system.buttonCount || 8;
+                    for (let i = 0; i < cnt; i++) presetData.presets[p].buttons.push(createDefaultButton(i));
+                }
+            }
+        }
+        fillEmptyPresets();
+
+        // Normalize config data received from device (remap field names)
+        // Firmware uses: color, partner (in combo)
+        // Editor uses: rgb, partner
+        function normalizeConfigData(data) {
+            if (!data || !data.presets) return data;
+            for (var p = 0; p < data.presets.length; p++) {
+                var preset = data.presets[p];
+                if (!preset.buttons) continue;
+                for (var b = 0; b < preset.buttons.length; b++) {
+                    var btn = preset.buttons[b];
+                    if (!btn.messages) continue;
+                    for (var m = 0; m < btn.messages.length; m++) {
+                        var msg = btn.messages[m];
+                        // Remap 'color' to 'rgb'
+                        if (msg.color && !msg.rgb) {
+                            msg.rgb = msg.color;
+                            delete msg.color;
+                        }
+                        // Ensure defaults for missing fields
+                        if (!msg.rgb) msg.rgb = '#bb86fc';
+                        if (!msg.label) msg.label = '';
+                        if (msg.partner === undefined) msg.partner = 0;
+                    }
+                }
+            }
+            return data;
+        }
+
+
+        // ===============================================================
+        // OPEN MIDI FUNCTIONS
+        // ===============================================================
+        function getDeviceSelectOptions() {
+            var devices = typeof getDeviceList === 'function' ? getDeviceList() : ['Generic MIDI Device'];
+            var current = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            return devices.map(function (d) {
+                return '<option value="' + d + '"' + (d === current ? ' selected' : '') + '>' + d + '</option>';
+            }).join('');
+        }
+        function getTemplateSelectOptions() {
+            var current = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            var templates = typeof getDeviceTemplates === 'function' ? getDeviceTemplates(current) : {};
+            var fullConfigs = typeof getFullConfigList === 'function' ? getFullConfigList() : [];
+
+            var html = '<option value="">-- Select Template --</option>';
+
+            // Full Configurations (load everything)
+            if (fullConfigs.length > 0) {
+                html += '<optgroup label="[Full Configurations]">';
+                for (var i = 0; i < fullConfigs.length; i++) {
+                    html += '<option value="FULL:' + fullConfigs[i] + '">' + fullConfigs[i] + '</option>';
+                }
+                html += '</optgroup>';
+            }
+
+            // Device-specific partial templates
+            html += '<optgroup label="[Button Layouts: ' + current + ']">';
+            for (var name in templates) {
+                html += '<option value="' + name + '">' + name + '</option>';
+            }
+            html += '</optgroup>';
+
+            return html;
+        }
+        function getCCPickerOptions(selectedVal) {
+            if (typeof buildCCSelectOptions === 'function') {
+                return buildCCSelectOptions(selectedVal);
+            }
+            // Fallback: simple 0-127
+            var html = '';
+            for (var i = 0; i <= 127; i++) {
+                html += '<option value="' + i + '"' + (i === selectedVal ? ' selected' : '') + '>CC ' + i + '</option>';
+            }
+            return html;
+        }
+        function loadDeviceTemplate() {
+            var sel = document.getElementById('tmplSelect');
+            if (!sel || !sel.value) return alert('Please select a template');
+            var tmplName = sel.value;
+
+            // Check if this is a full configuration
+            if (tmplName.startsWith('FULL:')) {
+                var configName = tmplName.substring(5);
+                var fullConfig = typeof getFullConfig === 'function' ? getFullConfig(configName) : null;
+                if (!fullConfig) return alert('Full configuration not found');
+
+                // Load system config
+                if (fullConfig.system) {
+                    for (var key in fullConfig.system) {
+                        presetData.system[key] = fullConfig.system[key];
+                    }
+                }
+
+                // Load all presets
+                if (fullConfig.presets) {
+                    for (var p = 0; p < fullConfig.presets.length && p < 4; p++) {
+                        var srcPreset = fullConfig.presets[p];
+                        presetData.presets[p].name = srcPreset.name;
+                        presetData.presets[p].presetLedMode = srcPreset.presetLedMode || 'NORMAL';
+                        presetData.presets[p].buttons = JSON.parse(JSON.stringify(srcPreset.buttons));
+                    }
+                }
+
+                selectedBtn = 0;
+                render();
+                alert('Full configuration "' + configName + '" loaded!\n\nIncludes:\n- System config (10 buttons)\n- All 4 presets');
+                return;
+            }
+
+            // Regular partial template (only loads buttons for current preset)
+            var currentDevice = typeof loadSavedDevice === 'function' ? loadSavedDevice() : 'Sonicake Pocket Master';
+            var templates = typeof getDeviceTemplates === 'function' ? getDeviceTemplates(currentDevice) : {};
+            var tmpl = templates[tmplName];
+            if (!tmpl) return alert('Template not found');
+
+            var p = presetData.currentPreset;
+            var count = Math.min(tmpl.length, presetData.system.buttonCount);
+            for (var i = 0; i < count; i++) {
+                var src = tmpl[i];
+                var btn = presetData.presets[p].buttons[i];
+                btn.name = src.name;
+                btn.messages = [];
+
+                // Check for SysEx template (has sysexOn/sysexOff)
+                if (src.sysexOn && src.sysexOff) {
+                    // SysEx toggle button - PRESS sends ON, 2ND_PRESS sends OFF
+                    btn.messages.push({
+                        action: 'PRESS',
+                        type: 'SYSEX',
+                        channel: 1,
+                        data1: 0,
+                        data2: 0,
+                        rgb: src.color,
+                        sysex: src.sysexOn  // Hex string
+                    });
+                    btn.messages.push({
+                        action: '2ND_PRESS',
+                        type: 'SYSEX',
+                        channel: 1,
+                        data1: 0,
+                        data2: 0,
+                        rgb: src.color,
+                        sysex: src.sysexOff  // Hex string
+                    });
+                    btn.ledMode = 'TOGGLE';
+                } else if (src.special) {
+                    // Special action (TAP_TEMPO, etc.)
+                    var msg1 = { action: 'PRESS', type: src.special, channel: 1, data1: 0, data2: 127, rgb: src.color };
+                    btn.messages.push(msg1);
+                    btn.ledMode = 'MOMENTARY';
+                } else {
+                    // Regular CC toggle
+                    var msg1 = { action: 'PRESS', type: 'CC', channel: 1, data1: src.cc, data2: (src.d2 !== undefined ? src.d2 : 127), rgb: src.color };
+                    btn.messages.push(msg1);
+                    btn.messages.push({ action: '2ND_PRESS', type: 'CC', channel: 1, data1: src.cc, data2: 0, rgb: src.color });
+                    btn.ledMode = 'TOGGLE';
+                }
+            }
+            render();
+            alert('Template "' + tmplName + '" loaded!');
+        }
+        function changeTargetDevice(d) {
+            if (typeof setCurrentDevice === 'function') setCurrentDevice(d);
+            render();
+        }
+
+        // ===============================================================
+        // RENDER UI
+        // ===============================================================
+        function render() {
+            var p = presetData.currentPreset;
+            var preset = presetData.presets[p];
+            var btn = preset.buttons[selectedBtn];
+            var presetMode = preset.presetLedMode || 'NORMAL';
+            var showLedMode = (presetMode === 'NORMAL' || presetMode === 'HYBRID');
+            var showSelGroup = (presetMode === 'HYBRID');
+            var html = '';
+
+            // Start two-column layout wrapper
+            html += '<div class="two-col-layout">';
+
+            // ========== LEFT COLUMN ==========
+            html += '<div class="col-left">';
+
+            // --- CONFIG PROFILE -------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">📋 Config Profile</div>';
+            html += '<div class="row">';
+            html += '<div class="field" style="flex:2"><label>Name</label><input type="text" value="' + (presetData.configName || 'My Config') + '" maxlength="40" onchange="presetData.configName=this.value"></div>';
+            html += '<div class="field" style="flex:1"><label>Modified</label><input type="text" value="' + (presetData.lastModified || 'Not saved') + '" readonly style="opacity:0.7;cursor:not-allowed"></div>';
+            html += '<div class="field" style="max-width:100px;align-self:flex-end"><button class="btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);width:100%;font-weight:bold" onclick="saveChanges()">💾 Save</button></div>';
+            html += '</div>';
+            html += '</div>';
+
+            // --- OLED PREVIEW CARD (Live Preview) ----------------------------
+            html += '<div class="section" id="oledCardSection">';
+            html += '<div class="section-title">🖥️ OLED Preview <button class="btn sm secondary" onclick="toggleOledConfig()">⚙️ Config</button></div>';
+            html += '<div id="oledCanvasWrap" style="display:flex;justify-content:center;padding:10px;background:#222;border-radius:8px;">';
+            html += '<canvas id="oledPreview" style="border:2px solid #444;"></canvas>';
+            html += '</div>';
+            html += '<div id="oledConfigPanel" style="display:' + (showOledConfigPanel ? 'block' : 'none') + ';margin-top:10px;">';
+
+            // Full OLED Config Options (moved from System Config)
+            var oled = presetData.system.oled || {
+                type: '128x64', rotation: 0,
+                textSizes: { title: 2, subtitle: 1, label: 1, value: 2 },
+                yPositions: { topRow: 0, bottomRow: 56 }
+            };
+            var ts = oled.textSizes || { title: 2, subtitle: 1, label: 1, value: 2 };
+            var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
+
+            html += '<div class="row">';
+            html += '<div class="field"><label>Display Type</label><select onchange="updOled(\'type\',this.value)">';
+            html += '<option value="128x64"' + (oled.type === '128x64' ? ' selected' : '') + '>128×64 I2C</option>';
+            html += '<option value="128x32"' + (oled.type === '128x32' ? ' selected' : '') + '>128×32 I2C</option>';
+            html += '</select></div>';
+            html += '<div class="field"><label>Rotation</label><select onchange="updOled(\'rotation\',parseInt(this.value))">';
+            html += '<option value="0"' + (oled.rotation === 0 ? ' selected' : '') + '>0°</option>';
+            html += '<option value="90"' + (oled.rotation === 90 ? ' selected' : '') + '>90°</option>';
+            html += '<option value="180"' + (oled.rotation === 180 ? ' selected' : '') + '>180°</option>';
+            html += '<option value="270"' + (oled.rotation === 270 ? ' selected' : '') + '>270°</option>';
+            html += '</select></div>';
+            html += '<div class="field"><label>Preview Mode</label><select id="oledPreviewMode" onchange="window.oledPreviewMode=this.value; render(); setTimeout(renderOledPreview,50)">';
+            html += '<option value="main"' + (window.oledPreviewMode === 'main' || !window.oledPreviewMode ? ' selected' : '') + '>Main Screen</option>';
+            html += '<option value="menu"' + (window.oledPreviewMode === 'menu' ? ' selected' : '') + '>Menu Screen</option>';
+            html += '<option value="tap"' + (window.oledPreviewMode === 'tap' ? ' selected' : '') + '>Tap Tempo</option>';
+            html += '<option value="loading"' + (window.oledPreviewMode === 'loading' ? ' selected' : '') + '>Loading Screen</option>';
+            html += '<option value="overlay"' + (window.oledPreviewMode === 'overlay' ? ' selected' : '') + '>Button Overlay</option>';
+            html += '</select></div>';
+            html += '</div>';
+
+            // Per-Screen Text Size & Y Position Sliders (Mode-Aware)
+            html += '<div style="margin-top:10px" id="oledScreenControls">';
+
+            // Get current preview mode (default to 'main')
+            var previewMode = 'main';
+            var previewModeEl = document.getElementById('oledPreviewMode');
+            if (previewModeEl) previewMode = previewModeEl.value;
+
+            // Ensure screens object exists
+            var screens = oled.screens || presetData.system.oled.screens;
+
+            if (previewMode === 'main') {
+                // MAIN SCREEN controls
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56, showBpm: true, showAnalog: false };
+                var maxY = (oled.type === '128x32') ? 24 : 56;
+                var maxTitleY = (oled.type === '128x32') ? 24 : 50;
+                var maxStatusY = (oled.type === '128x32') ? 24 : 55;
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Main Screen Settings</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Label Size</label><input type="range" min="1" max="3" value="' + (main.labelSize || 1) + '" oninput="updOledScreen(\'main\',\'labelSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.labelSize || 1) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Title Size</label><input type="range" min="1" max="4" value="' + (main.titleSize || 2) + '" oninput="updOledScreen(\'main\',\'titleSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.titleSize || 2) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Status Size</label><input type="range" min="1" max="3" value="' + (main.statusSize || 1) + '" oninput="updOledScreen(\'main\',\'statusSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.statusSize || 1) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Top Row Y</label><input type="range" min="0" max="' + maxY + '" value="' + (main.topRowY || 0) + '" oninput="updOledScreen(\'main\',\'topRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.topRowY || 0) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Title Y</label><input type="range" min="0" max="' + maxTitleY + '" value="' + (main.titleY || 14) + '" oninput="updOledScreen(\'main\',\'titleY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.titleY || 14) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Status Y</label><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.statusY || 32) + '" oninput="updOledScreen(\'main\',\'statusY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.statusY || 32) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Bottom Row Y</label><input type="range" min="0" max="' + maxY + '" value="' + (main.bottomRowY || 56) + '" oninput="updOledScreen(\'main\',\'bottomRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.bottomRowY || 56) + '</span></div>';
+                html += '</div>';
+                // Display options checkboxes
+                html += '<div class="row" style="margin-bottom:4px;margin-top:8px">';
+                html += '<div style="display:flex;align-items:center;gap:6px"><input type="checkbox"' + (main.showBpm !== false ? ' checked' : '') + ' onchange="updOledScreen(\'main\',\'showBpm\',this.checked)" style="width:14px;height:14px"><label style="font-size:10px">Show BPM</label></div>';
+                html += '<div style="display:flex;align-items:center;gap:6px;margin-left:16px"><input type="checkbox"' + (main.showAnalog ? ' checked' : '') + ' onchange="updOledScreen(\'main\',\'showAnalog\',this.checked)" style="width:14px;height:14px"><label style="font-size:10px">Show Analog</label></div>';
+                html += '</div>';
+            } else if (previewMode === 'menu') {
+                // MENU SCREEN controls
+                var menu = screens.menu || { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Menu Screen Settings</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Header Size</label><input type="range" min="1" max="3" value="' + (menu.headerSize || 1) + '" oninput="updOledScreen(\'menu\',\'headerSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (menu.headerSize || 1) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Item Size</label><input type="range" min="1" max="3" value="' + (menu.itemSize || 1) + '" oninput="updOledScreen(\'menu\',\'itemSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (menu.itemSize || 1) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Header Y</label><input type="range" min="0" max="20" value="' + (menu.headerY || 0) + '" oninput="updOledScreen(\'menu\',\'headerY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (menu.headerY || 0) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Items Y</label><input type="range" min="8" max="40" value="' + (menu.itemStartY || 14) + '" oninput="updOledScreen(\'menu\',\'itemStartY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (menu.itemStartY || 14) + '</span></div>';
+                html += '</div>';
+            } else if (previewMode === 'tap') {
+                // TAP TEMPO SCREEN controls
+                var tap = screens.tap || { labelSize: 1, bpmSize: 3, patternSize: 1, labelTopY: 0, bpmY: 16, patternY: 46, labelBottomY: 56 };
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Tap Tempo Screen Settings</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Label Size</label><input type="range" min="1" max="3" value="' + (tap.labelSize || 1) + '" oninput="updOledScreen(\'tap\',\'labelSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (tap.labelSize || 1) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">BPM Size</label><input type="range" min="1" max="5" value="' + (tap.bpmSize || 3) + '" oninput="updOledScreen(\'tap\',\'bpmSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (tap.bpmSize || 3) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Pattern Size</label><input type="range" min="1" max="3" value="' + (tap.patternSize || 1) + '" oninput="updOledScreen(\'tap\',\'patternSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (tap.patternSize || 1) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Top Label Y</label><input type="range" min="0" max="20" value="' + (tap.labelTopY || 0) + '" oninput="updOledScreen(\'tap\',\'labelTopY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (tap.labelTopY || 0) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">BPM Y</label><input type="range" min="8" max="40" value="' + (tap.bpmY || 16) + '" oninput="updOledScreen(\'tap\',\'bpmY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (tap.bpmY || 16) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Pattern Y</label><input type="range" min="20" max="56" value="' + (tap.patternY || 46) + '" oninput="updOledScreen(\'tap\',\'patternY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (tap.patternY || 46) + '</span></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Bottom Label Y</label><input type="range" min="40" max="60" value="' + (tap.labelBottomY || 56) + '" oninput="updOledScreen(\'tap\',\'labelBottomY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (tap.labelBottomY || 56) + '</span></div>';
+                html += '</div>';
+            } else if (previewMode === 'overlay') {
+                // OVERLAY controls
+                var overlay = screens.overlay || { textSize: 2 };
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Button Overlay Settings</div>';
+                html += '<div class="row" style="margin-bottom:4px">';
+                html += '<div class="field"><label style="font-size:10px">Text Size</label><input type="range" min="1" max="4" value="' + (overlay.textSize || 2) + '" oninput="updOledScreen(\'overlay\',\'textSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (overlay.textSize || 2) + '</span></div>';
+                html += '</div>';
+            } else if (previewMode === 'loading') {
+                // LOADING - No controls (fixed layout)
+                html += '<div style="font-size:11px;color:#888;font-style:italic">Loading screen has a fixed layout.</div>';
+            }
+
+            html += '</div>';
+            html += '</div>'; // Close oledConfigPanel
+            html += '</div>'; // Close oledCardSection
+
+            // --- PRESET CONFIG -------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Preset Configuration</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Preset</label><select onchange="chgPreset(this.value)">';
+            for (var i = 0; i < 4; i++) html += '<option value="' + i + '"' + (i === p ? ' selected' : '') + '>' + presetData.presets[i].name + '</option>';
+            html += '</select></div>';
+            html += '<div class="field"><label>Name</label><input type="text" value="' + preset.name + '" maxlength="20" onchange="chgPresetName(this.value)"></div>';
+            html += '<div class="field"><label>LED Mode</label><select onchange="chgPresetLedMode(this.value)">';
+            html += '<option value="NORMAL"' + (presetMode === 'NORMAL' ? ' selected' : '') + '>Normal</option>';
+            html += '<option value="SELECTION"' + (presetMode === 'SELECTION' ? ' selected' : '') + '>Selection</option>';
+            html += '<option value="HYBRID"' + (presetMode === 'HYBRID' ? ' selected' : '') + '>Hybrid</option>';
+            html += '</select></div>';
+            // Sync Mode dropdown
+            var syncMode = preset.syncMode || 'NONE';
+            html += '<div class="field"><label>Sync</label><select onchange="chgSyncMode(this.value)">';
+            html += '<option value="NONE"' + (syncMode === 'NONE' ? ' selected' : '') + '>None</option>';
+            html += '<option value="SPM"' + (syncMode === 'SPM' ? ' selected' : '') + '>SPM</option>';
+            html += '<option value="GP5"' + (syncMode === 'GP5' ? ' selected' : '') + '>GP-5</option>';
+            html += '</select></div>';
+            html += '</div></div>';
+
+            // --- BUTTONS & CONTROLS (2 ROWS) ----------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title" style="font-size:1.1rem">Buttons & Controls</div>';
+            var btnCount = presetData.system.buttonCount || 8;
+            var cols = Math.ceil(btnCount / 2); // 2 rows = half columns
+            html += '<div class="btn-grid" style="grid-template-columns: repeat(' + cols + ', 1fr)">';
+            // Render second half first (top row: 5,6,7,8), then first half (bottom row: 1,2,3,4)
+            var half = Math.ceil(btnCount / 2);
+            var order = [];
+            for (var i = half; i < btnCount; i++) order.push(i); // Top row: indices 4,5,6,7
+            for (var i = 0; i < half; i++) order.push(i);        // Bottom row: indices 0,1,2,3
+            for (var idx = 0; idx < order.length; idx++) {
+                var b = order[idx];
+                var bt = preset.buttons[b];
+                if (!bt) continue;
+                var isActive = (b === selectedBtn && !showSystem);
+                var msg1 = (bt.messages && bt.messages[0]) ? bt.messages[0] : { type: 'OFF', data1: 0, rgb: '#555' };
+
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" onclick="selBtn(' + b + ')">';
+                html += '<div style="flex:1;min-width:0">';
+                html += '<div class="num">#' + (b + 1) + '</div>';
+                html += '<div class="name">' + bt.name + '</div>';
+                html += '<div class="info">' + msg1.type + ' ' + msg1.data1 + '</div>';
+                html += '</div>';
+                html += '<div class="color-dot" style="background:' + msg1.rgb + '"></div>';
+                html += '</div>';
+            }
+            html += '</div>';
+
+            // --- ANALOG INPUTS (v1.5 Beta) ---
+            var analogCount = presetData.system.analogInputCount || 0;
+            if (analogCount > 0) {
+                html += '<div style="margin-top:12px;border-top:1px solid #333;padding-top:10px">';
+                html += '<div style="font-size:0.8rem;color:#f59e0b;font-weight:600;margin-bottom:8px">🎚️ Analog Inputs</div>';
+                html += '<div class="btn-grid" style="grid-template-columns: repeat(' + Math.min(analogCount, 4) + ', 1fr)">';
+                for (var ai = 0; ai < analogCount; ai++) {
+                    var ainp = presetData.analogInputs[ai] || {};
+                    var aiActive = (selectedAnalogInput === ai && !showSystem);
+                    var aiColor = ainp.rgb || '#f59e0b';
+                    html += '<div class="btn-tile' + (aiActive ? ' active' : '') + '" style="border-color:' + aiColor + '40" onclick="selAnalog(' + ai + ')">';
+                    html += '<div style="flex:1;min-width:0">';
+                    html += '<div class="num" style="color:#f59e0b">A' + (ai + 1) + '</div>';
+                    html += '<div class="name" style="font-size:0.9rem">' + (ainp.name || 'A' + (ai + 1)) + '</div>';
+                    html += '<div class="info">' + (ainp.enabled ? 'CC' + ainp.midiCC : 'OFF') + '</div>';
+                    html += '</div>';
+                    html += '<div class="color-dot" style="background:' + aiColor + '"></div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '</div>';
+            }
+
+            html += '</div>'; // Close Buttons & Controls section
+
+            // System Tile
+            html += '<div class="sys-tile-wrap">';
+            html += '<div class="sys-tile' + (showSystem ? ' active' : '') + '" onclick="toggleSystem()">';
+            html += '<span class="label">System Configuration</span>';
+            html += '</div></div>';
+
+            html += '</div>'; // Close LEFT COLUMN
+
+            // ========== RIGHT COLUMN ==========
+            html += '<div class="col-right">';
+
+            // --- MAIN CONTENT (Button Detail, Analog Detail, or System Config) ------------
+            if (showSystem) {
+                html += renderSystemConfig();
+            } else if (selectedAnalogInput >= 0 && presetData.analogInputs && presetData.analogInputs[selectedAnalogInput]) {
+                html += renderAnalogDetail(presetData.analogInputs[selectedAnalogInput], selectedAnalogInput);
+            } else if (selectedBtn >= 0) {
+                html += renderButtonDetail(btn, selectedBtn, showLedMode, showSelGroup);
+            }
+
+            // --- JSON ----------------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Import / Export</div>';
+            html += '<textarea class="json-area" id="jsonArea" placeholder="Paste JSON here..."></textarea>';
+            html += '<input type="file" id="fileInput" accept=".json" style="display:none" onchange="openFile(this)">';
+            html += '<div class="actions" style="margin-top:10px">';
+            html += '<button class="btn success" onclick="exportJSON()">Export</button>';
+            html += '<button class="btn secondary" onclick="importJSON()">Import</button>';
+            html += '<button class="btn primary" onclick="document.getElementById(\'fileInput\').click()">Open File</button>';
+            html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
+            html += '</div></div>';
+
+            // --- Serial Log ------------------------------------------------
+            html += '<div class="section">';
+            html += '<div class="section-title">Serial Log <button class="btn secondary" style="float:right;padding:2px 8px;font-size:0.7rem" onclick="document.getElementById(\'serialLog\').value=\'\'">Clear</button></div>';
+            html += '<textarea class="json-area" id="serialLog" readonly style="height:100px;font-family:monospace;font-size:0.75rem;background:#1a1a1a" placeholder="Firmware messages will appear here..."></textarea>';
+            html += '</div>';
+
+            html += '</div>'; // Close RIGHT COLUMN
+
+            html += '</div>'; // Close two-col-layout
+
+            html += '<div style="text-align:center;color:#555;font-size:0.7rem;margin-top:10px">Chocotone v1.5 BETA - Analog Input System</div>';
+            document.getElementById('app').innerHTML = html;
+            // Always render OLED preview (state object decides main vs overlay)
+            setTimeout(renderOledPreview, 50);
+        }
+
+        function renderButtonDetail(btn, idx, showLedMode, showSelGroup) {
+            var html = '<div class="section">';
+            html += '<div class="section-title">Button ' + (idx + 1) + ': ' + btn.name + '</div>';
+
+            html += '<div class="row">';
+            html += '<div class="field"><label>Label</label><input type="text" value="' + btn.name + '" maxlength="20" onchange="updBtn(\'name\',this.value)"></div>';
+            if (showLedMode) {
+                html += '<div class="field"><label>LED</label><select onchange="updBtn(\'ledMode\',this.value)">';
+                html += '<option value="MOMENTARY"' + (btn.ledMode === 'MOMENTARY' ? ' selected' : '') + '>Momentary</option>';
+                html += '<option value="TOGGLE"' + (btn.ledMode === 'TOGGLE' ? ' selected' : '') + '>Toggle</option>';
+                html += '</select></div>';
+            }
+            if (showSelGroup) {
+                html += '<div class="field"><label>Sel.Grp</label><input type="checkbox"' + (btn.inSelectionGroup ? ' checked' : '') + ' onchange="updBtn(\'inSelectionGroup\',this.checked)"></div>';
+            }
+            html += '</div>';
+
+            html += '<div class="section-title" style="margin-top:16px; border-bottom:1px solid #333; padding-bottom:4px">Action List <button class="btn primary sm" style="margin-left:auto" onclick="addMsg()">+</button></div>';
+
+            var msgs = btn.messages || [];
+            for (var i = 0; i < msgs.length; i++) html += renderActionCard(msgs[i], i);
+
+            // Save Changes Button
+            html += '<div class="actions" style="margin-top:16px; justify-content:center">';
+            html += '<button class="btn success" onclick="saveChanges()">Save Changes</button>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderActionCard(msg, i) {
+            var html = '<div class="msg-box">';
+            // Header with action number and buttons
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">';
+            html += '<span style="font-weight:600;color:var(--acc);font-size:0.85rem">Action ' + (i + 1) + '</span>';
+            html += '<div style="display:flex;gap:6px">';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="copyAction(' + i + ')" title="Copy">📋</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="pasteAction(' + i + ')" title="Paste">📄</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#ef4444" onclick="delMsg(' + i + ')" title="Delete">×</button>';
+            html += '</div>';
+            html += '</div>';
+
+            // Action Type + Label (for ALL action types)
+            html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:var(--acc)">Type</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            html += '<div class="row" style="margin-bottom:8px">';
+            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
+            html += '</div>';
+
+            // Conditional fields
+            if (msg.action === 'COMBO') {
+                html += '<div class="row">';
+                html += '<div class="field"><label>Partner</label><select onchange="updMsg(' + i + ',\'partner\',parseInt(this.value))">';
+                var cnt = presetData.system.buttonCount;
+                for (let b = 0; b < cnt; b++) {
+                    if (b !== selectedBtn) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
+                }
+                html += '</select></div>';
+                html += '</div>';
+            }
+            else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
+                html += '<div class="row">';
+                html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="updMsg(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
+                html += '</div>';
+            }
+
+            // MIDI Content
+            html += '<div class="row">';
+            html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
+            html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
+            // D1/D2 hidden for TAP_TEMPO
+            if (msg.type !== 'TAP_TEMPO') {
+                // D1 as CC Picker dropdown for CC type
+                if (msg.type === 'CC') {
+                    html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                } else {
+                    html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                }
+                html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
+            }
+            html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
+            html += '</div>';
+
+            if (msg.type === 'TAP_TEMPO') {
+                html += '<div class="row" style="margin-top:8px">';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
+                html += '</div>';
+            }
+
+            // SysEx hex input field with picker
+            if (msg.type === 'SYSEX') {
+                html += '<div class="row" style="margin-top:8px">';
+                html += '<div class="field" style="flex:1"><label>SysEx Preset</label><select style="font-size:11px" onchange="applySysexPreset(' + i + ',this.value)">' + getSysexPickerOptions() + '</select></div>';
+                html += '</div>';
+                html += '<div class="row" style="margin-top:6px">';
+                html += '<div class="field" style="flex:1"><label>SysEx Hex (manual edit)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="updMsg(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderAnalogDetail(inp, idx) {
+            var html = '<div class="section" style="border-color:#f59e0b">';
+            html += '<div class="section-title" style="color:#f59e0b">🎚️ Analog Input A' + (idx + 1) + ': ' + (inp.name || 'Unnamed') + '</div>';
+
+            // Enable + Source
+            html += '<div class="row">';
+            html += '<div class="field"><label style="font-size:10px">Enabled</label><input type="checkbox" ' + (inp.enabled ? 'checked' : '') + ' onchange="updAnalog(' + idx + ',\'enabled\',this.checked)"></div>';
+            html += '<div class="field"><label>Source</label><select onchange="updAnalog(' + idx + ',\'source\',this.value)">';
+            html += '<option value="gpio"' + (inp.source === 'gpio' ? ' selected' : '') + '>Direct GPIO</option>';
+            html += '<option value="mux"' + (inp.source === 'mux' ? ' selected' : '') + '>Multiplexer</option>';
+            html += '</select></div>';
+            html += '<div class="field"><label>' + (inp.source === 'mux' ? 'Mux Ch' : 'GPIO') + '</label><input type="number" min="0" max="' + (inp.source === 'mux' ? '15' : '39') + '" value="' + inp.pin + '" onchange="updAnalog(' + idx + ',\'pin\',parseInt(this.value))"></div>';
+            html += '</div>';
+
+            // Input Mode & Piezo Settings
+            html += '<div class="row" style="margin-top:8px">';
+            html += '<div class="field"><label>Input Mode</label><select onchange="updAnalog(' + idx + ',\'inputMode\',this.value)">';
+            html += '<option value="pot"' + (inp.inputMode === 'pot' ? ' selected' : '') + '>Potentiometer</option>';
+            html += '<option value="piezo"' + (inp.inputMode === 'piezo' ? ' selected' : '') + '>Piezo (Drum Pad)</option>';
+            html += '<option value="fsr"' + (inp.inputMode === 'fsr' ? ' selected' : '') + '>FSR / Pressure</option>';
+            html += '<option value="switch"' + (inp.inputMode === 'switch' ? ' selected' : '') + '>Switch (Digital)</option>';
+            html += '</select></div>';
+
+            if (inp.inputMode === 'piezo') {
+                html += '<div class="field"><label style="font-size:10px">Threshold</label><input type="number" min="0" max="4095" value="' + (inp.piezoThreshold || 400) + '" onchange="updAnalog(' + idx + ',\'piezoThreshold\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Scan(ms)</label><input type="number" min="1" max="100" value="' + (inp.piezoScanTime || 20) + '" onchange="updAnalog(' + idx + ',\'piezoScanTime\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Mask(ms)</label><input type="number" min="1" max="500" value="' + (inp.piezoMaskTime || 30) + '" onchange="updAnalog(' + idx + ',\'piezoMaskTime\',parseInt(this.value))"></div>';
+            } else if (inp.inputMode === 'fsr') {
+                html += '<div class="field"><label style="font-size:10px">Threshold</label><input type="number" min="0" max="4095" value="' + (inp.fsrThreshold || presetData.system.fsrThreshold || 100) + '" onchange="updAnalog(' + idx + ',\'fsrThreshold\',parseInt(this.value))"></div>';
+            }
+            html += '</div>';
+
+            // Label & Appearance (like buttons)
+            html += '<div class="msg-box"><div class="msg-title">Label & Appearance</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Name</label><input type="text" maxlength="10" value="' + (inp.name || '') + '" placeholder="A' + (idx + 1) + '" onchange="updAnalog(' + idx + ',\'name\',this.value)"></div>';
+            html += '<div class="field"><label>RGB</label><input type="color" value="' + (inp.rgb || '#f59e0b') + '" onchange="updAnalog(' + idx + ',\'rgb\',this.value)"></div>';
+            html += '<div class="field"><label style="font-size:10px">LED Index</label><input type="number" min="-1" max="31" value="' + (inp.ledIndex !== undefined ? inp.ledIndex : -1) + '" onchange="updAnalog(' + idx + ',\'ledIndex\',parseInt(this.value))"></div>';
+            html += '</div>';
+            html += '<div style="font-size:10px;color:#888">LED Index: -1 = no LED, or specify LED strip index (0-31)</div>';
+            html += '</div>';
+
+            // Ensure messages array exists (Migration from v1.5 legacy fields)
+            if (!inp.messages) {
+                inp.messages = [];
+                // If legacy fields exist, migrate them to first message
+                if (inp.midiCC !== undefined) {
+                    inp.messages.push({
+                        type: 'CC',
+                        channel: inp.midiChannel || 1,
+                        data1: inp.midiCC,
+                        min: inp.midiMin || 0,
+                        max: inp.midiMax || 127
+                    });
+                    // Clear legacy fields to prevent re-migration? Or just leave them ignored.
+                    // Leaving them is safer for downgrading, but cleaner data is better.
+                    // For now, let's keep them but ignored by new logic.
+                }
+            }
+
+            // Message List (Multi-Message Support)
+            html += '<div class="section-title" style="margin-top:16px; border-bottom:1px solid #333; padding-bottom:4px; font-size:0.85rem; color:#f59e0b">Message List <button class="btn primary sm" style="margin-left:auto" onclick="addAnalogMsg(' + idx + ')">+</button></div>';
+
+            for (var i = 0; i < inp.messages.length; i++) {
+                var msg = inp.messages[i];
+                html += '<div class="msg-box" style="border-left:3px solid #f59e0b">';
+
+                // Card Header
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:4px">';
+                html += '<span style="font-size:0.75rem;font-weight:600;color:#f59e0b">Message ' + (i + 1) + '</span>';
+                html += '<button class="btn sm" style="padding:2px 6px;font-size:0.7rem;background:#ef4444" onclick="delAnalogMsg(' + idx + ',' + i + ')">×</button>';
+                html += '</div>';
+
+                // Type & Channel
+                html += '<div class="row">';
+                html += '<div class="field"><label>Type</label><select onchange="updAnalogMsg(' + idx + ',' + i + ',\'type\',this.value)">' + typeOpts(msg.type || 'CC') + '</select></div>';
+                html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'channel\',parseInt(this.value))"></div>';
+                html += '</div>';
+
+                // Input Range (Multi-Range / Zones) - Only define active range for this message
+                html += '<div class="row" style="background:#222; padding:4px; border-radius:4px; margin-bottom:4px">';
+                html += '<div class="field" style="flex:1"><label style="font-size:10px; color:#aaa">In Range Min%</label><input type="number" min="0" max="100" value="' + (msg.inMin !== undefined ? msg.inMin : 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'inMin\',parseInt(this.value))"></div>';
+                html += '<div class="field" style="flex:1"><label style="font-size:10px; color:#aaa">In Range Max%</label><input type="number" min="0" max="100" value="' + (msg.inMax !== undefined ? msg.inMax : 100) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'inMax\',parseInt(this.value))"></div>';
+                html += '</div>';
+
+                // Data1 & Range
+                html += '<div class="row">';
+                // Label Data1 dynamically based on type? For now generic "Data 1 / CC"
+                var d1Label = (msg.type === 'CC') ? 'CC #' : (msg.type === 'NOTE_ON' ? 'Note #' : 'Data 1');
+                html += '<div class="field"><label>' + d1Label + '</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'data1\',parseInt(this.value))"></div>';
+
+                html += '<div class="field"><label style="font-size:10px">Out Min</label><input type="number" min="0" max="127" value="' + (msg.min !== undefined ? msg.min : 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'min\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Out Max</label><input type="number" min="0" max="127" value="' + (msg.max !== undefined ? msg.max : 127) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'max\',parseInt(this.value))"></div>';
+                html += '</div>';
+
+                html += '</div>'; // close msg-box
+            }
+
+            // Action Type
+            html += '<div class="msg-box"><div class="msg-title">Signal Processing</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label style="font-size:10px">Action Type</label><select onchange="updAnalog(' + idx + ',\'actionType\',this.value)">';
+            for (var at = 0; at < analogActionTypes.length; at++) {
+                var atype = analogActionTypes[at];
+                html += '<option value="' + atype + '"' + (inp.actionType === atype ? ' selected' : '') + '>' + analogActionLabels[atype] + '</option>';
+            }
+            html += '</select></div>';
+            html += '</div>';
+
+            // Type-specific options
+            var opts = inp.actionOptions || {};
+            if (inp.actionType === 'log_linear' || inp.actionType === 'linear_log') {
+                html += '<div class="row">';
+                html += '<div class="field"><label style="font-size:10px">Curve</label><input type="number" min="0.1" max="10" step="0.1" value="' + (opts.curve || 2.0) + '" onchange="updAnalogOpt(' + idx + ',\'curve\',parseFloat(this.value))"></div>';
+                html += '</div>';
+            } else if (inp.actionType === 'joystick') {
+                html += '<div class="row">';
+                html += '<div class="field"><label style="font-size:10px">Center</label><input type="number" min="0" max="4095" value="' + (opts.center || 2048) + '" onchange="updAnalogOpt(' + idx + ',\'center\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label style="font-size:10px">Deadzone %</label><input type="number" min="0" max="50" value="' + (opts.deadzone || 5) + '" onchange="updAnalogOpt(' + idx + ',\'deadzone\',parseInt(this.value))"></div>';
+                html += '</div>';
+            }
+            html += '</div>';
+
+            // Calibration & Smoothing
+            html += '<div class="msg-box"><div class="msg-title">ADC Calibration</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label style="font-size:10px">ADC Min</label><input type="number" min="0" max="4095" value="' + (inp.minVal || 0) + '" onchange="updAnalog(' + idx + ',\'minVal\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label style="font-size:10px">ADC Max</label><input type="number" min="0" max="4095" value="' + (inp.maxVal || 4095) + '" onchange="updAnalog(' + idx + ',\'maxVal\',parseInt(this.value))"></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label style="font-size:10px">Smooth α</label><input type="number" min="0.01" max="1" step="0.05" value="' + (inp.emaAlpha || 0.15) + '" onchange="updAnalog(' + idx + ',\'emaAlpha\',parseFloat(this.value))"></div>';
+            html += '<div class="field"><label style="font-size:10px">Hysteresis</label><input type="number" min="0" max="20" value="' + (inp.hysteresis || 2) + '" onchange="updAnalog(' + idx + ',\'hysteresis\',parseInt(this.value))"></div>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderSystemConfig() {
+            var sys = presetData.system;
+            var html = '<div class="section">';
+            html += '<div class="section-title">System Configuration</div>';
+
+            // Templates
+            html += '<div class="msg-box"><div class="msg-title">Templates</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Device</label><select onchange="changeTargetDevice(this.value)">' + getDeviceSelectOptions() + '</select></div>';
+            html += '</div><div class="row">';
+            html += '<div class="field"><label>Template</label><select id="tmplSelect">' + getTemplateSelectOptions() + '</select></div>';
+            html += '<div class="field" style="max-width:100px"><button class="btn primary sm" onclick="loadDeviceTemplate()">Load</button></div>';
+            html += '</div></div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Bluetooth / WiFi</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>BLE Name</label><input type="text" value="' + sys.bleDeviceName + '" maxlength="20" onchange="updSys(\'bleDeviceName\',this.value)"></div>';
+            html += '<div class="field"><label>BLE Mode</label><select onchange="updSys(\'bleMode\',this.value)">';
+            html += '<option value="CLIENT"' + (sys.bleMode === 'CLIENT' ? ' selected' : '') + '>Client</option>';
+            html += '<option value="SERVER"' + (sys.bleMode === 'SERVER' ? ' selected' : '') + '>Server</option>';
+            html += '<option value="DUAL"' + (sys.bleMode === 'DUAL' ? ' selected' : '') + '>Dual</option>';
+            html += '</select></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>WiFi SSID</label><input type="text" value="' + sys.apSSID + '" onchange="updSys(\'apSSID\',this.value)"></div>';
+            html += '<div class="field"><label>Password</label><input type="text" value="' + sys.apPassword + '" onchange="updSys(\'apPassword\',this.value)"></div>';
+            html += '</div></div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Hardware</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Buttons #</label><input type="number" min="4" max="10" value="' + sys.buttonCount + '" onchange="updBtnCount(parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Btn Pins</label><input type="text" value="' + sys.buttonPins + '" onchange="updSys(\'buttonPins\',this.value)"></div>';
+            html += '</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>LED Pin</label><input type="number" min="0" max="39" value="' + sys.ledPin + '" onchange="updSys(\'ledPin\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>LEDs/Btn</label><input type="number" min="1" max="32" value="' + sys.ledsPerButton + '" onchange="updSys(\'ledsPerButton\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>LED Map</label><input type="text" value="' + sys.ledMap + '" onchange="updSys(\'ledMap\',this.value)"></div>';
+            html += '</div>';
+            html += '<div class="row">';
+
+            html += '<div class="field"><label style="font-size:11px">LED Bright On</label><input type="number" min="0" max="255" value="' + (sys.brightness || 220) + '" onchange="updSys(\'brightness\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Bright Dim</label><input type="number" min="0" max="255" value="' + (sys.brightnessDim || 20) + '" onchange="updSys(\'brightnessDim\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '<div class="field"><label style="font-size:11px">LED Tap Tempo</label><input type="number" min="0" max="255" value="' + (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) + '" onchange="updSys(\'brightnessTap\',parseInt(this.value)); checkBrightnessWarning()"></div>';
+            html += '</div>';
+            var showWarning = (sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240;
+            html += '<div id="brightnessWarning" class="row" style="color:#fbbf24; font-size:12px;' + (showWarning ? '' : 'display:none;') + '">⚠️ LED too bright, use with caution</div>';
+            html += '</div>';
+
+            html += '<div class="msg-box"><div class="msg-title">Encoder</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label>Enc A</label><input type="number" min="0" max="39" value="' + sys.encoderA + '" onchange="updSys(\'encoderA\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Enc B</label><input type="number" min="0" max="39" value="' + sys.encoderB + '" onchange="updSys(\'encoderB\',parseInt(this.value))"></div>';
+            html += '<div class="field"><label>Enc Btn</label><input type="number" min="0" max="39" value="' + sys.encoderBtn + '" onchange="updSys(\'encoderBtn\',parseInt(this.value))"></div>';
+            html += '</div></div>';
+
+            // Note: OLED settings are now configured via the OLED Preview card in the left column
+
+            // Analog Inputs (v1.5 Beta)
+            html += '<div class="msg-box" style="border-color:#f59e0b"><div class="msg-title" style="color:#f59e0b">🎚️ Analog Inputs (BETA)</div>';
+            html += '<div class="row">';
+            html += '<div class="field"><label style="font-size:11px">Input Count</label><input type="number" min="0" max="16" value="' + (sys.analogInputCount || 0) + '" onchange="updAnalogCount(parseInt(this.value))"></div>';
+            html += '</div>';
+            html += '<div style="font-size:11px;color:#888;margin-top:6px">';
+            html += '💡 <b>ADC1 Pins (WiFi-safe):</b> GPIO 32, 33, 34, 35, 36, 39<br>';
+            html += '⚠️ <b>ADC2 Pins (no WiFi):</b> GPIO 25, 26, 27<br>';
+            html += '🔌 For 8+ inputs, use <b>CD74HC4067</b> (16ch) or <b>CD74HC4051</b> (8ch) multiplexer';
+            html += '</div>';
+            html += '</div>';
+
+            // Multiplexer Settings
+            var mux = sys.multiplexer || { enabled: false, type: 'cd74hc4067', signalPin: 34, selectPins: [26, 27, 14, 12], useFor: 'analog' };
+            html += '<div class="msg-box" style="border-color:#8b5cf6"><div class="msg-title" style="color:#8b5cf6">🔀 Multiplexer</div>';
+            html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
+            html += '<input type="checkbox" ' + (mux.enabled ? 'checked' : '') + ' onchange="updMux(\'enabled\',this.checked)" style="width:18px;height:18px">';
+            html += '<span style="font-weight:600;color:#8b5cf6;margin-left:8px">Enable Multiplexer</span>';
+            html += '</div>';
+            if (mux.enabled) {
+                html += '<div class="row">';
+                html += '<div class="field"><label>Type</label><select onchange="updMux(\'type\',this.value)">';
+                html += '<option value="cd74hc4067"' + (mux.type === 'cd74hc4067' ? ' selected' : '') + '>CD74HC4067 (16ch)</option>';
+                html += '<option value="cd74hc4051"' + (mux.type === 'cd74hc4051' ? ' selected' : '') + '>CD74HC4051 (8ch)</option>';
+                html += '</select></div>';
+                html += '<div class="field"><label style="font-size:10px">Signal Pin</label><input type="number" min="32" max="39" value="' + mux.signalPin + '" onchange="updMux(\'signalPin\',parseInt(this.value))"></div>';
+                html += '</div>';
+                html += '<div class="row">';
+                var selPins = mux.selectPins || [26, 27, 14, 12];
+                html += '<div class="field"><label>S0</label><input type="number" min="0" max="39" value="' + selPins[0] + '" onchange="updMuxPin(0,parseInt(this.value))"></div>';
+                html += '<div class="field"><label>S1</label><input type="number" min="0" max="39" value="' + selPins[1] + '" onchange="updMuxPin(1,parseInt(this.value))"></div>';
+                html += '<div class="field"><label>S2</label><input type="number" min="0" max="39" value="' + selPins[2] + '" onchange="updMuxPin(2,parseInt(this.value))"></div>';
+                if (mux.type === 'cd74hc4067') {
+                    html += '<div class="field"><label>S3</label><input type="number" min="0" max="39" value="' + selPins[3] + '" onchange="updMuxPin(3,parseInt(this.value))"></div>';
+                }
+                html += '</div>';
+                html += '<div class="row">';
+                html += '<div class="field"><label>Use For</label><select onchange="updMux(\'useFor\',this.value)">';
+                html += '<option value="analog"' + (mux.useFor === 'analog' ? ' selected' : '') + '>Analog Inputs</option>';
+                html += '<option value="buttons"' + (mux.useFor === 'buttons' ? ' selected' : '') + '>Buttons</option>';
+                html += '<option value="both"' + (mux.useFor === 'both' ? ' selected' : '') + '>Both</option>';
+                html += '</select></div>';
+                html += '</div>';
+                // Show mux button pins when used for buttons
+                if (mux.useFor === 'buttons' || mux.useFor === 'both') {
+                    html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #444">';
+                    html += '<div style="font-size:11px;color:#8b5cf6;font-weight:600;margin-bottom:6px">Mux Button Channels</div>';
+                    html += '<div class="row">';
+                    html += '<div class="field"><label style="font-size:10px">Mux Btn Pins</label><input type="text" value="' + (mux.buttonChannels || '0,1,2,3,4,5,6,7') + '" placeholder="0,1,2,3..." onchange="updMux(\'buttonChannels\',this.value)"></div>';
+                    html += '</div>';
+                    html += '<div style="font-size:10px;color:#888">Comma-separated mux channels for buttons (e.g., 0,1,2,3,4,5,6,7)</div>';
+                    html += '</div>';
+                }
+            }
+            html += '</div>';
+
+            // Debug Options
+            html += '<div class="msg-box"><div class="msg-title">Debug Options</div>';
+            html += '<div class="row">';
+            html += '<div style="display:flex;align-items:center;gap:8px">';
+            html += '<input type="checkbox" ' + (sys.debugAnalogIn !== false ? 'checked' : '') + ' onchange="updSys(\'debugAnalogIn\',this.checked)" style="width:16px;height:16px">';
+            html += '<label style="font-size:12px">Debug Analog In (show ADC value on OLED)</label>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>';
+            return html;
+        }
+
+
+        // Auto-label generator - matches firmware getButtonSummary() in UI_Display.cpp
+        // For notes, CC, PC: return empty so button label is used instead
+        function getAutoLabel(msg) {
+            switch (msg.type) {
+                case 'NOTE_MOMENTARY':
+                case 'NOTE_ON':
+                case 'NOTE_OFF':
+                case 'CC':
+                case 'PC':
+                case 'SYSEX':
+                    return '';  // Use button label
+                case 'TAP_TEMPO': return 'TAP';
+                case 'PRESET_UP': return '>';
+                case 'PRESET_DOWN': return '<';
+                case 'PRESET_1': return presetData.presets[0] ? presetData.presets[0].name : 'P1';
+                case 'PRESET_2': return presetData.presets[1] ? presetData.presets[1].name : 'P2';
+                case 'PRESET_3': return presetData.presets[2] ? presetData.presets[2].name : 'P3';
+                case 'PRESET_4': return presetData.presets[3] ? presetData.presets[3].name : 'P4';
+                case 'WIFI_TOGGLE': return 'WiFi';
+                case 'CLEAR_BLE_BONDS': return 'xBLE';
+                case 'OFF': return '';
+                default: return '';
+            }
+        }
+
+        function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
+        function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
+
+        function chgPreset(v) {
+            presetData.currentPreset = parseInt(v);
+            selectedBtn = 0;
+            showSystem = false;
+            render();
+
+            // WiFi: fire and forget
+            fetch('/preset?p=' + v).catch(function (e) { });
+
+            // Serial: send if connected
+            if (serialWriter) {
+                serialWriter.write(new TextEncoder().encode('SET_PRESET:' + v + '\n')).catch(function (e) { });
+            }
+
+            // BLE: send if connected
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                console.log('BLE: Sending SET_PRESET:' + v);
+                bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + v + '\n'))
+                    .then(function () { console.log('BLE: SET_PRESET sent successfully'); })
+                    .catch(function (e) { console.error('BLE SET_PRESET error:', e); });
+            } else {
+                console.log('BLE: Not connected (bleRxChar:', !!bleRxChar, 'bleDevice:', !!bleDevice, 'connected:', bleDevice ? bleDevice.gatt.connected : false, ')');
+            }
+        }
+        function chgPresetLedMode(v) { presetData.presets[presetData.currentPreset].presetLedMode = v; render(); }
+
+        function toggleSystem() { showSystem = !showSystem; render(); }
+
+        function updBtn(k, v) { presetData.presets[presetData.currentPreset].buttons[selectedBtn][k] = v; render(); }
+        function updMsg(idx, k, v) {
+            presetData.presets[presetData.currentPreset].buttons[selectedBtn].messages[idx][k] = v;
+            if (k === 'type' || k === 'action') render();
+        }
+        function addMsg() {
+            var p = presetData.currentPreset;
+            var btn = presetData.presets[p].buttons[selectedBtn];
+            if (!btn.messages) btn.messages = [];
+            btn.messages.push({ action: 'PRESS', type: 'CC', channel: 1, data1: 0, data2: 127, rgb: '#bb86fc' });
+            render();
+        }
+        function delMsg(idx) {
+            var p = presetData.currentPreset;
+            presetData.presets[p].buttons[selectedBtn].messages.splice(idx, 1);
+            render();
+        }
+
+        // Clipboard for action copy/paste
+        var actionClipboard = null;
+
+        function copyAction(idx) {
+            var p = presetData.currentPreset;
+            var msg = presetData.presets[p].buttons[selectedBtn].messages[idx];
+            actionClipboard = JSON.parse(JSON.stringify(msg)); // Deep copy
+            alert('Action ' + (idx + 1) + ' copied!');
+        }
+
+        function pasteAction(idx) {
+            if (!actionClipboard) { alert('Nothing to paste. Copy an action first.'); return; }
+            var p = presetData.currentPreset;
+            presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
+            render();
+        }
+        // chgPreset is now defined earlier in the file with full BLE support
+        function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
+        function chgPresetName(newName) { presetData.presets[presetData.currentPreset].name = newName; }
+        function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
+
+        function toggleSystem() { showSystem = !showSystem; selectedAnalogInput = -1; render(); }
+
+        // Analog Input functions
+        function updAnalogCount(count) {
+            presetData.system.analogInputCount = count;
+            // Ensure analogInputs array has enough entries
+            if (!presetData.analogInputs) presetData.analogInputs = [];
+            while (presetData.analogInputs.length < count) {
+                var idx = presetData.analogInputs.length;
+                presetData.analogInputs.push(createDefaultAnalogInput(idx));
+            }
+            if (selectedAnalogInput >= count) selectedAnalogInput = count - 1;
+            render();
+        }
+        function createDefaultAnalogInput(idx) {
+            var defaultPins = [34, 35, 32, 33, 36, 39, 25, 26, 27, 0, 1, 2, 3, 4, 5, 6];
+            var defaultColors = ['#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+            return {
+                enabled: true,
+                source: 'gpio',
+                pin: defaultPins[idx % defaultPins.length],
+                name: 'A' + (idx + 1),
+                rgb: defaultColors[idx % defaultColors.length],
+                ledIndex: -1,
+                messages: [
+                    { type: 'CC', channel: 1, data1: 11, min: 0, max: 127 }
+                ],
+                actionType: 'linear_linear',
+                actionOptions: {},
+                inverted: false,
+                emaAlpha: 0.15,
+                hysteresis: 2,
+                minVal: 0,
+                maxVal: 4095
+            };
+        }
+        function updAnalog(idx, k, v) {
+            if (!presetData.analogInputs || !presetData.analogInputs[idx]) return;
+            presetData.analogInputs[idx][k] = v;
+            render();
+        }
+        function updAnalogOpt(idx, k, v) {
+            if (!presetData.analogInputs || !presetData.analogInputs[idx]) return;
+            if (!presetData.analogInputs[idx].actionOptions) presetData.analogInputs[idx].actionOptions = {};
+            presetData.analogInputs[idx].actionOptions[k] = v;
+            render();
+        }
+        // Analog Message Helper Functions
+        function addAnalogMsg(idx) {
+            var ainp = presetData.analogInputs[idx];
+            if (!ainp.messages) ainp.messages = [];
+            ainp.messages.push({ type: 'CC', channel: 1, data1: 11, min: 0, max: 127 });
+            render();
+        }
+        function delAnalogMsg(ainpIdx, msgIdx) {
+            var ainp = presetData.analogInputs[ainpIdx];
+            if (ainp && ainp.messages) {
+                ainp.messages.splice(msgIdx, 1);
+                render();
+            }
+        }
+        function updAnalogMsg(ainpIdx, msgIdx, k, v) {
+            var ainp = presetData.analogInputs[ainpIdx];
+            if (ainp && ainp.messages && ainp.messages[msgIdx]) {
+                ainp.messages[msgIdx][k] = v;
+                render();
+            }
+        }
+
+        // Multiplexer functions
+        function updMux(k, v) {
+            if (!presetData.system.multiplexer) {
+                presetData.system.multiplexer = { enabled: false, type: 'cd74hc4067', signalPin: 34, selectPins: [26, 27, 14, 12], useFor: 'analog' };
+            }
+            presetData.system.multiplexer[k] = v;
+            render();
+        }
+        function updMuxPin(idx, v) {
+            if (!presetData.system.multiplexer) return;
+            if (!presetData.system.multiplexer.selectPins) presetData.system.multiplexer.selectPins = [26, 27, 14, 12];
+            presetData.system.multiplexer.selectPins[idx] = v;
+            render();
+        }
+
+        // OLED functions
+        function updOled(k, v) {
+            if (!presetData.system.oled) {
+                presetData.system.oled = { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 } };
+            }
+            presetData.system.oled[k] = v;
+            render();
+        }
+        function updOledText(k, v) {
+            if (!presetData.system.oled) {
+                presetData.system.oled = { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 } };
+            }
+            if (!presetData.system.oled.textSizes) {
+                presetData.system.oled.textSizes = { title: 2, subtitle: 1, label: 1, value: 2 };
+            }
+            presetData.system.oled.textSizes[k] = v;
+            // Update the display value span
+            var spanId = 'oled' + k.charAt(0).toUpperCase() + k.slice(1) + 'Val';
+            var span = document.getElementById(spanId);
+            if (span) span.textContent = v;
+            // Re-render preview
+            setTimeout(renderOledPreview, 50);
+        }
+
+        // Per-screen OLED settings update
+        function updOledScreen(screen, key, value) {
+            // Ensure oled structure exists
+            if (!presetData.system.oled) {
+                presetData.system.oled = { type: '128x64', rotation: 0, screens: {} };
+            }
+            if (!presetData.system.oled.screens) {
+                presetData.system.oled.screens = {};
+            }
+            if (!presetData.system.oled.screens[screen]) {
+                // Initialize with defaults based on screen type
+                if (screen === 'main') {
+                    presetData.system.oled.screens.main = { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56 };
+                } else if (screen === 'menu') {
+                    presetData.system.oled.screens.menu = { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
+                } else if (screen === 'tap') {
+                    presetData.system.oled.screens.tap = { labelSize: 1, bpmSize: 3, patternSize: 1, labelTopY: 0, bpmY: 16, patternY: 46, labelBottomY: 56 };
+                } else if (screen === 'overlay') {
+                    presetData.system.oled.screens.overlay = { textSize: 2 };
+                }
+            }
+            presetData.system.oled.screens[screen][key] = value;
+            // Re-render preview (without full render() to preserve dropdown state)
+            setTimeout(renderOledPreview, 50);
+        }
+
+        // 5x7 font for OLED preview (subset)
+        var oledFont = {
+            'A': [0x7E, 0x11, 0x11, 0x11, 0x7E], 'B': [0x7F, 0x49, 0x49, 0x49, 0x36], 'C': [0x3E, 0x41, 0x41, 0x41, 0x22], 'D': [0x7F, 0x41, 0x41, 0x22, 0x1C],
+            'E': [0x7F, 0x49, 0x49, 0x49, 0x41], 'F': [0x7F, 0x09, 0x09, 0x01, 0x01], 'G': [0x3E, 0x41, 0x41, 0x51, 0x32], 'H': [0x7F, 0x08, 0x08, 0x08, 0x7F],
+            'I': [0x00, 0x41, 0x7F, 0x41, 0x00], 'J': [0x20, 0x40, 0x41, 0x3F, 0x01], 'K': [0x7F, 0x08, 0x14, 0x22, 0x41], 'L': [0x7F, 0x40, 0x40, 0x40, 0x40],
+            'M': [0x7F, 0x02, 0x04, 0x02, 0x7F], 'N': [0x7F, 0x04, 0x08, 0x10, 0x7F], 'O': [0x3E, 0x41, 0x41, 0x41, 0x3E], 'P': [0x7F, 0x09, 0x09, 0x09, 0x06],
+            'Q': [0x3E, 0x41, 0x51, 0x21, 0x5E], 'R': [0x7F, 0x09, 0x19, 0x29, 0x46], 'S': [0x46, 0x49, 0x49, 0x49, 0x31], 'T': [0x01, 0x01, 0x7F, 0x01, 0x01],
+            'U': [0x3F, 0x40, 0x40, 0x40, 0x3F], 'V': [0x1F, 0x20, 0x40, 0x20, 0x1F], 'W': [0x3F, 0x40, 0x38, 0x40, 0x3F], 'X': [0x63, 0x14, 0x08, 0x14, 0x63],
+            'Y': [0x07, 0x08, 0x70, 0x08, 0x07], 'Z': [0x61, 0x51, 0x49, 0x45, 0x43], ' ': [0, 0, 0, 0, 0],
+            '0': [0x3E, 0x51, 0x49, 0x45, 0x3E], '1': [0x00, 0x42, 0x7F, 0x40, 0x00], '2': [0x42, 0x61, 0x51, 0x49, 0x46], '3': [0x21, 0x41, 0x45, 0x4B, 0x31],
+            '4': [0x18, 0x14, 0x12, 0x7F, 0x10], '5': [0x27, 0x45, 0x45, 0x45, 0x39], '6': [0x3C, 0x4A, 0x49, 0x49, 0x30], '7': [0x01, 0x71, 0x09, 0x05, 0x03],
+            '8': [0x36, 0x49, 0x49, 0x49, 0x36], '9': [0x06, 0x49, 0x49, 0x29, 0x1E], ':': [0x00, 0x36, 0x36, 0x00, 0x00], '-': [0x08, 0x08, 0x08, 0x08, 0x08],
+            '.': [0x00, 0x60, 0x60, 0x00, 0x00]
+        };
+
+        function updOledY(k, v) {
+            if (!presetData.system.oled) {
+                presetData.system.oled = { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 }, yPositions: { topRow: 0, bottomRow: 56 } };
+            }
+            if (!presetData.system.oled.yPositions) {
+                presetData.system.oled.yPositions = { topRow: 0, bottomRow: 56 };
+            }
+            presetData.system.oled.yPositions[k] = v;
+            // Re-render preview
+            setTimeout(renderOledPreview, 50);
+        }
+
+        function renderOledPreview() {
+            var canvas = document.getElementById('oledPreview');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var oled = presetData.system.oled || { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 }, yPositions: { topRow: 0, bottomRow: 56 } };
+            var ts = oled.textSizes || { title: 2, subtitle: 1, label: 1, value: 2 };
+            var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
+            var is32 = oled.type === '128x32';
+            var rotation = oled.rotation || 0;
+            var isVertical = (rotation === 90 || rotation === 270);
+            // Swap dimensions for vertical orientation
+            var w = isVertical ? (is32 ? 32 : 64) : 128;
+            var h = isVertical ? 128 : (is32 ? 32 : 64);
+            var scale = 2;
+
+            canvas.width = w * scale;
+            canvas.height = h * scale;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            function setPixel(x, y, on) {
+                if (x < 0 || x >= w || y < 0 || y >= h) return;
+                ctx.fillStyle = on ? '#fff' : '#000';
+                ctx.fillRect(x * scale, y * scale, scale, scale);
+            }
+            function drawChar(ch, x, y, size) {
+                var data = oledFont[ch.toUpperCase()] || oledFont[' '];
+                for (var col = 0; col < 5; col++) {
+                    var bits = data[col];
+                    for (var row = 0; row < 7; row++) {
+                        if (bits & (1 << row)) {
+                            for (var sy = 0; sy < size; sy++) {
+                                for (var sx = 0; sx < size; sx++) {
+                                    setPixel(x + col * size + sx, y + row * size + sy, true);
+                                }
+                            }
+                        }
+                    }
+                }
+                return 6 * size;
+            }
+            function drawText(text, x, y, size) {
+                var curX = x;
+                for (var i = 0; i < text.length; i++) {
+                    curX += drawChar(text[i], curX, y, size);
+                }
+            }
+            function textWidth(text, size) { return text.length * 6 * size; }
+            function drawCentered(text, y, size) {
+                var width = textWidth(text, size);
+                var x = Math.floor((w - width) / 2);
+                logDebug('drawCentered: "' + text + '" y=' + y + ' size=' + size + ' w=' + w + ' h=' + h + ' x=' + x);
+                drawText(text, x, y, size);
+            }
+            function drawFilledCircle(cx, cy, r) {
+                for (var dy = -r; dy <= r; dy++) {
+                    for (var dx = -r; dx <= r; dx++) {
+                        if (dx * dx + dy * dy <= r * r) setPixel(cx + dx, cy + dy, true);
+                    }
+                }
+            }
+            function drawCircle(cx, cy, r) {
+                for (var a = 0; a < 360; a += 15) {
+                    var rad = a * Math.PI / 180;
+                    setPixel(Math.round(cx + r * Math.cos(rad)), Math.round(cy + r * Math.sin(rad)), true);
+                }
+            }
+            function drawFilledRoundRect(x, y, rw, rh, r) {
+                for (var py = y; py < y + rh; py++) {
+                    for (var px = x; px < x + rw; px++) {
+                        setPixel(px, py, true);
+                    }
+                }
+            }
+            function drawInvertedText(text, x, y, size) {
+                var tw = textWidth(text, size) + 4;
+                var th = 7 * size + 2;
+                drawFilledRoundRect(x - 2, y - 1, tw, th, 2);
+                // Draw black text
+                var curX = x;
+                for (var i = 0; i < text.length; i++) {
+                    var ch = text[i];
+                    var data = oledFont[ch.toUpperCase()] || oledFont[' '];
+                    for (var col = 0; col < 5; col++) {
+                        var bits = data[col];
+                        for (var row = 0; row < 7; row++) {
+                            if (bits & (1 << row)) {
+                                for (var sy = 0; sy < size; sy++) {
+                                    for (var sx = 0; sx < size; sx++) {
+                                        setPixel(curX + col * size + sx, y + row * size + sy, false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    curX += 6 * size;
+                }
+            }
+
+            // --- STATE MANAGEMENT FOR PREVIEW LAYOUTS ---
+            // Store slider values for each mode independently
+            if (!window.previewLayouts) {
+                window.previewLayouts = {
+                    'main': { label: 1, title: 2, status: 1, topY: 0, bottomY: 56 },
+                    'menu': { label: 1, title: 2, status: 1, topY: 0, bottomY: 56 },
+                    'tap': { label: 1, title: 2, status: 1, topY: 0, bottomY: 56 },
+                    'loading': { label: 1, title: 2, status: 1, topY: 0, bottomY: 56 }, // Fixed but stored
+                    'overlay': { label: 1, title: 4, status: 1, topY: 0, bottomY: 32 },  // Default huge for overlay
+                    'lastMode': 'main'
+                };
+            }
+
+            // Get current slider values function
+            function getCurrentSliders() {
+                var labelEl = document.getElementById('oledLabelSize');
+                var titleEl = document.getElementById('oledTitleSize');
+                var statusEl = document.getElementById('oledStatusSize');
+                var topEl = document.getElementById('oledTopRowY');
+                var bottomEl = document.getElementById('oledBottomRowY');
+                return {
+                    label: labelEl ? parseInt(labelEl.value) : 1,
+                    title: titleEl ? parseInt(titleEl.value) : 2,
+                    status: statusEl ? parseInt(statusEl.value) : 1,
+                    topY: topEl ? parseInt(topEl.value) : 0,
+                    bottomY: bottomEl ? parseInt(bottomEl.value) : 56
+                };
+            }
+
+            // Set sliders function (no-op if elements don't exist)
+            function setSliders(layout) {
+                var labelEl = document.getElementById('oledLabelSize');
+                var titleEl = document.getElementById('oledTitleSize');
+                var statusEl = document.getElementById('oledStatusSize');
+                var topEl = document.getElementById('oledTopRowY');
+                var bottomEl = document.getElementById('oledBottomRowY');
+
+                if (labelEl) labelEl.value = layout.label;
+                if (titleEl) titleEl.value = layout.title;
+                if (statusEl) statusEl.value = layout.status;
+                if (topEl) topEl.value = layout.topY;
+                if (bottomEl) bottomEl.value = layout.bottomY;
+            }
+
+            // Get Preview Mode
+            var previewMode = document.getElementById('oledPreviewMode') ? document.getElementById('oledPreviewMode').value : 'main';
+
+            // Get per-screen settings from new structure
+            var screens = oled.screens || {};
+            var ts = {}; // Text sizes and Y positions for current mode
+
+            if (previewMode === 'main') {
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56, showBpm: true, showAnalog: false };
+                ts = {
+                    label: main.labelSize || 1,
+                    title: main.titleSize || 2,
+                    status: main.statusSize || 1,
+                    subtitle: main.statusSize || 1,
+                    top: main.topRowY || 0,
+                    titleY: main.titleY || 14,
+                    statusY: main.statusY || 32,
+                    bottom: main.bottomRowY || 56,
+                    showBpm: main.showBpm !== false,
+                    showAnalog: main.showAnalog === true
+                };
+            } else if (previewMode === 'menu') {
+                var menu = screens.menu || { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
+                ts = {
+                    label: menu.itemSize || 1,
+                    title: menu.headerSize || 1,
+                    top: menu.headerY || 0,
+                    itemStartY: menu.itemStartY || 14
+                };
+            } else if (previewMode === 'tap') {
+                var tap = screens.tap || { labelSize: 1, bpmSize: 3, patternSize: 1, labelTopY: 0, bpmY: 16, patternY: 46, labelBottomY: 56 };
+                ts = {
+                    label: tap.labelSize || 1,
+                    title: tap.bpmSize || 3,
+                    pattern: tap.patternSize || 1,
+                    top: tap.labelTopY || 0,
+                    bpmY: tap.bpmY || 16,
+                    patternY: tap.patternY || 46,
+                    bottom: tap.labelBottomY || 56
+                };
+            } else if (previewMode === 'overlay') {
+                var overlay = screens.overlay || { textSize: 2 };
+                ts = {
+                    title: overlay.textSize || 2,
+                    label: overlay.textSize || 2
+                };
+            } else {
+                // Loading or other - use fixed defaults
+                ts = { label: 1, title: 2, status: 1, top: 0, bottom: 56 };
+            }
+
+            // Loading screen is fixed - enforce it visually if needed, but we let it render fixed regardless of sliders
+
+            // --- OVERLAY MODE (Button/Analog click) ---
+            // --- OVERLAY MODE (Button/Analog click) ---
+            // If overlay state is active, show centered overlay and skip normal rendering
+            if (oledOverlayState.active) {
+                logDebug('OLED Overlay: ' + oledOverlayState.label); // Debug
+                var overlaySize = 2; // Size 2 fits better
+                var charH = 7 * overlaySize;
+                var y = Math.floor((h - charH) / 2);
+                drawCentered(oledOverlayState.label, y, overlaySize);
+                return; // Skip normal rendering
+            }
+
+            // --- DRAWING LOGIC BASED ON PREVIEW MODE ---
+
+            if (previewMode === 'menu') {
+                // === MENU SCREEN PREVIEW ===
+                if (isVertical) {
+                    drawText('MENU', 2, ts.top || 2, ts.title);
+                    var y = ts.itemStartY || 20;
+                    var items = ['Save&Exit', 'No Save', 'WiFi', 'BT Edit', 'LED Bri'];
+                    for (var i = 0; i < items.length; i++) {
+                        drawText((i === 0 ? '>' : ' ') + items[i].substring(0, 8), 0, y, ts.label);
+                        y += ts.label * 8 + 2;
+                    }
+                } else if (is32) {
+                    // Compact
+                    drawText('MENU', 0, ts.top || 0, ts.title);
+                    drawText('>Save & Exit', 0, ts.itemStartY || 12, ts.label);
+                    drawText(' Exit NoSave', 0, (ts.itemStartY || 12) + 10, ts.label);
+                } else {
+                    // Standard
+                    drawText('-- Menu CHOCOTONE --', 4, ts.top || 0, ts.title);
+                    var items = ['Save and Exit', 'Exit without Saving', 'WiFi LoadCfg (OFF)', 'BT SerialEdit (OFF)', 'LED Bright (On)'];
+                    var startY = ts.itemStartY || 14;
+                    var itemHeight = ts.label * 8 + 2;
+                    for (var i = 0; i < 5 && i < items.length; i++) {
+                        drawText((i === 0 ? '> ' : '  ') + items[i], 0, startY + (i * itemHeight), ts.label);
+                    }
+                }
+            } else if (previewMode === 'tap') {
+                // === TAP TEMPO PREVIEW ===
+                if (isVertical) {
+                    drawText('NEXT', 2, ts.top || 2, ts.label);
+                    drawText('LOCK', 40, ts.top || 2, ts.label);
+                    drawCentered('120', ts.bpmY || 30, ts.title);
+                    drawText('P:1/4', 2, ts.patternY || 50, ts.pattern || ts.label);
+                    drawText('500ms', 2, (ts.patternY || 50) + 10, ts.pattern || ts.label);
+                    drawText('PREV', 2, ts.bottom || 118, ts.label);
+                    drawText('TAP', 40, ts.bottom || 118, ts.label);
+                } else if (is32) {
+                    drawText('NXT', 0, ts.top || 0, ts.label);
+                    drawText('LCK', 110, ts.top || 0, ts.label);
+                    drawCentered('120.0', ts.bpmY || 10, ts.title);
+                    drawText('PRV', 0, ts.bottom || 24, ts.label);
+                    drawText('TAP', 110, ts.bottom || 24, ts.label);
+                } else {
+                    // Standard 128x64
+                    drawText('NEXT', 0, ts.top || 0, ts.label);
+                    drawText('LOCK', 90, ts.top || 0, ts.label);
+
+                    // BPM logic with configurable size and Y
+                    var bpm = "120.0";
+                    var bpmW = textWidth(bpm, ts.title);
+                    drawText(bpm, (w - bpmW) / 2, ts.bpmY || 16, ts.title);
+
+                    // Pattern row
+                    var patY = ts.patternY || 46;
+                    drawText('Pattern: 1/4', 0, patY, ts.pattern || ts.label);
+                    var ms = "500ms";
+                    drawText(ms, w - textWidth(ms, ts.pattern || ts.label) - 2, patY, ts.pattern || ts.label);
+
+                    // Bottom labels
+                    drawText('PREV', 0, ts.bottom || 56, ts.label);
+                    drawText('TAP', 100, ts.bottom || 56, ts.label);
+                }
+            } else if (previewMode === 'overlay') {
+                // === BUTTON OVERLAY PREVIEW ===
+                // Shows a large button name (e.g. "DRIVE") overlaying the screen
+                // Configured by "Title Size"
+
+                var label = "OVERLAY";
+
+                if (isVertical) {
+                    drawCentered('BTN', h / 2 - 10, ts.title);
+                    drawCentered('NAME', h / 2 + 10, ts.title);
+                } else {
+                    // Center vertically and horizontally
+                    // Y position can be tweaked by 'topRowY' if user wants? 
+                    // Or just centered. Let's start with centered but respect size.
+                    // Firmware creates a pop-up.
+
+                    var th = ts.title * 8; // approx height
+                    var y = (h - th) / 2;
+                    drawCentered(label, y, ts.title);
+                }
+
+            } else if (previewMode === 'loading') {
+                // === LOADING SCREEN PREVIEW ===
+                // Firmware: setup() in Chocotone.ino
+
+                if (isVertical) {
+                    if (is32) {
+                        // 128x32 Vertical (32px wide!) - Ultra Compact v4
+                        // Layout: dots / CHOCO / TONE / MIDI / by / Andre / Solis / [v1.5b] / dots
+                        var y = 2;
+
+                        // Top Dots (3)
+                        for (var i = 0; i < 3; i++) {
+                            drawFilledCircle(16, y + (i * 6), 1);
+                        }
+                        y += 24; // Gap after dots
+
+                        drawCentered('CHOCO', y, 1); y += 9;
+                        drawCentered('TONE', y, 1); y += 9;
+                        drawCentered('MIDI', y, 1); y += 9; // Added MIDI
+                        drawCentered('by', y, 1); y += 9;
+                        drawCentered('Andre', y, 1); y += 9;
+                        drawCentered('Solis', y, 1); y += 14;
+
+                        // "v1.5b" Badge
+                        drawFilledRoundRect(1, y, 30, 9, 2);
+                        drawInvertedText('v1.5b', 2, y + 1, 1); y += 14;
+
+                        // Bottom Dots (3)
+                        for (var i = 0; i < 3; i++) {
+                            drawFilledCircle(16, y + (i * 6), 1);
+                        }
+                    } else {
+                        // 128x64 Vertical (64px wide) - Standard Vertical v4
+                        // Same layout as 32px but centered at 32px
+                        var y = 2;
+                        var cx = w / 2; // Can be 32
+
+                        // Top Dots (3)
+                        for (var i = 0; i < 3; i++) {
+                            drawFilledCircle(cx, y + (i * 6), 1);
+                        }
+                        y += 24;
+
+                        drawCentered('CHOCO', y, 2); y += 18; // Size 2 fits in 64px width (5x10=50px)
+                        drawCentered('TONE', y, 2); y += 18;
+                        drawCentered('MIDI', y, 1); y += 10;
+                        drawCentered('by', y, 1); y += 9;
+                        drawCentered('Andre', y, 1); y += 9;
+                        drawCentered('Solis', y, 1); y += 14;
+
+                        // "v1.5b" Badge (Centered)
+                        // Rect w=30. x = cx - 15
+                        drawFilledRoundRect(cx - 15, y, 30, 9, 2);
+                        drawInvertedText('v1.5b', cx - 14, y + 1, 1); y += 14;
+
+                        // Bottom Dots (3)
+                        for (var i = 0; i < 3; i++) {
+                            drawFilledCircle(cx, y + (i * 6), 1);
+                        }
+                    }
+                } else if (is32) {
+                    // Compact Loading
+                    drawText('CHOCOTONE', 0, 10, 1);
+                    drawText('v1.4', 90, 10, 1);
+                } else {
+                    // STANDARD 128x64 (Exact Firmware Match)
+                    // Line 35: CHOCOTONE centered Y=10 Size 2
+                    var title = "CHOCOTONE";
+                    drawText(title, (w - textWidth(title, 2)) / 2, 10, 2);
+
+                    // Line 41: MIDI by ANDRE SOLIS centered Y=30 Size 1
+                    var sub = "MIDI by ANDRE SOLIS";
+                    drawText(sub, (w - textWidth(sub, 1)) / 2, 30, 1);
+
+                    // Line 45: Dots (x=4+c*8+2, y=45+r*8+2) -> radius 2
+                    // Rows 0-1, Cols 0-3
+                    for (var r = 0; r < 2; r++) {
+                        for (var c = 0; c < 4; c++) {
+                            var dx = 6 + c * 8;
+                            var dy = 47 + r * 8;
+                            drawCircle(dx, dy, 2);
+                            // Simulate loading: fill first row
+                            if (r === 0) drawFilledCircle(dx, dy, 2);
+                        }
+                    }
+
+                    // Line 54: Badge Rect (94, 47, 28, 10)
+                    drawFilledRoundRect(94, 47, 28, 10, 2);
+                    // Line 57: v1.4 (96, 48) Black text on White
+                    // Need inverted text drawing or set color logic. 
+                    // drawInvertedText uses black on white rect. 
+                    // Let's manually draw black pixels or add color param.
+                    // Simplified: drawInvertedText handles rect + text.
+                    // But drawInvertedText draws rect based on text size.
+                    // Let's just draw the text "v1.4" using a specialized 'erase' mode if we had it.
+                    // For preview, let's just draw the rect (white) then draw text (black/clear).
+                    // Our drawChar sets pixels to true (white). To draw black, we need 'false'.
+                    // Added: hack to draw black text
+                    var ver = "v1.4";
+                    var vx = 96; var vy = 48;
+                    // Invert area first? drawFilledRoundRect already sets to true (white).
+                    // We need to clear pixels for text.
+                    // Let's assume drawChar can take color? No. 
+                    // Let's re-implement drawCharInverted logic inline or modify drawChar?
+                    // Quick fix: drawInvertedText(ver, 96, 48, 1) - this draws the rect too!
+                    // drawInvertedText params: text, x, y, size.
+                    // Firmware uses fillRoundRect(94, 47, 28, 10) then text at 96,48.
+                    // drawInvertedText calculates background size: w=len*6*s + 4, h=7*s+2
+                    // "v1.4" len 4 -> w=24+4=28. h=9. Close enough to 28x10.
+                    drawInvertedText('v1.4', 96, 48, 1);
+                }
+            } else {
+                // === MAIN SCREEN PREVIEW (Default) ===
+
+                // Get preset and button data
+                var preset = presetData.presets[presetData.currentPreset];
+                var presetName = preset ? preset.name : 'PRESET';
+                var buttonCount = presetData.system.buttonCount || 8;
+                var buttons = preset ? preset.buttons : [];
+
+                // Get all button labels
+                var allLabels = [];
+                for (var i = 0; i < buttonCount; i++) {
+                    allLabels.push(buttons[i] ? buttons[i].name.substring(0, 4).toUpperCase() : 'B' + (i + 1));
+                }
+
+                if (isVertical) {
+                    // VERTICAL ORIENTATION (90°/270°)
+                    var lineHeight = ts.label * 8 + 2;
+                    var y = ts.top || 0;
+                    var maxChars = is32 ? 4 : 8;
+                    drawText(presetName.substring(0, maxChars), 1, y, ts.title || 1);
+                    y += (ts.title || 1) * 8 + 2;
+                    if (ts.showBpm !== false) {
+                        drawText('120.0', 1, y, ts.status || 1); // BPM
+                        y += (ts.status || 1) * 8 + 2;
+                    }
+                    if (ts.showAnalog) {
+                        // Show analog inputs in a1.127 format
+                        var analogCount = presetData.system.analogInputCount || 2;
+                        var maxAnalogShow = is32 ? 2 : 4; // Limit based on space
+                        for (var ai = 0; ai < Math.min(analogCount, maxAnalogShow) && y < h - 20; ai++) {
+                            drawText('a' + (ai + 1) + '.' + (127 - ai * 30), 1, y, ts.status || 1);
+                            y += (ts.status || 1) * 8 + 2;
+                        }
+                    }
+                    drawText('BL:CL', 1, y, ts.status || 1); // Status
+                    y += (ts.status || 1) * 8 + 4;
+                    for (var i = 0; i < allLabels.length && y < h - 8; i++) {
+                        drawText(allLabels[i].substring(0, maxChars), 1, y, ts.label || 1);
+                        y += lineHeight;
+                    }
+                } else if (is32) {
+                    // 128x32 COMPACT HORIZONTAL
+                    var buttonsPerRow = Math.min(Math.ceil(buttonCount / 2), 4);
+                    var topRowStart = Math.floor(buttonCount / 2);
+                    var colWidth = Math.floor(w / buttonsPerRow);
+
+                    // Top row
+                    for (var i = 0; i < buttonsPerRow && (topRowStart + i) < buttonCount; i++) {
+                        drawText(allLabels[topRowStart + i], i * colWidth, ts.top || 0, ts.label || 1);
+                    }
+                    // Center row
+                    var centerY = ts.titleY || 11;
+                    drawText(presetName.substring(0, 6), 0, centerY, ts.title || 1);
+
+                    // Status / Analog Center
+                    var statusText = 'BL:CL';
+                    if (ts.showAnalog) {
+                        statusText = 'A1.127';
+                    }
+                    var statusX = (w - textWidth(statusText, ts.status || 1)) / 2;
+                    // If BPM is hidden, status can take more space or shift right, but let's keep centered for now
+                    drawText(statusText, statusX, centerY, ts.status || 1);
+
+                    if (ts.showBpm !== false) {
+                        var bpmText = '120.0';
+                        drawText(bpmText, w - textWidth(bpmText, ts.status || 1) - 2, centerY, ts.status || 1);
+                    }
+                    // Bottom row
+                    for (var i = 0; i < buttonsPerRow && i < topRowStart; i++) {
+                        drawText(allLabels[i], i * colWidth, ts.bottom || 24, ts.label || 1);
+                    }
+                } else {
+                    // STANDARD 128x64 HORIZONTAL
+                    var topRowY = ts.top !== undefined ? ts.top : 0;
+                    var presetY = ts.titleY !== undefined ? ts.titleY : 14;
+                    var bpmY = ts.statusY !== undefined ? ts.statusY : 32;
+                    var bleY = (ts.statusY !== undefined ? ts.statusY : 32) + 12;
+                    var bottomRowY = ts.bottom !== undefined ? ts.bottom : 56;
+
+                    var buttonsPerRow = Math.min(Math.ceil(buttonCount / 2), 5);
+                    var topRowStart = Math.floor(buttonCount / 2);
+                    var colWidth = Math.floor(w / buttonsPerRow);
+
+                    // Top row labels
+                    for (var i = 0; i < buttonsPerRow && (topRowStart + i) < buttonCount; i++) {
+                        drawText(allLabels[topRowStart + i], i * colWidth, topRowY, ts.label);
+                    }
+                    // Bottom row labels
+                    for (var i = 0; i < buttonsPerRow && i < topRowStart; i++) {
+                        drawText(allLabels[i], i * colWidth, bottomRowY, ts.label);
+                    }
+                    drawCentered(presetName, presetY, ts.title);
+                    if (ts.showBpm !== false) {
+                        drawCentered('BPM:120.0', bpmY, ts.status || ts.subtitle || 1);
+                    }
+                    if (ts.showAnalog) {
+                        drawCentered('A1:127 A2:64', bpmY + (ts.showBpm !== false ? 10 : 0), ts.status || ts.subtitle || 1);
+                    } else {
+                        drawCentered('BLE:CLIENT SCAN', bleY, ts.status || ts.subtitle || 1);
+                    }
+                }
+            }
+        }
+        function checkBrightnessWarning() {
+            var sys = presetData.system;
+            if (warn) warn.style.display = ((sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 255) > 240) ? 'block' : 'none';
+        }
+        function updSys(k, v) { presetData.system[k] = v; }
+        function updExp(idx, k, v) {
+            if (!presetData.expressionPedals) return;
+            presetData.expressionPedals[idx][k] = v;
+            render();
+        }
+        function saveChanges() {
+            // In offline mode, save means export to JSON area
+            exportJSON();
+            render();  // Update buttons selection UI with new values
+            alert('Changes saved! JSON has been updated in the Export area below.');
+        }
+        function updBtnCount(count) {
+            presetData.system.buttonCount = count;
+            for (var p = 0; p < presetData.presets.length; p++) {
+                var btns = presetData.presets[p].buttons;
+                while (btns.length < count) btns.push(createDefaultButton(btns.length));
+                while (btns.length > count) btns.pop();
+            }
+            if (selectedBtn >= count) selectedBtn = count - 1;
+            render();
+        }
+        function createDefaultButton(idx) {
+            var colors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd', '#ff9ff3', '#54a0ff', '#00d2d3'];
+            var c = colors[idx % colors.length];
+            return {
+                name: 'BTN' + (idx + 1), ledMode: 'MOMENTARY', inSelectionGroup: false,
+                messages: [{ action: 'PRESS', type: 'CC', channel: 1, data1: 20 + idx, data2: 127, rgb: c }]
+            };
+        }
+
+        function exportJSON() {
+            presetData.lastModified = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            var jsonStr = JSON.stringify(presetData, null, 2);
+            render(); // Update UI to show new timestamp (rebuilds DOM)
+            document.getElementById('jsonArea').value = jsonStr; // Restore JSON after render
+        }
+        function importJSON() {
+            try {
+                var data = JSON.parse(document.getElementById('jsonArea').value);
+                if (data.presets) {
+                    // Preserve configName and lastModified
+                    var savedConfigName = presetData.configName;
+                    var savedLastModified = presetData.lastModified;
+                    presetData = data;
+                    // Restore if not present in imported data
+                    if (!data.configName) presetData.configName = savedConfigName;
+                    if (!data.lastModified) presetData.lastModified = savedLastModified;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Imported!\n\nConfig: ' + (presetData.configName || 'Unnamed') + '\nLast Modified: ' + (presetData.lastModified || 'Unknown'));
+                } else alert('Invalid format');
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        function copyJSON() { exportJSON(); navigator.clipboard.writeText(document.getElementById('jsonArea').value); alert('Copied!'); }
+        function downloadJSON() {
+            exportJSON();
+            var filename = (presetData.configName || 'chocotone_config').replace(/[^a-zA-Z0-9_-]/g, '_') + '.json';
+            var blob = new Blob([document.getElementById('jsonArea').value], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+        function openFile(input) {
+            var file = input.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    if (data.presets) {
+                        presetData = data;
+                        selectedBtn = 0;
+                        showSystem = false;
+                        render();
+                        document.getElementById('jsonArea').value = e.target.result;
+                        alert('File loaded!\\n\\nConfig: ' + (data.configName || 'Unnamed') + '\\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                    } else {
+                        alert('Invalid file format: no presets found');
+                    }
+                } catch (err) {
+                    alert('Error reading file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset for future opens
+        }
+
+        // Send preset change to connected device
+        async function sendPresetToDevice(presetIdx) {
+            // Serial
+            if (serialWriter) {
+                try {
+                    await serialWriter.write(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                } catch (e) {
+                    console.log('Serial preset sync error:', e);
+                }
+            }
+            // BLE
+            if (bleRxChar && bleDevice && bleDevice.gatt.connected) {
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode('SET_PRESET:' + presetIdx + '\n'));
+                    console.log('BLE: Preset ' + presetIdx + ' sent');
+                } catch (e) {
+                    console.log('BLE preset sync error:', e);
+                }
+            }
+        }
+
+        async function sendToDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+
+            // UI Feedback
+            var statusEl = document.getElementById('usbStatus');
+            var originalStatus = statusEl.textContent;
+            statusEl.textContent = 'Preparing...';
+            statusEl.style.color = '#f59e0b'; // Amber
+
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 200; // Smaller chunks to prevent serial buffer overflow
+            var totalChunks = Math.ceil(json.length / CHUNK_SIZE);
+
+            try {
+                // Start upload - pause BLE scan first
+                statusEl.textContent = 'Stopping scans...';
+                await serialWriter.write(new TextEncoder().encode('PAUSE_SCAN\n'));
+                await sleep(500);  // Wait for BLE scan to stop
+
+                statusEl.textContent = 'Starting upload...';
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(300);  // Longer delay to ensure READY
+
+                // Send chunks with longer delays
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunkIndex = Math.floor(i / CHUNK_SIZE);
+                    var progress = Math.round((chunkIndex / totalChunks) * 100);
+                    statusEl.textContent = 'Sending ' + progress + '%';
+
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+                    await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
+                    await sleep(50); // Small delay between chunks
+
+                    // Yield to browser every 10 chunks to update UI
+                    if (chunkIndex % 5 === 0) await sleep(20);
+                }
+
+                // End upload
+                statusEl.textContent = 'Finalizing...';
+                await sleep(500);
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+                await sleep(200);
+                await serialWriter.write(new TextEncoder().encode('RESUME_SCAN\n'));
+
+                statusEl.textContent = 'Connected (Done)';
+                statusEl.style.color = '#22c55e';
+                setTimeout(() => { statusEl.textContent = 'Connected'; }, 3000);
+
+                alert('Config sent to device! Check serial monitor for status.');
+            } catch (e) {
+                statusEl.textContent = 'Error!';
+                statusEl.style.color = '#ef4444';
+                alert('Send error: ' + e.message);
+
+                // Try to recover status after error
+                setTimeout(() => {
+                    statusEl.textContent = 'Connected';
+                    statusEl.style.color = '#22c55e';
+                }, 3000);
+            }
+        }
+
+        // ========== SYSEX PRESETS DATABASE (SPM) ==========
+        var sysexPresets = {
+            // Reverb Types (10 types)
+            'SPM: Reverb Type - Air': 'f0050b00010000000e0101040700080000000000000008000000000000000b00000000000cf7',
+            'SPM: Reverb Type - Room': 'f00d0100010000000e0101040700080000000000000008000000000000000000000000000cf7',
+            'SPM: Reverb Type - Hall': 'f00c0700010000000e0101040700080000000000000008000000000000000100000000000cf7',
+            'SPM: Reverb Type - Church': 'f00f0d00010000000e0101040700080000000000000008000000000000000200000000000cf7',
+            'SPM: Reverb Type - Plate L': 'f00b0600010000000e0101040700080000000000000008000000000000010000000000000cf7',
+            'SPM: Reverb Type - Plate': 'f0000300010000000e0101040700080000000000000008000000000000000f00000000000cf7',
+            'SPM: Reverb Type - Spring': 'f0080900010000000e0101040700080000000000000008000000000000000400000000000cf7',
+            'SPM: Reverb Type - N-Star': 'f00a0500010000000e0101040700080000000000000008000000000000000600000000000cf7',
+            'SPM: Reverb Type - Deepsea': 'f00b0300010000000e0101040700080000000000000008000000000000000700000000000cf7',
+            'SPM: Reverb Type - Sweet Space': 'f00f0800010000000e0101040700080000000000000008000000000000010500000000000cf7',
+            // Reverb On/Off
+            'SPM: Reverb - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'SPM: Reverb - OFF': 'f0090200010000000a0101040900080000000000000000000000000000f7',
+            // Delay Time (common values)
+            'SPM: Delay Time 100ms': 'f00d0900010000000e0101040800070000000000000001000000000000000000000c080402f7',
+            'SPM: Delay Time 150ms': 'f00b0200010000000e01010408000700000000000000010000000000000000000001060403f7',
+            'SPM: Delay Time 200ms': 'f0060800010000000e01010408000700000000000000010000000000000000000004080403f7',
+            'SPM: Delay Time 250ms': 'f00a0e00010000000e010104080007000000000000000100000000000000000000070a0403f7',
+            'SPM: Delay Time 300ms': 'f0000400010000000e01010408000700000000000000010000000000000000000009060403f7',
+            'SPM: Delay Time 350ms': 'f00b0700010000000e0101040800070000000000000001000000000000000000000b060403f7',
+            'SPM: Delay Time 400ms': 'f00d0e00010000000e0101040800070000000000000001000000000000000000000c080403f7',
+            'SPM: Delay Time 500ms': 'f0000d00010000000e0101040800070000000000000001000000000000000000000f0a0403f7',
+            // Delay Mix (common values)
+            'SPM: Delay Mix 0%': 'f0040600010000000e01010408000700000000000000000000000000000000000000000000f7',
+            'SPM: Delay Mix 10%': 'f0020800010000000e01010408000700000000000000000000000000000000000002000401f7',
+            'SPM: Delay Mix 20%': 'f0090e00010000000e0101040800070000000000000000000000000000000000000a000401f7',
+            'SPM: Delay Mix 30%': 'f0090200010000000e0101040800070000000000000000000000000000000000000f000401f7',
+            'SPM: Delay Mix 40%': 'f0020100010000000e01010408000700000000000000000000000000000000000002000402f7',
+            'SPM: Delay Mix 50%': 'f0070c00010000000e01010408000700000000000000000000000000000000000004080402f7',
+            'SPM: Delay Mix 60%': 'f0020d00010000000e01010408000700000000000000000000000000000000000007000402f7',
+            'SPM: Delay Mix 70%': 'f00c0500010000000e010104080007000000000000000000000000000000000000080c0402f7',
+            'SPM: Delay Mix 80%': 'f0090700010000000e0101040800070000000000000000000000000000000000000a000402f7',
+            'SPM: Delay Mix 90%': 'f00c0000010000000e0101040800070000000000000000000000000000000000000b000402f7',
+            'SPM: Delay Mix 100%': 'f00c0a00010000000e0101040800070000000000000000000000000000000000000c080402f7',
+            // Reverb Decay (common values)
+            'SPM: Reverb Decay 10%': 'f0020800010000000e01010408000800000000000000020000000000000000000002000401f7',
+            'SPM: Reverb Decay 30%': 'f0090200010000000e01010408000800000000000000020000000000000000000002080401f7',
+            'SPM: Reverb Decay 50%': 'f0070c00010000000e01010408000800000000000000020000000000000000000004080402f7',
+            'SPM: Reverb Decay 70%': 'f00c0500010000000e010104080008000000000000000200000000000000000000080c0402f7',
+            'SPM: Reverb Decay 100%': 'f0040800010000000e0101040800080000000000000002000000000000000000000c060402f7',
+            // Delay Feedback (common values)
+            'SPM: Delay Feedback 0%': 'f0060000010000000e01010408000700000000000000020000000000000000000000000000f7',
+            'SPM: Delay Feedback 10%': 'f0000e00010000000e01010408000700000000000000020000000000000000000002000401f7',
+            'SPM: Delay Feedback 20%': 'f00b0800010000000e0101040800070000000000000002000000000000000000000a000401f7',
+            'SPM: Delay Feedback 30%': 'f00b0400010000000e0101040800070000000000000002000000000000000000000f000401f7',
+            'SPM: Delay Feedback 40%': 'f0000700010000000e01010408000700000000000000020000000000000000000002000402f7',
+            'SPM: Delay Feedback 50%': 'f0050a00010000000e01010408000700000000000000020000000000000000000004080402f7',
+            'SPM: Delay Feedback 60%': 'f0000b00010000000e01010408000700000000000000020000000000000000000007000402f7',
+            'SPM: Delay Feedback 70%': 'f00e0300010000000e01010408000700000000000000020000000000000000000008080402f7',
+            'SPM: Delay Feedback 80%': 'f00b0100010000000e0101040800070000000000000002000000000000000000000a000402f7',
+            'SPM: Delay Feedback 90%': 'f00e0600010000000e0101040800070000000000000002000000000000000000000b000402f7',
+            'SPM: Delay Feedback 100%': 'f00e0c00010000000e0101040800070000000000000002000000000000000000000c080402f7',
+            // ========== GP-5 SYSEX PRESETS ==========
+            // GP-5 Effect On/Off (computed with CRC8)
+            'GP5: NR - ON': 'f0010c00010000000a0101040900000000000000000001000000000000f7',
+            'GP5: NR - OFF': 'f0000a00010000000a0101040900000000000000000000000000000000f7',
+            'GP5: PRE - ON': 'f0000f00010000000a0101040900010000000000000001000000000000f7',
+            'GP5: PRE - OFF': 'f0010900010000000a01010409000100000000000000000000000000000000f7',
+            'GP5: DST - ON': 'f0030a00010000000a0101040900020000000000000001000000000000f7',
+            'GP5: DST - OFF': 'f0020c00010000000a01010409000200000000000000000000000000000000f7',
+            'GP5: AMP - ON': 'f0020900010000000a0101040900030000000000000001000000000000f7',
+            'GP5: AMP - OFF': 'f0030f00010000000a01010409000300000000000000000000000000000000f7',
+            'GP5: CAB - ON': 'f0050000010000000a0101040900040000000000000001000000000000f7',
+            'GP5: CAB - OFF': 'f0040600010000000a01010409000400000000000000000000000000000000f7',
+            'GP5: EQ - ON': 'f0040300010000000a0101040900050000000000000001000000000000f7',
+            'GP5: EQ - OFF': 'f0050500010000000a01010409000500000000000000000000000000000000f7',
+            'GP5: MOD - ON': 'f0070600010000000a0101040900060000000000000001000000000000f7',
+            'GP5: MOD - OFF': 'f0060000010000000a01010409000600000000000000000000000000000000f7',
+            'GP5: DLY - ON': 'f0060500010000000a0101040900070000000000000001000000000000f7',
+            'GP5: DLY - OFF': 'f0070300010000000a01010409000700000000000000000000000000000000f7',
+            'GP5: RVB - ON': 'f0080400010000000a0101040900080000000000000001000000000000f7',
+            'GP5: RVB - OFF': 'f0090200010000000a01010409000800000000000000000000000000000000f7',
+            'GP5: NS - ON': 'f0090700010000000a0101040900090000000000000001000000000000f7',
+            'GP5: NS - OFF': 'f0080100010000000a01010409000900000000000000000000000000000000f7'
+        };
+
+        function getSysexPickerOptions() {
+            var html = '<option value="">-- Select SysEx Preset --</option>';
+            // SPM SysEx Presets
+            html += '<optgroup label="── Sonicake Pocket Master ──">';
+            html += '<optgroup label="[SPM] Reverb Type">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Type') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb ON/OFF">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb - O') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Time">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Time') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Mix">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Mix') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Reverb Decay">';
+            for (var k in sysexPresets) { if (k.indexOf('Reverb Decay') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '<optgroup label="[SPM] Delay Feedback">';
+            for (var k in sysexPresets) { if (k.indexOf('Delay Feedback') > -1) html += '<option value="' + k + '">' + k.replace('SPM: ', '') + '</option>'; }
+            html += '</optgroup>';
+            // GP-5 SysEx Presets
+            html += '<optgroup label="── Valeton GP-5 ──">';
+            html += '<optgroup label="[GP5] Effect On/Off">';
+            for (var k in sysexPresets) { if (k.indexOf('GP5:') === 0) html += '<option value="' + k + '">' + k.replace('GP5: ', '') + '</option>'; }
+            html += '</optgroup>';
+            html += '</optgroup>';
+            return html;
+        }
+
+        function applySysexPreset(msgIdx, presetName) {
+            if (!presetName || !sysexPresets[presetName]) return;
+            updMsg(msgIdx, 'sysex', sysexPresets[presetName]);
+            render();
+        }
+
+        // ===============================================================
+        // WEB SERIAL API - USB Connection to Chocotone
+        // ===============================================================
+        var serialPort = null;
+        var serialReader = null;
+        var serialWriter = null;
+        var serialBuffer = '';
+
+        async function connectUSB() {
+            if (!('serial' in navigator)) {
+                alert('Web Serial not supported. Use Chrome or Edge.');
+                return;
+            }
+            try {
+                serialPort = await navigator.serial.requestPort();
+                await serialPort.open({ baudRate: 115200 });
+                serialWriter = serialPort.writable.getWriter();
+                serialReader = serialPort.readable.getReader();
+                document.getElementById('usbStatus').textContent = 'Connected';
+                document.getElementById('usbStatus').style.color = '#22c55e';
+                document.getElementById('btnConnect').textContent = 'Disconnect';
+                // Start reading
+                readSerial();
+            } catch (e) {
+                console.error('Serial error:', e);
+                alert('Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectUSB() {
+            try {
+                if (serialReader) {
+                    try { await serialReader.cancel(); } catch (e) { console.log('Reader cancel:', e); }
+                    try { serialReader.releaseLock(); } catch (e) { console.log('Reader release:', e); }
+                    serialReader = null;
+                }
+                if (serialWriter) {
+                    try { serialWriter.releaseLock(); } catch (e) { console.log('Writer release:', e); }
+                    serialWriter = null;
+                }
+                if (serialPort) {
+                    try { await serialPort.close(); } catch (e) { console.log('Port close:', e); }
+                    serialPort = null;
+                }
+            } catch (e) {
+                console.error('Disconnect error:', e);
+            }
+            // Force null to ensure clean state
+            serialPort = null;
+            serialReader = null;
+            serialWriter = null;
+            document.getElementById('usbStatus').textContent = 'Not connected';
+            document.getElementById('usbStatus').style.color = '#71717a';
+            document.getElementById('btnConnect').textContent = 'Connect USB/BT';
+        }
+
+        function toggleUSB() {
+            if (serialPort) disconnectUSB();
+            else connectUSB();
+        }
+
+        async function readSerial() {
+            while (serialPort && serialReader) {
+                try {
+                    const { value, done } = await serialReader.read();
+                    if (done) break;
+                    serialBuffer += new TextDecoder().decode(value);
+                    processSerialData();
+                } catch (e) { break; }
+            }
+        }
+
+        var expectingConfig = false;
+        var configJson = '';
+
+        function processSerialData() {
+            var lines = serialBuffer.split('\n');
+            serialBuffer = lines.pop(); // Keep incomplete line
+            for (var line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                // Log all messages to Serial Log area
+                var logArea = document.getElementById('serialLog');
+                if (logArea && !expectingConfig) {
+                    logArea.value += line + '\n';
+                    logArea.scrollTop = logArea.scrollHeight;
+                }
+
+                if (line === 'CONFIG_START') {
+                    expectingConfig = true;
+                    configJson = '';
+                } else if (line === 'CONFIG_END') {
+                    expectingConfig = false;
+                    try {
+                        var data = JSON.parse(configJson);
+                        normalizeConfigData(data);  // Remap color→rgb
+                        console.log('Received config:', data);
+                        if (data.presets) {
+                            // Use config metadata from device if present
+                            if (data.configName) presetData.configName = data.configName;
+                            if (data.lastModified) presetData.lastModified = data.lastModified;
+                            presetData.presets = data.presets;
+                            if (data.system) {
+                                // Merge system properties
+                                if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                                if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                                if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                                if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                                if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
+                                if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                                if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                                if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                                if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                                if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                                if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                                if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
+                                if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                            }
+                            presetData.currentPreset = data.currentPreset || 0;
+                            selectedBtn = 0;
+                            showSystem = false;
+                            render();
+                            alert('Config loaded from device!');
+                        } else {
+                            alert('Invalid config: no presets found');
+                        }
+                    } catch (e) {
+                        console.error('Parse error:', e, 'JSON:', configJson);
+                        alert('Parse error: ' + e.message);
+                    }
+                } else if (expectingConfig) {
+                    configJson += line;
+                }
+            }
+        }
+
+        async function readFromDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            await serialWriter.write(new TextEncoder().encode('GET_CONFIG\n'));
+        }
+
+        async function sendToDevice() {
+            if (!serialWriter) { alert('Connect USB first'); return; }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 200; // Smaller chunks to prevent serial buffer overflow
+
+            try {
+                // Start upload - pause BLE scan first
+                await serialWriter.write(new TextEncoder().encode('PAUSE_SCAN\n'));
+                await sleep(500);  // Wait for BLE scan to stop
+
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_START\n'));
+                await sleep(300);  // Longer delay to ensure READY
+
+                // Send chunks with longer delays
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+                    await serialWriter.write(new TextEncoder().encode('SET_CONFIG_CHUNK:' + chunk + '\n'));
+                    await sleep(50); // Small delay between chunks
+
+                    // Yield to browser every 10 chunks
+                    if ((i / CHUNK_SIZE) % 10 === 0) await sleep(100);
+                }
+
+                // End upload
+                await sleep(500);
+                await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+                await sleep(200);
+                await serialWriter.write(new TextEncoder().encode('RESUME_SCAN\n'));
+                alert('Config sent to device! Check serial monitor for status.');
+            } catch (e) {
+                alert('Send error: ' + e.message);
+            }
+        }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        // ===============================================================
+        // WEB BLUETOOTH API - BLE Connection to Chocotone
+        // ===============================================================
+        var bleDevice = null;
+        var bleRxChar = null;  // Write to device
+        var bleTxChar = null;  // Notify from device
+        var bleBuffer = '';
+        var bleConfigJson = '';
+        var bleExpectingConfig = false;
+
+        // Chocotone Config Service UUIDs (must match firmware)
+        const BLE_CONFIG_SERVICE = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+        const BLE_CONFIG_RX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567891';
+        const BLE_CONFIG_TX = 'a1b2c3d4-e5f6-7890-abcd-ef1234567892';
+
+        async function connectBLE() {
+            if (!('bluetooth' in navigator)) {
+                alert('Web Bluetooth not supported. Use Chrome or Edge on desktop.');
+                return;
+            }
+            try {
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    // Use services filter instead of name to avoid case sensitivity issues
+                    // This shows all devices advertising the Config Service UUID
+                    filters: [
+                        { services: [BLE_CONFIG_SERVICE] },
+                        { namePrefix: 'CHOCOTONE' },
+                        { namePrefix: 'Chocotone' },
+                        { namePrefix: 'chocotone' }
+                    ],
+                    optionalServices: [BLE_CONFIG_SERVICE]
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(BLE_CONFIG_SERVICE);
+
+                bleRxChar = await service.getCharacteristic(BLE_CONFIG_RX);
+                bleTxChar = await service.getCharacteristic(BLE_CONFIG_TX);
+
+                // Start notifications for responses
+                await bleTxChar.startNotifications();
+                bleTxChar.addEventListener('characteristicvaluechanged', handleBleNotification);
+
+                // Handle disconnection events
+                bleDevice.addEventListener('gattserverdisconnected', () => {
+                    console.log('BLE Disconnected');
+                    bleRxChar = null;
+                    bleTxChar = null;
+                    var statusEl = document.getElementById('bleStatus');
+                    if (statusEl) {
+                        statusEl.textContent = 'Disconnected';
+                        statusEl.style.color = '#ef4444';
+                    }
+                    var btnEl = document.getElementById('btnBleConnect');
+                    if (btnEl) btnEl.textContent = 'Connect BLE';
+                    render();
+                });
+
+                document.getElementById('bleStatus').textContent = 'Connected';
+                document.getElementById('bleStatus').style.color = '#22c55e';
+                document.getElementById('btnBleConnect').textContent = 'Disconnect';
+
+                console.log('BLE Connected to Chocotone');
+
+                // Brief delay to ensure connection is stable
+                await sleep(200);
+            } catch (e) {
+                console.error('BLE error:', e);
+                alert('BLE Connection failed: ' + e.message);
+            }
+        }
+
+        async function disconnectBLE() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            bleDevice = null;
+            bleRxChar = null;
+            bleTxChar = null;
+            document.getElementById('bleStatus').textContent = 'Not connected';
+            document.getElementById('bleStatus').style.color = '#71717a';
+            document.getElementById('btnBleConnect').textContent = 'Connect BLE';
+        }
+
+        function toggleBLE() {
+            if (bleDevice && bleDevice.gatt.connected) disconnectBLE();
+            else connectBLE();
+        }
+
+        // BLE response handler - simplified for request-acknowledge protocol
+        var bleResponseResolve = null;
+        var bleResponseTimeout = null;
+
+        function handleBleNotification(event) {
+            var value = new TextDecoder().decode(event.target.value);
+            console.log('BLE response:', value.substring(0, 100));
+
+            // Clear timeout and resolve promise
+            if (bleResponseTimeout) {
+                clearTimeout(bleResponseTimeout);
+                bleResponseTimeout = null;
+            }
+            if (bleResponseResolve) {
+                bleResponseResolve(value);
+                bleResponseResolve = null;
+            }
+        }
+
+        // Send command and wait for response
+        async function sendBleCommand(cmd, timeoutMs = 3000) {
+            return new Promise(async (resolve, reject) => {
+                bleResponseResolve = resolve;
+                bleResponseTimeout = setTimeout(() => {
+                    bleResponseResolve = null;
+                    reject(new Error('BLE timeout waiting for: ' + cmd));
+                }, timeoutMs);
+
+                try {
+                    await bleRxChar.writeValue(new TextEncoder().encode(cmd + '\n'));
+                } catch (e) {
+                    clearTimeout(bleResponseTimeout);
+                    bleResponseResolve = null;
+                    reject(e);
+                }
+            });
+        }
+
+        async function readFromDeviceBLE() {
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
+
+            try {
+                console.log('BLE Read: Starting request-acknowledge transfer...');
+
+                // Step 1: Request config info
+                var infoResponse = await sendBleCommand('GET_CONFIG', 5000);
+                console.log('BLE Read: Got info:', infoResponse);
+
+                if (!infoResponse.startsWith('CONFIG_INFO:')) {
+                    throw new Error('Unexpected response: ' + infoResponse);
+                }
+
+                // Parse: CONFIG_INFO:8203:65
+                var parts = infoResponse.split(':');
+                var totalBytes = parseInt(parts[1]);
+                var totalChunks = parseInt(parts[2]);
+                console.log('BLE Read: Expecting ' + totalBytes + ' bytes in ' + totalChunks + ' chunks');
+
+                // Step 2: Request each chunk
+                var jsonBuffer = '';
+                for (var i = 0; i < totalChunks; i++) {
+                    var chunkResponse = await sendBleCommand('GET_CHUNK:' + i, 3000);
+
+                    // Parse: CHUNK:N:data
+                    if (!chunkResponse.startsWith('CHUNK:')) {
+                        throw new Error('Invalid chunk response: ' + chunkResponse);
+                    }
+
+                    // Extract data after "CHUNK:N:"
+                    var colonIdx = chunkResponse.indexOf(':', 6);  // Find second colon
+                    var chunkData = chunkResponse.substring(colonIdx + 1);
+                    jsonBuffer += chunkData;
+
+                    // Progress logging every 10 chunks
+                    if (i % 10 === 0 || i === totalChunks - 1) {
+                        console.log('BLE Read: Chunk ' + (i + 1) + '/' + totalChunks + ' (' + jsonBuffer.length + ' bytes)');
+                    }
+
+                    // Small delay between chunk requests
+                    await sleep(20);
+                }
+
+                console.log('BLE Read: All chunks received, total: ' + jsonBuffer.length + ' bytes');
+
+                // Step 3: Parse JSON
+                var data = JSON.parse(jsonBuffer);
+                normalizeConfigData(data);  // Remap color→rgb
+                console.log('BLE received config:', data);
+
+                if (data.presets) {
+                    // Use config metadata from device if present
+                    if (data.configName) presetData.configName = data.configName;
+                    if (data.lastModified) presetData.lastModified = data.lastModified;
+                    presetData.presets = data.presets;
+                    if (data.system) {
+                        // Merge system properties individually
+                        if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
+                        if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
+                        if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
+                        if (data.system.buttonCount) presetData.system.buttonCount = data.system.buttonCount;
+                        if (data.system.buttonPins) presetData.system.buttonPins = data.system.buttonPins;
+                        if (data.system.ledPin) presetData.system.ledPin = data.system.ledPin;
+                        if (data.system.ledsPerButton) presetData.system.ledsPerButton = data.system.ledsPerButton;
+                        if (data.system.ledMap) presetData.system.ledMap = data.system.ledMap;
+                        if (data.system.encoderA !== undefined) presetData.system.encoderA = data.system.encoderA;
+                        if (data.system.encoderB !== undefined) presetData.system.encoderB = data.system.encoderB;
+                        if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
+                        if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
+                        if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                        if (data.system.brightnessDim !== undefined) presetData.system.brightnessDim = data.system.brightnessDim;
+                        if (data.system.brightnessTap !== undefined) presetData.system.brightnessTap = data.system.brightnessTap;
+                    }
+                    presetData.currentPreset = data.currentPreset || 0;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    alert('Config loaded from device via Bluetooth!');
+                } else {
+                    alert('BLE Error: No presets found in config');
+                }
+
+            } catch (e) {
+                console.error('BLE Read error:', e);
+                alert('BLE Read error: ' + e.message);
+            }
+        }
+
+        async function sendToDeviceBLE() {
+            if (!bleRxChar || !bleDevice || !bleDevice.gatt.connected) {
+                alert('Bluetooth not connected. Please connect first.');
+                return;
+            }
+            var json = JSON.stringify(presetData);
+            var CHUNK_SIZE = 150; // Small chunks for reliable BLE transfer
+            var totalChunks = Math.ceil(json.length / CHUNK_SIZE);
+
+            try {
+                console.log('BLE Send: Starting upload of ' + json.length + ' bytes in ' + totalChunks + ' chunks');
+
+                // Start upload
+                var startResponse = await sendBleCommand('SET_CONFIG_START', 3000);
+                console.log('BLE Send: Start response:', startResponse);
+
+                if (startResponse !== 'CONFIG_READY') {
+                    throw new Error('Device not ready: ' + startResponse);
+                }
+
+                // Send chunks
+                for (var i = 0; i < json.length; i += CHUNK_SIZE) {
+                    var chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+                    var chunk = json.substring(i, i + CHUNK_SIZE);
+
+                    var chunkResponse = await sendBleCommand('SET_CONFIG_CHUNK:' + chunk, 3000);
+
+                    if (!chunkResponse.startsWith('CHUNK_OK:')) {
+                        throw new Error('Chunk error: ' + chunkResponse);
+                    }
+
+                    if (chunkNum % 10 === 0) {
+                        console.log('BLE Send: Chunk ' + chunkNum + '/' + totalChunks);
+                    }
+                }
+
+                // End upload
+                var endResponse = await sendBleCommand('SET_CONFIG_END', 10000);
+                console.log('BLE Send: End response:', endResponse);
+
+                if (endResponse === 'CONFIG_SAVED') {
+                    alert('Config saved to device via Bluetooth!');
+                } else {
+                    throw new Error('Save failed: ' + endResponse);
+                }
+
+            } catch (e) {
+                console.error('BLE Send error:', e);
+                alert('BLE Send error: ' + e.message);
+            }
+        }
+
+        // Add connection sections to render
+        var origRender = render;
+        render = function () {
+            origRender();
+            var app = document.getElementById('app');
+
+            // USB Status
+            var usbConnected = serialPort !== null;
+            var usbStatusText = usbConnected ? 'Connected' : 'Not connected';
+            var usbStatusColor = usbConnected ? '#22c55e' : '#71717a';
+            var usbBtnText = usbConnected ? 'Disconnect' : 'Connect USB/BT';
+
+            // BLE Status
+            var bleConnected = bleDevice && bleDevice.gatt && bleDevice.gatt.connected;
+            var bleStatusText = bleConnected ? 'Connected' : 'Not connected';
+            var bleStatusColor = bleConnected ? '#22c55e' : '#71717a';
+            var bleBtnText = bleConnected ? 'Disconnect' : 'Connect BLE';
+
+            // Twin card container - uses same layout as columns for alignment
+            var html = '<div class="two-col-layout" style="margin-bottom:12px">';
+
+            // USB Serial Card - Orange theme (uses CSS vars)
+            html += '<div class="section conn-card-usb col-left" style="margin-bottom:0">';
+            html += '<div class="section-title">🔌 USB or BT Serial</div>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnConnect" class="btn primary" onclick="toggleUSB()" style="grid-column:1/span 2; width:100%">' + usbBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="usbStatus" style="color:' + usbStatusColor + '">' + usbStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDevice()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDevice()" style="grid-column:2; width:100%">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge only</div>';
+            html += '</div>';
+
+            // Bluetooth Card - Cyan theme (uses CSS vars)
+            html += '<div class="section conn-card-ble col-right" style="margin-bottom:0">';
+            html += '<div class="section-title" style="color:var(--cyan)">📶 BLE Connection</div>';
+            html += '<div class="actions" style="margin-bottom:10px; display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:center">';
+            html += '<button id="btnBleConnect" class="btn" onclick="toggleBLE()" style="background:var(--cyan);color:#000; grid-column:1/span 2; width:100%">' + bleBtnText + '</button>';
+            html += '<div style="color:var(--cyan);font-size:0.9rem; margin-left:5px">Status: <span id="bleStatus" style="color:' + bleStatusColor + '">' + bleStatusText + '</span></div>';
+            html += '<button class="btn success" onclick="readFromDeviceBLE()" style="grid-column:1; width:100%">Read</button>';
+            html += '<button class="btn warning" onclick="sendToDeviceBLE()" style="grid-column:2; width:100%">Send</button>';
+            html += '</div>';
+            html += '<div style="margin-top:8px;font-size:0.7rem;color:var(--cyan)">Chrome/Edge desktop only</div>';
+            html += '</div>';
+
+            html += '</div>';
+            app.insertAdjacentHTML('afterbegin', html);
+        };
+
+        render();
+
+        // ===============================================================
+        // DEV TOOLS - Live Color Palette Editor
+        // ===============================================================
+        (function () {
+            var devPanel = document.createElement('div');
+            devPanel.id = 'devTools';
+            devPanel.className = 'collapsed';
+            devPanel.innerHTML = `
+                <style>
+                    #devTools {
+                        position: fixed;
+                        top: 15px;
+                        right: 15px;
+                        background: var(--card, #111);
+                        border: 2px solid var(--orange, #ffae3d);
+                        border-radius: 12px;
+                        padding: 16px;
+                        z-index: 9999;
+                        font-family: 'Montserrat', sans-serif;
+                        font-size: 12px;
+                        color: var(--mint, #e5fff2);
+                        min-width: 200px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                    }
+                    #devTools.collapsed { 
+                        padding: 0;
+                        min-width: auto;
+                        border-radius: 50%;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    #devTools.collapsed .dev-content { display: none; }
+                    #devTools.collapsed .dev-header-text { display: none; }
+                    #devTools .dev-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 12px;
+                        font-weight: 700;
+                        color: var(--orange, #ffae3d);
+                        cursor: pointer;
+                    }
+                    #devTools.collapsed .dev-header { 
+                        margin-bottom: 0;
+                        font-size: 18px;
+                    }
+                    #devTools .dev-asterisk {
+                        display: none;
+                    }
+                    #devTools.collapsed .dev-asterisk {
+                        display: block;
+                        font-size: 20px;
+                    }
+                    #devTools .color-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin-bottom: 8px;
+                    }
+                    #devTools .color-row label {
+                        flex: 1;
+                        color: var(--cyan, #8ffdff);
+                    }
+                    #devTools input[type="color"] {
+                        width: 40px;
+                        height: 28px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn {
+                        width: 100%;
+                        padding: 8px;
+                        margin-top: 10px;
+                        background: var(--orange, #ffae3d);
+                        color: #000;
+                        border: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+                    #devTools .dev-btn:hover { background: var(--acc-dim, #cc8a2e); }
+                </style>
+                <div class="dev-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                    <span class="dev-asterisk">✱</span>
+                    <span class="dev-header-text">🎨 Dev Tools</span>
+                    <span class="dev-header-text" style="font-size:10px">✕</span>
+                </div>
+                <div class="dev-content">
+                    <div class="color-row">
+                        <label>Background</label>
+                        <input type="color" id="devBg" value="#000000">
+                    </div>
+                    <div class="color-row">
+                        <label>Mint (Text)</label>
+                        <input type="color" id="devMint" value="#e5fff2">
+                    </div>
+                    <div class="color-row">
+                        <label>Cyan (Dim)</label>
+                        <input type="color" id="devCyan" value="#8ffdff">
+                    </div>
+                    <div class="color-row">
+                        <label>Accent (Acc)</label>
+                        <input type="color" id="devOrange" value="#8c81df">
+                    </div>
+                    <button class="dev-btn" onclick="exportPalette()">📋 Export Palette</button>
+                </div>
+            `;
+            document.body.appendChild(devPanel);
+
+            // Live color update functions
+            document.getElementById('devBg').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--bg', e.target.value);
+            });
+            document.getElementById('devMint').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text', e.target.value);
+                document.documentElement.style.setProperty('--mint', e.target.value);
+            });
+            document.getElementById('devCyan').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--text-dim', e.target.value);
+                document.documentElement.style.setProperty('--cyan', e.target.value);
+            });
+            document.getElementById('devOrange').addEventListener('input', function (e) {
+                document.documentElement.style.setProperty('--acc', e.target.value);
+                document.documentElement.style.setProperty('--warning', e.target.value);
+                document.documentElement.style.setProperty('--orange', e.target.value);
+            });
+
+            // Export palette function
+            window.exportPalette = function () {
+                var bg = document.getElementById('devBg').value;
+                var mint = document.getElementById('devMint').value;
+                var cyan = document.getElementById('devCyan').value;
+                var orange = document.getElementById('devOrange').value;
+                var code = `Palette:\n--bg: ${bg};\n--mint: ${mint};\n--cyan: ${cyan};\n--orange: ${orange};`;
+                navigator.clipboard.writeText(code);
+                alert('Palette copied to clipboard!\n\n' + code);
+            };
+        })();
+    </script>
+
+    <!-- FOOTER -->
+    <footer
+        style="text-align: center; padding: 20px; margin-top: 40px; border-top: 1px solid var(--brd); color: #555; font-size: 0.8rem;">
+        <p style="margin-bottom: 8px;">
+            <a href="web_tools/installer.html" style="color: var(--acc); text-decoration: none; margin: 0 10px;">🚀
+                Installer</a> ·
+            <a href="presentation.html" style="color: var(--acc); text-decoration: none; margin: 0 10px;">🎮 Virtual
+                Chocotone</a> ·
+            <a href="https://github.com/solispensa/Chocotone" target="_blank"
+                style="color: var(--acc); text-decoration: none; margin: 0 10px;">📦 GitHub</a>
+        </p>
+        <p>Made with ❤️ for the MIDI community</p>
+    </footer>
+</body>
+
+</html>

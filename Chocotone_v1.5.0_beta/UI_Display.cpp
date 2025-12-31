@@ -1,0 +1,826 @@
+#include "UI_Display.h"
+#include "AnalogInput.h"
+#include <Wire.h>
+
+// MIDI Note Names
+const char *MIDI_NOTE_NAMES[] = {"C",  "C#", "D",  "D#", "E",  "F",
+                                 "F#", "G",  "G#", "A",  "A#", "B"};
+
+void midiNoteNumberToString(char *b, size_t s, int n) {
+  if (n < 0 || n > 127) {
+    snprintf(b, s, "N/A");
+    return;
+  }
+  snprintf(b, s, "%s%d", MIDI_NOTE_NAMES[n % 12], (n / 12 - 1));
+}
+
+// Get button summary from command type and data
+void getButtonSummary(char *b, size_t s, MidiCommandType type, int data1) {
+  char n[8];
+  b[0] = '\0';
+  switch (type) {
+  case NOTE_MOMENTARY:
+    midiNoteNumberToString(n, 8, data1);
+    snprintf(b, s, "%.4s", n);
+    break;
+  case NOTE_ON:
+    midiNoteNumberToString(n, 8, data1);
+    snprintf(b, s, "^%.3s", n);
+    break;
+  case NOTE_OFF:
+    midiNoteNumberToString(n, 8, data1);
+    snprintf(b, s, "v%.3s", n);
+    break;
+  case CC:
+    snprintf(b, s, "CC%d", data1);
+    break;
+  case PC:
+    snprintf(b, s, "PC%d", data1);
+    break;
+  case TAP_TEMPO:
+    strncpy(b, "TAP", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case PRESET_UP:
+    strncpy(b, ">", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case PRESET_DOWN:
+    strncpy(b, "<", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case PRESET_1:
+    snprintf(b, s, "%.10s", presetNames[0]);
+    break;
+  case PRESET_2:
+    snprintf(b, s, "%.10s", presetNames[1]);
+    break;
+  case PRESET_3:
+    snprintf(b, s, "%.10s", presetNames[2]);
+    break;
+  case PRESET_4:
+    snprintf(b, s, "%.10s", presetNames[3]);
+    break;
+  case WIFI_TOGGLE:
+    strncpy(b, "WiFi", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case CLEAR_BLE_BONDS:
+    strncpy(b, "xBLE", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case SYSEX:
+    strncpy(b, "SYS", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case MIDI_OFF:
+    strncpy(b, "OFF", s - 1);
+    b[s - 1] = '\0';
+    break;
+  default:
+    strncpy(b, "---", s - 1);
+    b[s - 1] = '\0';
+    break;
+  }
+}
+
+void displayOLED() {
+  // Skip display updates when heap is critically low (WiFi uses lots of memory)
+  if (ESP.getFreeHeap() < 20000) {
+    return;
+  }
+
+  // Check if in tap tempo mode
+  if (inTapTempoMode) {
+    displayTapTempoMode();
+    return;
+  }
+
+  if (buttonNameDisplayUntil > 0) {
+    if (millis() < buttonNameDisplayUntil) {
+      displayButtonName();
+      return;
+    } else {
+      buttonNameDisplayUntil = 0;
+    }
+  }
+
+  displayPtr->clearDisplay();
+
+  // Get layout config from oledConfig (v1.5 - 128x32 support)
+  uint8_t topRowY = oledConfig.main.topRowY;
+  uint8_t titleY = oledConfig.main.titleY;
+  uint8_t statusY = oledConfig.main.statusY;
+  uint8_t bottomRowY = oledConfig.main.bottomRowY;
+  uint8_t labelSize = oledConfig.main.labelSize;
+  uint8_t titleSize = oledConfig.main.titleSize;
+  uint8_t statusSize = oledConfig.main.statusSize;
+  bool showBpm = oledConfig.main.showBpm;
+  bool showAnalog = oledConfig.main.showAnalog;
+
+  // For 128x32, adjust bottomRowY if using default 128x64 value
+  int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
+  if (oledConfig.type == OLED_128X32 && bottomRowY > 24) {
+    bottomRowY = 24; // Clamp for 128x32
+  }
+
+  // Debug: Print layout values (comment out after debugging)
+  static unsigned long lastLayoutLog = 0;
+  if (millis() - lastLayoutLog > 10000) { // Print every 10 seconds
+    lastLayoutLog = millis();
+    Serial.printf("[OLED Layout] type=%d, topY=%d, titleY=%d, statusY=%d, "
+                  "bottomY=%d, sizes=%d/%d/%d\n",
+                  oledConfig.type, topRowY, titleY, statusY, bottomRowY,
+                  labelSize, titleSize, statusSize);
+  }
+
+  displayPtr->setTextSize(labelSize);
+  char summary[10];
+
+  // Dynamic layout based on button count
+  int btnCount = systemConfig.buttonCount;
+  int buttonsPerRow = (btnCount > 8) ? 5 : 4;  // 5 per row for 9-10 buttons
+  int colWidth = SCREEN_WIDTH / buttonsPerRow; // 25 or 32 pixels
+  int maxChars = (btnCount > 8) ? 3 : 4;       // Fewer chars when cramped
+
+  // Top Row (upper half of buttons)
+  int topRowStart = btnCount / 2; // 5 for 10 buttons, 4 for 8 buttons
+  for (int i = 0; i < buttonsPerRow && (topRowStart + i) < btnCount; i++) {
+    int buttonIndex = topRowStart + i;
+    const ButtonConfig &config = buttonConfigs[currentPreset][buttonIndex];
+    char defaultName[21];
+    snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
+    char toDisplay[10];
+    if (strncmp(config.name, defaultName, 20) == 0 ||
+        strlen(config.name) == 0) {
+      // Get first PRESS action for summary
+      ActionMessage *firstAction = (config.messageCount > 0)
+                                       ? (ActionMessage *)&config.messages[0]
+                                       : nullptr;
+      if (firstAction) {
+        getButtonSummary(summary, sizeof(summary), firstAction->type,
+                         firstAction->data1);
+      } else {
+        strncpy(summary, "---", sizeof(summary));
+      }
+      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
+    } else {
+      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
+    }
+    displayPtr->setCursor(i * colWidth, topRowY);
+    displayPtr->print(toDisplay);
+  }
+
+  // Bottom Row (lower half of buttons)
+  for (int i = 0; i < buttonsPerRow && i < topRowStart; i++) {
+    int buttonIndex = i;
+    const ButtonConfig &config = buttonConfigs[currentPreset][buttonIndex];
+    char defaultName[21];
+    snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
+    char toDisplay[10];
+    if (strncmp(config.name, defaultName, 20) == 0 ||
+        strlen(config.name) == 0) {
+      // Get first PRESS action for summary
+      ActionMessage *firstAction = (config.messageCount > 0)
+                                       ? (ActionMessage *)&config.messages[0]
+                                       : nullptr;
+      if (firstAction) {
+        getButtonSummary(summary, sizeof(summary), firstAction->type,
+                         firstAction->data1);
+      } else {
+        strncpy(summary, "---", sizeof(summary));
+      }
+      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
+    } else {
+      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
+    }
+    displayPtr->setCursor(i * colWidth, bottomRowY);
+    displayPtr->print(toDisplay);
+  }
+
+  // Middle Area - Layout differs for 128x32 vs 128x64
+  int16_t x1, y1;
+  uint16_t w, h;
+  displayPtr->setTextSize(titleSize);
+
+  if (oledConfig.type == OLED_128X32) {
+    // === 128x32 COMPACT HORIZONTAL LAYOUT ===
+    // Preset name on LEFT, Status in CENTER, BPM on RIGHT (all on titleY line)
+    char truncatedName[7];
+    snprintf(truncatedName, sizeof(truncatedName), "%.6s",
+             presetNames[currentPreset]);
+    displayPtr->setCursor(0, titleY);
+    displayPtr->print(truncatedName);
+
+    // Status in center (BLE state)
+    displayPtr->setTextSize(statusSize);
+    char statusBuf[16];
+    const char *statusText = "BL:CL";
+    if (showAnalog) {
+      // Find first enabled analog input
+      for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+        if (analogInputs[i].enabled) {
+          int val = analogInputs[i].lastMidiValue;
+          if (val == 255)
+            val = 0;
+          snprintf(statusBuf, sizeof(statusBuf), "%s.%d", analogInputs[i].name,
+                   val);
+          statusText = statusBuf;
+          break;
+        }
+      }
+    }
+    displayPtr->getTextBounds(statusText, 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((SCREEN_WIDTH - w) / 2, titleY);
+    displayPtr->print(statusText);
+
+    // BPM on right (just the number)
+    if (showBpm) {
+      char bpmStr[8];
+      snprintf(bpmStr, sizeof(bpmStr), "%.1f", currentBPM);
+      displayPtr->getTextBounds(bpmStr, 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor(SCREEN_WIDTH - w - 2, titleY);
+      displayPtr->print(bpmStr);
+    }
+  } else {
+    // === STANDARD 128x64 LAYOUT ===
+    char truncatedName[11];
+    snprintf(truncatedName, sizeof(truncatedName), "%.10s",
+             presetNames[currentPreset]);
+    displayPtr->getTextBounds(truncatedName, 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((SCREEN_WIDTH - w) / 2, titleY);
+    displayPtr->print(truncatedName);
+    displayPtr->setTextSize(statusSize);
+
+    // BPM Display (if enabled)
+    if (showBpm) {
+      char bpmStr[16];
+      snprintf(bpmStr, sizeof(bpmStr), "%.1f BPM", currentBPM);
+      displayPtr->getTextBounds(bpmStr, 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusY);
+      displayPtr->print(bpmStr);
+    }
+
+    // Analog Values Display (if enabled)
+    if (showAnalog) {
+      char analogStr[16];
+      int offset = 0;
+      for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+        if (analogInputs[i].enabled) {
+          int val = analogInputs[i].lastMidiValue;
+          if (val == 255)
+            val = 0;
+          snprintf(analogStr, sizeof(analogStr), "%s:%d", analogInputs[i].name,
+                   val);
+          displayPtr->getTextBounds(analogStr, 0, 0, &x1, &y1, &w, &h);
+          displayPtr->setCursor((SCREEN_WIDTH - w) / 2,
+                                statusY + (showBpm ? 10 : 0) + offset);
+          displayPtr->print(analogStr);
+          offset += 10;
+          if (offset >= 20)
+            break; // Max 2 on screen to avoid overlap
+        }
+      }
+    }
+  }
+
+  // Status Line - Show connection mode and state
+  int statusLineY = statusY + 12; // Offset from BPM line
+  if (oledConfig.type == OLED_128X32) {
+    // For 128x32, skip status line entirely (no room)
+  } else {
+    displayPtr->setCursor(0, statusLineY);
+    if (isWifiOn) {
+      // WiFi config mode - centered message
+      const char *wifiMsg = "- WIFI CONFIG -";
+      displayPtr->getTextBounds(wifiMsg, 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusLineY);
+      displayPtr->print(wifiMsg);
+    } else if (isBtSerialOn) {
+      // BT Serial config mode - centered message
+      const char *btMsg = "- BL Serial -";
+      displayPtr->getTextBounds(btMsg, 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusLineY);
+      displayPtr->print(btMsg);
+    } else {
+      // Normal mode - show BLE state
+      const char *bleMode = bleConfigMode                             ? "EDIT"
+                            : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
+                            : systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER"
+                                                                      : "DUAL";
+      const char *bleState = clientConnected ? "Synced" : "Scanning";
+
+      // For SERVER mode or EDIT mode, don't show scanning
+      if (systemConfig.bleMode == BLE_SERVER_ONLY || bleConfigMode) {
+        bleState = clientConnected ? "Synced" : "";
+      }
+
+      char statusLine[32];
+      if (strlen(bleState) > 0) {
+        snprintf(statusLine, sizeof(statusLine), "BLE:%s %s", bleMode,
+                 bleState);
+      } else {
+        snprintf(statusLine, sizeof(statusLine), "BLE:%s", bleMode);
+      }
+      displayPtr->print(statusLine);
+    }
+  }
+
+  displayPtr->display();
+}
+
+void displayTapTempoMode() {
+  displayPtr->clearDisplay();
+  displayPtr->setTextColor(SSD1306_WHITE);
+
+  // Get layout config from oledConfig.tap
+  uint8_t labelSize = oledConfig.tap.labelSize;
+  uint8_t bpmSize = oledConfig.tap.titleSize;
+  uint8_t patternSize = oledConfig.tap.statusSize;
+  uint8_t topRowY = oledConfig.tap.topRowY;
+  uint8_t bpmY = oledConfig.tap.titleY;
+  uint8_t patternY = oledConfig.tap.statusY;
+  uint8_t bottomRowY = oledConfig.tap.bottomRowY;
+
+  // For 128x32, adjust Y positions if needed
+  if (oledConfig.type == OLED_128X32) {
+    if (bpmY > 8)
+      bpmY = 8;
+    if (patternY > 20)
+      patternY = 20;
+    if (bottomRowY > 24)
+      bottomRowY = 24;
+  }
+
+  // Top row: NEXT (left) and LOCK indicator (right)
+  displayPtr->setTextSize(labelSize);
+  displayPtr->setCursor(0, topRowY);
+  displayPtr->print("NEXT");
+
+  // Lock status indicator in top-right
+  displayPtr->setCursor(90, topRowY);
+  if (tapModeLocked) {
+    displayPtr->print("LOCKED");
+  } else {
+    displayPtr->print("LOCK");
+  }
+
+  // BPM - larger, centered
+  displayPtr->setTextSize(bpmSize);
+  char bpmStr[8];
+  snprintf(bpmStr, sizeof(bpmStr), "%.1f", currentBPM);
+  int16_t bx1, by1;
+  uint16_t bw, bh;
+  displayPtr->getTextBounds(bpmStr, 0, 0, &bx1, &by1, &bw, &bh);
+  displayPtr->setCursor((SCREEN_WIDTH - bw) / 2, bpmY);
+  displayPtr->print(bpmStr);
+
+  // Middle-bottom: Pattern and delay time
+  displayPtr->setTextSize(patternSize);
+  displayPtr->setCursor(0, patternY);
+  displayPtr->print("Pattern: ");
+  displayPtr->print(rhythmNames[rhythmPattern]);
+
+  // Delay ms on right of middle row
+  float finalDelayMs =
+      (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
+  int delayTimeMS = (int)finalDelayMs;
+  char delayStr[12];
+  snprintf(delayStr, sizeof(delayStr), "%dms", delayTimeMS);
+  int16_t x1, y1;
+  uint16_t w, h;
+  displayPtr->getTextBounds(delayStr, 0, 0, &x1, &y1, &w, &h);
+  displayPtr->setCursor(SCREEN_WIDTH - w - 2, patternY);
+  displayPtr->print(delayStr);
+
+  // Bottom row: PREV (left) and TAP (right) - skip on 128x32 if no room
+  if (oledConfig.type != OLED_128X32 || bottomRowY < 30) {
+    displayPtr->setTextSize(labelSize);
+    displayPtr->setCursor(0, bottomRowY);
+    displayPtr->print("PREV");
+
+    displayPtr->setCursor(100, bottomRowY);
+    displayPtr->print("TAP");
+  }
+
+  displayPtr->display();
+}
+
+void displayButtonName() {
+  displayPtr->clearDisplay();
+
+  // Get layout config from oledConfig.overlay
+  uint8_t textSize = oledConfig.overlay.titleSize > 0
+                         ? oledConfig.overlay.titleSize
+                         : buttonNameFontSize;
+  int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
+
+  displayPtr->setTextSize(textSize);
+  displayPtr->setTextColor(SSD1306_WHITE);
+  int16_t x1, y1;
+  uint16_t w, h;
+  displayPtr->getTextBounds(buttonNameToShow, 0, 0, &x1, &y1, &w, &h);
+  displayPtr->setCursor((SCREEN_WIDTH - w) / 2, (screenHeight - h) / 2);
+  displayPtr->print(buttonNameToShow);
+  displayPtr->display();
+  displayPtr->setTextSize(1);
+}
+
+void displayMenu() {
+  displayPtr->clearDisplay();
+  displayPtr->setTextColor(SSD1306_WHITE);
+
+  // Get layout config from oledConfig.menu
+  uint8_t headerSize =
+      oledConfig.menu.titleSize > 0 ? oledConfig.menu.titleSize : 1;
+  uint8_t itemSize =
+      oledConfig.menu.labelSize > 0 ? oledConfig.menu.labelSize : 1;
+  uint8_t headerY = oledConfig.menu.topRowY;
+  uint8_t itemStartY = oledConfig.menu.titleY > 0 ? oledConfig.menu.titleY : 14;
+  int lineHeight = (oledConfig.type == OLED_128X32) ? 8 : 10;
+  int maxVisibleItems = (oledConfig.type == OLED_128X32) ? 3 : 5;
+
+  displayPtr->setTextSize(itemSize);
+
+  // Build menu items dynamically to show status
+  char menuItems[13][25]; // Array to hold menu item strings
+  strncpy(menuItems[0], "Save and Exit", 25);
+  strncpy(menuItems[1], "Exit without Saving", 25);
+  snprintf(menuItems[2], 25, "Wi-Fi LoadCfg (%s)", isWifiOn ? "ON" : "OFF");
+  snprintf(menuItems[3], 25, "BT SerialEdit (%s)", isBtSerialOn ? "ON" : "OFF");
+  strncpy(menuItems[4], "LED Bright (On)", 25);
+  strncpy(menuItems[5], "LED Bright (Dim)", 25);
+  strncpy(menuItems[6], "Pad Debounce", 25);
+  strncpy(menuItems[7], "Clear BLE Bonds", 25);
+  strncpy(menuItems[8], "Reboot", 25);
+  strncpy(menuItems[9], "Factory Reset", 25);
+  strncpy(menuItems[10], "Name Font Size", 25);
+  snprintf(menuItems[11], 25, "Wifi %s at Boot",
+           systemConfig.wifiOnAtBoot ? "ON" : "OFF");
+  // BLE Mode display - includes EDIT option for config mode
+  const char *bleModeStr = bleConfigMode                             ? "EDIT"
+                           : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
+                           : systemConfig.bleMode == BLE_DUAL_MODE   ? "DUAL"
+                                                                     : "SERVER";
+  snprintf(menuItems[12], 25, "BLE Mode: %s", bleModeStr);
+
+  int numMenuItems = 13;
+
+  displayPtr->setCursor(0, 0);
+  displayPtr->printf("-- Menu CHOCOTONE --");
+
+  if (factoryResetConfirm) {
+    // Factory Reset confirmation submenu
+    displayPtr->setCursor(0, 0);
+    displayPtr->printf("-- WARNING! --");
+    displayPtr->setCursor(0, 14);
+    displayPtr->print("Clear all settings?");
+    displayPtr->setCursor(0, 28);
+    displayPtr->print("This cannot be undone!");
+
+    // Show Yes/No options
+    displayPtr->setCursor(10, 46);
+    if (editingValue == 0) {
+      displayPtr->print("> Yes, Reset");
+    } else {
+      displayPtr->print("  Yes, Reset");
+    }
+    displayPtr->setCursor(10, 56);
+    if (editingValue == 1) {
+      displayPtr->print("> No, Go Back");
+    } else {
+      displayPtr->print("  No, Go Back");
+    }
+  } else if (inSubMenu) {
+    displayPtr->setCursor(10, 20);
+    displayPtr->printf("Editing: %s", menuItems[menuSelection]);
+    displayPtr->setTextSize(2);
+    char valueStr[10];
+    snprintf(valueStr, sizeof(valueStr), "%d", editingValue);
+    int16_t x1, y1;
+    uint16_t w, h;
+    displayPtr->getTextBounds(valueStr, 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((SCREEN_WIDTH - w) / 2, 40);
+    displayPtr->print(valueStr);
+    displayPtr->setTextSize(1);
+  } else {
+    // Show menu items with scrolling
+    int lineOffset = menuSelection - (maxVisibleItems / 2);
+    if (lineOffset < 0)
+      lineOffset = 0;
+    if (lineOffset > numMenuItems - maxVisibleItems)
+      lineOffset = numMenuItems - maxVisibleItems;
+
+    for (int i = 0; i < numMenuItems; i++) {
+      int displayLine = i - lineOffset;
+      if (displayLine >= 0 && displayLine < maxVisibleItems) {
+        displayPtr->setCursor(0, itemStartY + (displayLine * lineHeight));
+        if (i == menuSelection) {
+          displayPtr->print("> ");
+        } else {
+          displayPtr->print("  ");
+        }
+        displayPtr->print(menuItems[i]);
+      }
+    }
+  }
+  displayPtr->display();
+}
+
+void updateLeds() {
+  // WiFi-safe LED updates: use increased heap threshold and rate limiting
+  // ESP32 RMT peripheral handles NeoPixel timing, but WiFi can still
+  // interfere
+
+  // Skip LED updates when heap is critically low
+  // Threshold lowered to allow updates even with WiFi on (heap ~13KB)
+  int heapThreshold = isWifiOn ? 10000 : 15000;
+  if (ESP.getFreeHeap() < heapThreshold) {
+    Serial.printf("LED update skipped: heap %d < %d\n", ESP.getFreeHeap(),
+                  heapThreshold);
+    return; // Safety: prevent crash from memory pressure
+  }
+
+  // Rate limit: don't update LEDs more than every 50ms when WiFi is on
+  // This gives WiFi stack time to process packets between LED updates
+  static unsigned long lastLedUpdate = 0;
+  if (isWifiOn && (millis() - lastLedUpdate < 50)) {
+    return; // Throttle to prevent WiFi interference
+  }
+  lastLedUpdate = millis();
+
+  bool needsUpdate = false;
+
+  // Update tap tempo blink timing (non-blocking state machine)
+  // Now uses rhythm-adjusted delay value and works in tap tempo mode too
+  if (currentMode == 0 && currentBPM > 0) {
+    // Calculate the FINAL delay ms (with rhythm pattern applied) - same as
+    // sent to SPM
+    float finalDelayMs =
+        (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
+    unsigned long blinkInterval = (unsigned long)finalDelayMs;
+    unsigned long now = millis();
+
+    // State machine: OFF -> ON (at beat) -> OFF (after 50ms flash)
+    if (tapBlinkState && (now - lastTapBlinkTime >= 50)) {
+      tapBlinkState = false;
+    } else if (!tapBlinkState && (now - lastTapBlinkTime >= blinkInterval)) {
+      tapBlinkState = true;
+      lastTapBlinkTime = now;
+    }
+  } else {
+    tapBlinkState = false;
+  }
+
+  // LEDs per button - determines single LED mode (with mapping) vs strip mode
+  // (sequential)
+  uint8_t lpb = systemConfig.ledsPerButton;
+  if (lpb < 1)
+    lpb = 1; // Safety minimum
+
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    const ButtonConfig &config = buttonConfigs[currentPreset][i];
+
+    // Safety: bounds check messageCount to prevent garbage data crashes
+    uint8_t safeMessageCount = config.messageCount;
+    if (safeMessageCount > MAX_ACTIONS_PER_BUTTON)
+      safeMessageCount = 0;
+
+    // Find the active message (PRESS or 2ND_PRESS based on toggle state)
+    const ActionMessage *msg = nullptr;
+    ActionType targetAction =
+        config.isAlternate ? ACTION_2ND_PRESS : ACTION_PRESS;
+    for (int m = 0; m < safeMessageCount; m++) {
+      if (config.messages[m].action == targetAction) {
+        msg = &config.messages[m];
+        break;
+      }
+    }
+    // Fallback to first message if target action not found
+    if (!msg && safeMessageCount > 0) {
+      msg = &config.messages[0];
+    }
+
+    // TAP_TEMPO buttons use blink state, others use normal brightness
+    bool isTapTempo = (msg && msg->type == TAP_TEMPO);
+    int brightness;
+
+    if (isTapTempo && tapBlinkState) {
+      brightness = 255; // Full bright during flash
+    } else {
+      // Determine LED active state based on preset LED mode
+      bool ledActive;
+      PresetLedMode presetMode = presetLedModes[currentPreset];
+      int8_t selectedBtn = presetSelectionState[currentPreset];
+
+      if (presetMode == PRESET_LED_SELECTION) {
+        // All buttons in selection mode - selected button is ON
+        ledActive = (i == selectedBtn);
+      } else if (presetMode == PRESET_LED_HYBRID && config.inSelectionGroup) {
+        // This button is in selection group - check if it's the selected one
+        ledActive = (i == selectedBtn);
+      } else {
+        // Normal mode or Hybrid non-selection button - use existing
+        // Toggle/Momentary logic
+        if (config.ledMode == LED_TOGGLE) {
+          ledActive = ledToggleState[i]; // Use toggle state (persistent)
+        } else {
+          ledActive =
+              buttonPinActive[i]; // Use physical press state (momentary)
+        }
+      }
+      brightness = ledActive ? ledBrightnessOn : ledBrightnessDim;
+    }
+
+    // Get RGB from message (default to dim purple if no message)
+    int r = msg ? (msg->rgb[0] * brightness) / 255 : 0;
+    int g = msg ? (msg->rgb[1] * brightness) / 255 : 0;
+    int b = msg ? (msg->rgb[2] * brightness) / 255 : 0;
+
+    uint32_t newColor = strip.Color(r, g, b);
+
+    if (lpb == 1) {
+      // SINGLE LED MODE: Use systemConfig.ledMap for backward compatibility
+      // ledMap remaps button index to physical LED index
+      if (isTapTempo || newColor != lastLedColors[i]) {
+        strip.setPixelColor(systemConfig.ledMap[i], newColor);
+        lastLedColors[i] = newColor;
+        needsUpdate = true;
+      }
+    } else {
+      // STRIP MODE: Each button controls a segment of consecutive LEDs
+      // Button i controls LEDs: (i * lpb) to ((i+1) * lpb - 1)
+      int startLed = i * lpb;
+      int endLed = startLed + lpb;
+
+      for (int led = startLed; led < endLed; led++) {
+        if (isTapTempo || newColor != lastLedColors[i]) {
+          strip.setPixelColor(led, newColor);
+          needsUpdate = true;
+        }
+      }
+      lastLedColors[i] = newColor; // Track by button
+    }
+  }
+
+  // Only call strip.show() if something actually changed
+  if (needsUpdate) {
+    yield(); // Give WiFi stack time before LED update
+    strip.show();
+    yield(); // Give WiFi stack time after LED update
+  }
+}
+
+void blinkAllLeds() {
+  // Save current state
+  uint32_t savedColors[NUM_LEDS];
+  for (int i = 0; i < NUM_LEDS; i++) {
+    savedColors[i] = strip.getPixelColor(i);
+  }
+
+  // Flash at REDUCED brightness (25% instead of 100%)
+  // Prevents power spike: 60mA instead of 480mA
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(64, 64, 64)); // Was 255,255,255
+  }
+  strip.show();
+  delay(100);
+
+  // Restore
+  for (int i = 0; i < NUM_LEDS; i++) {
+    strip.setPixelColor(i, savedColors[i]);
+  }
+  strip.show();
+}
+
+void blinkTapButton(int buttonIndex) {
+  // Blink only the tap tempo button's LED using configurable brightness
+  uint8_t lpb = systemConfig.ledsPerButton;
+  if (lpb < 1)
+    lpb = 1;
+
+  // Calculate white color at configured brightness
+  uint8_t tapBright = constrain(ledBrightnessTap, 0, 255);
+
+  if (lpb == 1) {
+    // Single LED mode - use ledMap
+    int ledIndex = systemConfig.ledMap[buttonIndex];
+    uint32_t savedColor = strip.getPixelColor(ledIndex);
+
+    strip.setPixelColor(ledIndex, strip.Color(tapBright, tapBright, tapBright));
+    strip.show();
+    delay(50);
+
+    strip.setPixelColor(ledIndex, savedColor);
+    strip.show();
+  } else {
+    // Strip mode - button controls multiple LEDs
+    int startLed = buttonIndex * lpb;
+    int endLed = startLed + lpb;
+    uint32_t savedColors[lpb];
+
+    // Save and flash
+    for (int i = startLed; i < endLed; i++) {
+      savedColors[i - startLed] = strip.getPixelColor(i);
+      strip.setPixelColor(i, strip.Color(tapBright, tapBright, tapBright));
+    }
+    strip.show();
+    delay(50);
+
+    // Restore
+    for (int i = startLed; i < endLed; i++) {
+      strip.setPixelColor(i, savedColors[i - startLed]);
+    }
+    strip.show();
+  }
+}
+
+// ============================================================================
+// OLED Health Monitoring & Auto-Recovery System
+// ============================================================================
+
+bool checkOledHealth() {
+  // Check every 500ms to avoid overhead
+  if (millis() - lastOledCheck < 500) {
+    return oledHealthy;
+  }
+  lastOledCheck = millis();
+
+  // Try a simple I2C communication test to 0x3C (OLED address)
+  Wire.beginTransmission(0x3C);
+  byte error = Wire.endTransmission();
+
+  if (error != 0) {
+    // OLED not responding
+    if (oledHealthy) {
+      Serial.println("OLED not responding, attempting recovery...");
+    }
+    oledHealthy = false;
+    recoverOled();
+  } else {
+    if (!oledHealthy) {
+      Serial.println("OLED communication restored");
+    }
+    oledHealthy = true;
+  }
+
+  return oledHealthy;
+}
+
+void recoverOled() {
+  Serial.println("Attempting OLED recovery...");
+
+  // Reset I2C bus
+  Wire.end();
+  delay(10);
+  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+  Wire.setClock(100000); // 100kHz for stability
+  delay(10);
+
+  // Try to reinitialize display
+  if (displayPtr->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    oledHealthy = true;
+    Serial.println("OLED recovered successfully!");
+    displayOLED(); // Redraw screen
+  } else {
+    Serial.println("OLED recovery failed - will retry");
+  }
+}
+
+void safeDisplayOLED() {
+  // Check OLED health before updating
+  if (checkOledHealth()) {
+    displayOLED();
+  }
+  // If unhealthy, recovery is already attempted by checkOledHealth()
+}
+
+// Hardware Init
+void initDisplayHardware() {
+  if (displayPtr != nullptr) {
+    delete displayPtr;
+    displayPtr = nullptr;
+  }
+
+  // Create object with dynamic height based on config
+  // Note: SCREEN_HEIGHT from config.h is ignored here in favor of dynamic
+  // height
+  int h = (oledConfig.type == OLED_128X32) ? 32 : 64;
+  displayPtr = new Adafruit_SSD1306(SCREEN_WIDTH, h, &Wire, OLED_RESET);
+
+  if (!displayPtr->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed (re-init)"));
+    // We can't do much if it fails.
+    return;
+  }
+
+  // Apply rotation (0=normal, 1=90°CW, 2=180°, 3=270°CW)
+  displayPtr->setRotation(oledConfig.rotation);
+
+  displayPtr->clearDisplay();
+  displayPtr->setTextColor(SSD1306_WHITE);
+  displayPtr->display();
+
+  Serial.printf("OLED Initialized: %dx%d, rotation=%d\n", SCREEN_WIDTH, h,
+                oledConfig.rotation);
+}

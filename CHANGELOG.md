@@ -2,6 +2,28 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
+## [v1.5] - 2024-12-31 (BETA)
+
+### Added
+- **128x32 OLED Support** - Full layout adaptation for smaller displays.
+  - Compact horizontal layout (Preset | Status | BPM) for 128x32.
+  - Dynamic display initialization based on config.
+  - Support for 0, 90, 180, 270 degree rotation.
+- **OLED Layout Editor** - Configure Y-positions and text sizes per screen (Main, Menu, Tap, Overlay) via USB.
+- **Enhanced Analog Inputs** - Support for up to 4 inputs (ADC pins 32-39).
+  - Modes: Potentiometer, FSR (Force Sensitive Resistor), Piezo (Drum Pad), and Switch.
+  - Signal conditioning: 64x oversampling, EMA smoothing, and hysteresis.
+  - Real-time value display on OLED (e.g., "A1.127").
+- **Serial Debugging** - Throttled debug prints for raw/smoothed analog readings and OLED layout info.
+
+### Fixed
+- **OLED Configuration Persistence** - `oledConfig` now correctly saves to and loads from NVS.
+- **USB Serial Config Parsing** - Added full parsing for OLED and Analog Input settings in `WebInterface.cpp`.
+- **128x32 Layout Overlap** - Fixed centered text overlap on smaller screens by switching to optimized horizontal layout.
+- **Rotation Handling** - Fixed rotation not applying on reboot.
+
+---
+
 ## [v1.4] - 2024-12-21
 
 ### Added
