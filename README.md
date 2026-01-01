@@ -383,8 +383,21 @@ My prototype was initially intended to be a "Chocolate Plus Pro Max," with added
 
 It shares its name with a Brazilian Christmas dessert (a chocolate-filled Panettone), which is fitting for a Brazilian controller created during Christmastime. The name stuck, and here we are. In my defense, the colorful RGB LEDs certainly contribute to the candy theme.
 
-> [!NOTE]
 > Not to be confused with **Chocottone**, the trademark registered by Bauducco for the most popular version of this chocolate-filled bread. Delicious!
+
+## Support the Project ❤️
+
+I'm an independent developer and musician, and Chocotone is a passion project that I share with the community for free.
+
+Maintaining an open-source project like this takes a significant amount of time and effort—not to mention the personal costs for hardware, testing equipment, and prototypes to ensure everything works perfectly for you.
+
+If Chocotone has helped you build your dream controller, saved you money on commercial gear, or if you simply appreciate the work I'm doing, please consider making a donation. Your support directly helps cover these costs and keeps the project alive and growing!
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg?logo=paypal&style=for-the-badge)](https://www.paypal.com/donate/?hosted_button_id=8LFC5Z8ASFTLG)
+
+**[Click here to donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=8LFC5Z8ASFTLG)**
+
+Every contribution, no matter the size, makes a difference. Thank you for being part of this journey! 🙏
 
 ## Special Thanks
 
