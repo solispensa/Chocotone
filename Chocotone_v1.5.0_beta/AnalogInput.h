@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 // Signal conditioning constants
-#define MAX_ANALOG_INPUTS 4
+#define MAX_ANALOG_INPUTS 16
 #define OVERSAMPLE_COUNT 64
 #define DEFAULT_EMA_ALPHA 0.05f
 #define DEFAULT_HYSTERESIS 3

@@ -40,7 +40,8 @@
   - Tap tempo blink feedback on all LEDs
 - **WiFi Access Point** - Wireless configuration via web browser
 - **Configurable GPIO** - Customize button pin assignments via web editor
-- **Analog Inputs (v1.5)** - Up to 4 analog inputs for expression pedals, pots, FSRs, piezo, switches
+- **Analog Inputs (v1.5)** - Up to 16 analog inputs for expression pedals, pots, FSRs, piezo, switches
+  - Direct GPIO support (6 ADC1 pins) or multiplexer (CD74HC4067/CD74HC4051)
   - Configurable signal processing: oversampling, smoothing, hysteresis
   - Multi-message support with input/output range mapping
 - **128x32 OLED Support (v1.5)** - Compact displays with optimized layouts
