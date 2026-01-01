@@ -33,7 +33,7 @@
 ## Features
 
 ### Hardware
-- **4-10 Programmable Buttons** - Configurable button count with MIDI messages and LED feedback
+- **Up to 16 Programmable Buttons** - Configurable button count with MIDI messages and LED feedback
 - **OLED Display (128x64)** - Real-time status, preset names, and menu system  
 - **Rotary Encoder** - Navigation and parameter adjustment
 - **NeoPixel LEDs** - Visual feedback with customizable colors and brightness
