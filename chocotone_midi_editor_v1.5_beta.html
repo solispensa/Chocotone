@@ -2750,6 +2750,8 @@
                                 if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
                                 if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
                                 if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                                if (data.system.analogInputCount !== undefined) presetData.system.analogInputCount = data.system.analogInputCount;
+                                if (data.system.debugAnalogIn !== undefined) presetData.system.debugAnalogIn = data.system.debugAnalogIn;
 
                                 // Merge OLED config if present (v1.5 beta)
                                 if (data.system.oled) {

@@ -2829,6 +2829,8 @@ void handleSerialConfig() {
           Serial.print("{\"enabled\":");
           Serial.print(cfg.enabled ? "true" : "false");
           Serial.print(",\"source\":\"");
+          Serial.print(cfg.source == AIN_SOURCE_MUX ? "mux" : "gpio");
+          Serial.print("\",\"pin\":");
           Serial.print(cfg.pin);
           Serial.print(",\"name\":\"");
           Serial.print(cfg.name);
@@ -2843,6 +2845,7 @@ void handleSerialConfig() {
                                   : (cfg.actionType == AIN_ACTION_JOYSTICK
                                          ? "joystick"
                                          : "linear_linear")));
+          Serial.print("\"");
 
           if (cfg.actionType == AIN_ACTION_LOG ||
               cfg.actionType == AIN_ACTION_EXP) {

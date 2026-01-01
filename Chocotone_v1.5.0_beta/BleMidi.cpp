@@ -11,7 +11,6 @@
 #include <BLEScan.h>
 #include <BLEServer.h>
 
-
 #define MIDI_SERVICE_UUID "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
 
@@ -85,28 +84,39 @@ BLECharacteristic *pConfigTxCharacteristic = nullptr;
 bool configClientConnected = false;
 String bleConfigBuffer = ""; // Buffer for incoming config data
 
-// ============================================
-// BLE SERVER CALLBACKS (for DAW/App connections)
-// ============================================
+// Flag to signal that advertising needs to restart (checked in main loop)
+volatile bool restartAdvertisingPending = false;
 
 class ServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer *pServer) {
+  void onConnect(BLEServer *pServer, esp_ble_gatts_cb_param_t *param) {
     serverConnected = true;
     Serial.println("BLE Server: Device connected (DAW/App)");
-    // Note: In dual mode, we may want to stop advertising to save power
-    // But we'll keep advertising to allow reconnection
+
+    // Update connection parameters for stability
+    // Min interval: 15ms (12 * 1.25ms), Max interval: 30ms (24 * 1.25ms)
+    // Latency: 0 (respond to every packet)
+    // Timeout: 2000ms (200 * 10ms) - much longer than default
+    pServer->updateConnParams(param->connect.remote_bda, 12, 24, 0, 200);
+    Serial.println("BLE Server: Updated connection params (timeout=2s)");
+
+    // In DUAL mode, pause scanning briefly to stabilize the new connection
+    if (systemConfig.bleMode == BLE_DUAL_MODE) {
+      BLEScan *pScan = BLEDevice::getScan();
+      if (pScan) {
+        pScan->stop();
+      }
+    }
   }
 
   void onDisconnect(BLEServer *pServer) {
     serverConnected = false;
-    configClientConnected = false; // Also mark config client as disconnected
+    configClientConnected = false;
     Serial.println("BLE Server: Device disconnected");
-    // Restart advertising for reconnection
-    // Also restart if bleConfigMode is active (for web editor connections)
+
+    // Don't use delay() in callback - set flag for main loop to handle
     if (systemConfig.bleMode != BLE_CLIENT_ONLY || bleConfigMode) {
-      delay(100); // Small delay before restarting advertising
-      BLEDevice::startAdvertising();
-      Serial.println("BLE Server: Advertising restarted");
+      restartAdvertisingPending = true;
+      Serial.println("BLE Server: Advertising restart pending...");
     }
   }
 };
@@ -192,6 +202,10 @@ void setup_ble_server() {
                                                // low-latency
   );
 
+  // Allow access without encryption for maximum compatibility with DAWs
+  pServerMidiCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ |
+                                                  ESP_GATT_PERM_WRITE);
+
   // Add Client Characteristic Configuration Descriptor (required for
   // notifications)
   pServerMidiCharacteristic->addDescriptor(new BLE2902());
@@ -206,8 +220,13 @@ void setup_ble_server() {
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(MIDI_SERVICE_UUID);
   pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06); // Help with iPhone connection issues
-  pAdvertising->setMinPreferred(0x12);
+  // Connection interval preferences (in 1.25ms units)
+  // 0x06 = 7.5ms min, 0x12 = 22.5ms max - good for MIDI latency
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMaxPreferred(0x12);
+
+  // Set appearance to Generic Audio Device for better discovery
+  pAdvertising->setAppearance(0x0840); // Generic Media Player
 
   // Start advertising
   BLEDevice::startAdvertising();
@@ -351,14 +370,30 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
 };
 
 void setup_ble_midi() {
+  Serial.printf("Initializing BLE with name: '%s' (len=%d)\n",
+                systemConfig.bleDeviceName, strlen(systemConfig.bleDeviceName));
   BLEDevice::init(systemConfig.bleDeviceName);
-  BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
-  BLEDevice::setSecurityCallbacks(new MySecurityCallbacks());
 
-  BLESecurity *pSecurity = new BLESecurity();
-  pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
-  pSecurity->setCapability(ESP_IO_CAP_NONE);
-  pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+  // Security settings depend on BLE mode
+  // CLIENT mode needs encryption for SPM pairing
+  // SERVER mode should have NO security for Windows/Mac DAW compatibility
+  if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
+    // Client mode: require encryption for SPM connection
+    BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
+    BLEDevice::setSecurityCallbacks(new MySecurityCallbacks());
+
+    BLESecurity *pSecurity = new BLESecurity();
+    pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+    pSecurity->setCapability(ESP_IO_CAP_NONE);
+    pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+
+    Serial.println("BLE Security: Encryption enabled (Client mode)");
+  } else {
+    // Server or Dual mode: NO security for maximum DAW compatibility
+    // Windows BLE MIDI often fails with any security requirements
+    Serial.println(
+        "BLE Security: Disabled (Server/Dual mode for DAW compatibility)");
+  }
 
   // Initialize based on configured BLE mode
   Serial.printf("BLE Mode: %s\n", systemConfig.bleMode == BLE_CLIENT_ONLY
@@ -1101,6 +1136,14 @@ void checkForSysex() {
 }
 
 void handleBleConnection() {
+  // Handle deferred advertising restart (set by onDisconnect callback)
+  if (restartAdvertisingPending) {
+    restartAdvertisingPending = false;
+    delay(50); // Small delay outside of callback context is safer
+    BLEDevice::startAdvertising();
+    Serial.println("BLE Server: Advertising restarted");
+  }
+
   // Don't scan if WiFi is active (doScan is false when WiFi on)
   if (!doScan) {
     return; // BLE paused for WiFi stability
