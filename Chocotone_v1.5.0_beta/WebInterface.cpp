@@ -2533,7 +2533,68 @@ void handleSerialConfig() {
         Serial.print(ledBrightnessDim);
         Serial.print(",\"brightnessTap\":");
         Serial.print(ledBrightnessTap);
-        Serial.print("},\"analogInputs\":[");
+        Serial.print("},\"oled\":{");
+        Serial.print("\"type\":\"");
+        Serial.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
+        Serial.print("\",\"rotation\":");
+        Serial.print(oledConfig.rotation * 90);
+        Serial.print(",\"screens\":{");
+
+        // Main Screen
+        Serial.print("\"main\":{");
+        Serial.print("\"labelSize\":");
+        Serial.print(oledConfig.main.labelSize);
+        Serial.print(",\"titleSize\":");
+        Serial.print(oledConfig.main.titleSize);
+        Serial.print(",\"statusSize\":");
+        Serial.print(oledConfig.main.statusSize);
+        Serial.print(",\"topRowY\":");
+        Serial.print(oledConfig.main.topRowY);
+        Serial.print(",\"titleY\":");
+        Serial.print(oledConfig.main.titleY);
+        Serial.print(",\"statusY\":");
+        Serial.print(oledConfig.main.statusY);
+        Serial.print(",\"bottomRowY\":");
+        Serial.print(oledConfig.main.bottomRowY);
+        Serial.print(",\"showBpm\":");
+        Serial.print(oledConfig.main.showBpm ? "true" : "false");
+        Serial.print(",\"showAnalog\":");
+        Serial.print(oledConfig.main.showAnalog ? "true" : "false");
+
+        // Menu Screen
+        Serial.print("},\"menu\":{");
+        Serial.print("\"itemSize\":");
+        Serial.print(oledConfig.menu.labelSize);
+        Serial.print(",\"headerSize\":");
+        Serial.print(oledConfig.menu.titleSize);
+        Serial.print(",\"headerY\":");
+        Serial.print(oledConfig.menu.topRowY);
+        Serial.print(",\"itemStartY\":");
+        Serial.print(oledConfig.menu.titleY);
+
+        // Tap Screen
+        Serial.print("},\"tap\":{");
+        Serial.print("\"labelSize\":");
+        Serial.print(oledConfig.tap.labelSize);
+        Serial.print(",\"bpmSize\":");
+        Serial.print(oledConfig.tap.titleSize);
+        Serial.print(",\"patternSize\":");
+        Serial.print(oledConfig.tap.statusSize);
+        Serial.print(",\"labelTopY\":");
+        Serial.print(oledConfig.tap.topRowY);
+        Serial.print(",\"bpmY\":");
+        Serial.print(oledConfig.tap.titleY);
+        Serial.print(",\"patternY\":");
+        Serial.print(oledConfig.tap.statusY);
+        Serial.print(",\"labelBottomY\":");
+        Serial.print(oledConfig.tap.bottomRowY);
+
+        // Overlay Screen
+        Serial.print("},\"overlay\":{\"textSize\":");
+        Serial.print(oledConfig.overlay.titleSize);
+        Serial.print("}}}"); // Close overlay, screens, oled
+
+        Serial.print(",\"analogInputs\":[");
 
         // Analog Inputs (Serial Export)
         for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
@@ -2591,7 +2652,7 @@ void handleSerialConfig() {
           }
           Serial.print("]}");
         }
-        Serial.print("}");
+        Serial.print("]}"); // Close analogInputs array AND the root object
 
         Serial.println();
         Serial.println("CONFIG_END");
@@ -3354,7 +3415,127 @@ void handleBtSerialConfig() {
         SerialBT.print(ledBrightnessDim);
         SerialBT.print(",\"brightnessTap\":");
         SerialBT.print(ledBrightnessTap);
-        SerialBT.print("}}");
+        SerialBT.print("},\"oled\":{");
+        SerialBT.print("\"type\":\"");
+        SerialBT.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
+        SerialBT.print("\",\"rotation\":");
+        SerialBT.print(oledConfig.rotation * 90);
+        SerialBT.print(",\"screens\":{");
+
+        // Main Screen
+        SerialBT.print("\"main\":{");
+        SerialBT.print("\"labelSize\":");
+        SerialBT.print(oledConfig.main.labelSize);
+        SerialBT.print(",\"titleSize\":");
+        SerialBT.print(oledConfig.main.titleSize);
+        SerialBT.print(",\"statusSize\":");
+        SerialBT.print(oledConfig.main.statusSize);
+        SerialBT.print(",\"topRowY\":");
+        SerialBT.print(oledConfig.main.topRowY);
+        SerialBT.print(",\"titleY\":");
+        SerialBT.print(oledConfig.main.titleY);
+        SerialBT.print(",\"statusY\":");
+        SerialBT.print(oledConfig.main.statusY);
+        SerialBT.print(",\"bottomRowY\":");
+        SerialBT.print(oledConfig.main.bottomRowY);
+        SerialBT.print(",\"showBpm\":");
+        SerialBT.print(oledConfig.main.showBpm ? "true" : "false");
+        SerialBT.print(",\"showAnalog\":");
+        SerialBT.print(oledConfig.main.showAnalog ? "true" : "false");
+
+        // Menu Screen
+        SerialBT.print("},\"menu\":{");
+        SerialBT.print("\"itemSize\":");
+        SerialBT.print(oledConfig.menu.labelSize);
+        SerialBT.print(",\"headerSize\":");
+        SerialBT.print(oledConfig.menu.titleSize);
+        SerialBT.print(",\"headerY\":");
+        SerialBT.print(oledConfig.menu.topRowY);
+        SerialBT.print(",\"itemStartY\":");
+        SerialBT.print(oledConfig.menu.titleY);
+
+        // Tap Screen
+        SerialBT.print("},\"tap\":{");
+        SerialBT.print("\"labelSize\":");
+        SerialBT.print(oledConfig.tap.labelSize);
+        SerialBT.print(",\"bpmSize\":");
+        SerialBT.print(oledConfig.tap.titleSize);
+        SerialBT.print(",\"patternSize\":");
+        SerialBT.print(oledConfig.tap.statusSize);
+        SerialBT.print(",\"labelTopY\":");
+        SerialBT.print(oledConfig.tap.topRowY);
+        SerialBT.print(",\"bpmY\":");
+        SerialBT.print(oledConfig.tap.titleY);
+        SerialBT.print(",\"patternY\":");
+        SerialBT.print(oledConfig.tap.statusY);
+        SerialBT.print(",\"labelBottomY\":");
+        SerialBT.print(oledConfig.tap.bottomRowY);
+
+        // Overlay Screen
+        SerialBT.print("},\"overlay\":{\"textSize\":");
+        SerialBT.print(oledConfig.overlay.titleSize);
+        SerialBT.print("}}}"); // Close overlay, screens, oled
+
+        SerialBT.print(",\"analogInputs\":[");
+
+        // Analog Inputs (BT Export)
+        for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+          yield(); // Feed watchdog
+          if (i > 0)
+            SerialBT.print(",");
+          AnalogInputConfig &cfg = analogInputs[i];
+
+          SerialBT.print("{\"enabled\":");
+          SerialBT.print(cfg.enabled ? "true" : "false");
+          SerialBT.print(",\"pin\":");
+          SerialBT.print(cfg.pin);
+          SerialBT.print(",\"name\":\"");
+          SerialBT.print(cfg.name);
+          SerialBT.print("\",\"inputMode\":");
+          SerialBT.print(cfg.inputMode);
+
+          SerialBT.print(",\"piezoThreshold\":");
+          SerialBT.print(cfg.piezoThreshold);
+          SerialBT.print(",\"piezoScanTime\":");
+          SerialBT.print(cfg.piezoScanTime);
+          SerialBT.print(",\"piezoMaskTime\":");
+          SerialBT.print(cfg.piezoMaskTime);
+          SerialBT.print(",\"fsrThreshold\":");
+          SerialBT.print(cfg.fsrThreshold);
+
+          SerialBT.print(",\"minVal\":");
+          SerialBT.print(cfg.minVal);
+          SerialBT.print(",\"maxVal\":");
+          SerialBT.print(cfg.maxVal);
+          SerialBT.print(",\"inverted\":");
+          SerialBT.print(cfg.inverted ? "true" : "false");
+          SerialBT.print(",\"emaAlpha\":");
+          SerialBT.print(cfg.emaAlpha);
+          SerialBT.print(",\"hysteresis\":");
+          SerialBT.print(cfg.hysteresis);
+
+          SerialBT.print(",\"messages\":[");
+          for (int m = 0; m < cfg.messageCount; m++) {
+            if (m > 0)
+              SerialBT.print(",");
+            ActionMessage &msg = cfg.messages[m];
+            SerialBT.print("{\"type\":\"");
+            SerialBT.print(getCommandTypeString(msg.type));
+            SerialBT.print("\",\"channel\":");
+            SerialBT.print(msg.channel);
+            SerialBT.print(",\"data1\":");
+            SerialBT.print(msg.data1);
+            SerialBT.print(",\"data2\":");
+            SerialBT.print(msg.data2);
+            SerialBT.print(",\"inMin\":");
+            SerialBT.print(msg.minInput);
+            SerialBT.print(",\"inMax\":");
+            SerialBT.print(msg.maxInput);
+            SerialBT.print("}");
+          }
+          SerialBT.print("]}");
+        }
+        SerialBT.print("]}"); // Close analogInputs array AND the root object
 
         SerialBT.println();
         SerialBT.println("CONFIG_END");
