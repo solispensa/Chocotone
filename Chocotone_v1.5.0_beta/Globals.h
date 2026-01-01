@@ -156,28 +156,28 @@ struct MultiplexerConfig {
   char type[16]; // e.g. "cd74hc4067"
   uint8_t signalPin;
   uint8_t selectPins[4];
-  char useFor[8]; // "analog" or "buttons" or "both"
-  int8_t
-      buttonChannels[10]; // Mux channel for each physical button (-1 = not mux)
+  char useFor[8];                     // "analog" or "buttons" or "both"
+  int8_t buttonChannels[MAX_BUTTONS]; // Mux channel for each physical button
+                                      // (-1 = not mux)
 };
 
 // ============================================
 // SYSTEM CONFIG (~130 bytes)
 // ============================================
 struct SystemConfig {
-  char bleDeviceName[24]; // 24 bytes
-  char apSSID[24];        // 24 bytes
-  char apPassword[16];    // 16 bytes
-  uint8_t buttonCount;    // 1 byte
-  uint8_t buttonPins[10]; // 10 bytes
-  uint8_t ledPin;         // 1 byte
-  uint8_t encoderA;       // 1 byte
-  uint8_t encoderB;       // 1 byte
-  uint8_t encoderBtn;     // 1 byte
-  bool wifiOnAtBoot;      // 1 byte
-  BleMode bleMode;        // 1 byte
-  uint8_t ledsPerButton;  // 1 byte
-  uint8_t ledMap[10];     // 10 bytes
+  char bleDeviceName[24];          // 24 bytes
+  char apSSID[24];                 // 24 bytes
+  char apPassword[16];             // 16 bytes
+  uint8_t buttonCount;             // 1 byte
+  uint8_t buttonPins[MAX_BUTTONS]; // MAX_BUTTONS bytes
+  uint8_t ledPin;                  // 1 byte
+  uint8_t encoderA;                // 1 byte
+  uint8_t encoderB;                // 1 byte
+  uint8_t encoderBtn;              // 1 byte
+  bool wifiOnAtBoot;               // 1 byte
+  BleMode bleMode;                 // 1 byte
+  uint8_t ledsPerButton;           // 1 byte
+  uint8_t ledMap[MAX_BUTTONS];     // MAX_BUTTONS bytes
 
   // Device abstraction (v3.1)
   DeviceType

@@ -111,8 +111,8 @@ void loadSystemSettings() {
       systemPrefs.getInt("s_btnCount", DEFAULT_BUTTON_COUNT);
   if (systemConfig.buttonCount < 4)
     systemConfig.buttonCount = 4;
-  if (systemConfig.buttonCount > 10)
-    systemConfig.buttonCount = 10;
+  if (systemConfig.buttonCount > MAX_BUTTONS)
+    systemConfig.buttonCount = MAX_BUTTONS;
 
   systemPrefs.getBytes("s_btnPins", systemConfig.buttonPins,
                        sizeof(systemConfig.buttonPins));
@@ -130,8 +130,9 @@ void loadSystemSettings() {
     systemPrefs.getBytes("s_ledMap", systemConfig.ledMap,
                          sizeof(systemConfig.ledMap));
   } else {
-    // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}
-    uint8_t defaultMap[] = {0, 1, 2, 3, 7, 6, 5, 4, 8, 9};
+    // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9, 10, 11...}
+    uint8_t defaultMap[MAX_BUTTONS] = {0, 1, 2,  3,  7,  6,  5,  4,
+                                       8, 9, 10, 11, 12, 13, 14, 15};
     memcpy(systemConfig.ledMap, defaultMap, sizeof(systemConfig.ledMap));
   }
 
@@ -150,7 +151,7 @@ void loadSystemSettings() {
                          sizeof(MultiplexerConfig));
   } else {
     systemConfig.multiplexer.enabled = false;
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < MAX_BUTTONS; i++)
       systemConfig.multiplexer.buttonChannels[i] = -1;
   }
 

@@ -17,15 +17,16 @@
 #define OLED_RESET -1
 
 // v2.0 Dynamic Button Configuration
-#define MAX_BUTTONS 10                // Maximum supported buttons
-#define DEFAULT_BUTTON_COUNT 8        // Default active buttons
-#define NUM_BUTTONS DEFAULT_BUTTON_COUNT  // Backward compatibility
-#define NUM_LEDS MAX_BUTTONS          // LEDs match max buttons
+#define MAX_BUTTONS 16                   // Maximum supported buttons
+#define DEFAULT_BUTTON_COUNT 8           // Default active buttons
+#define NUM_BUTTONS DEFAULT_BUTTON_COUNT // Backward compatibility
+#define NUM_LEDS MAX_BUTTONS             // LEDs match max buttons
 #define LONG_PRESS_DURATION 500
 #define ENCODER_BUTTON_DEBOUNCE_DELAY 50
 
 // Default Button Pins (verified correct: 14,27,26,25,33,32,16,17)
-const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {14, 27, 26, 25, 33, 32, 16, 17, 0, 0};
+const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
+    14, 27, 26, 25, 33, 32, 16, 17, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Default Encoder Pins
 #define DEFAULT_ENCODER_A 4
@@ -37,11 +38,11 @@ const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {14, 27, 26, 25, 33, 32, 16, 17
 // Users can change these via the web interface (http://192.168.4.1)
 // Changed values are stored in NVS and persist across reboots.
 //
-// SECURITY NOTE: The default AP password is intentionally simple for initial setup.
-// Users SHOULD change this password via the web interface after first configuration.
-// The password must be at least 8 characters for WPA2 security.
+// SECURITY NOTE: The default AP password is intentionally simple for initial
+// setup. Users SHOULD change this password via the web interface after first
+// configuration. The password must be at least 8 characters for WPA2 security.
 #define DEFAULT_BLE_NAME "CHOCOTONE"
 #define DEFAULT_AP_SSID "CHOCOTONE"
-#define DEFAULT_AP_PASS "12345678"  // Change this via web interface!
+#define DEFAULT_AP_PASS "12345678" // Change this via web interface!
 
 #endif
