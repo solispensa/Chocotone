@@ -608,8 +608,10 @@
                 sortedVersions.forEach((v, index) => {
                     const option = document.createElement('option');
                     option.value = v.version;
-                    option.textContent = `v${v.version}${v.version === firmwareData.latest ? ' (Latest)' : ''}`;
-                    if (index === 0) option.selected = true;
+                    // Use custom label if provided, otherwise show version only
+                    const labelText = v.label ? ` (${v.label})` : '';
+                    option.textContent = `v${v.version}${labelText}`;
+                    if (v.version === firmwareData.latest) option.selected = true;
                     select.appendChild(option);
                 });
 

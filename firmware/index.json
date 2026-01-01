@@ -1,13 +1,15 @@
 {
-    "latest": "1.4.0",
+    "latest": "1.5.0-beta",
     "versions": [
         {
             "version": "1.5.0-beta",
-            "file": "chocotone_v1.5.0-beta.bin"
+            "file": "chocotone_v1.5.0-beta.bin",
+            "label": "Latest - buttons and knobs"
         },
         {
             "version": "1.4.0",
-            "file": "chocotone_v1.4.0.bin"
+            "file": "chocotone_v1.4.0.bin",
+            "label": "buttons"
         }
     ]
 }
