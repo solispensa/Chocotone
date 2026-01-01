@@ -741,6 +741,23 @@
                     }
                 }
             }
+            if (data.analogInputs) {
+                for (var i = 0; i < data.analogInputs.length; i++) {
+                    var inp = data.analogInputs[i];
+                    if (inp.enabled === undefined) inp.enabled = false;
+                    if (!inp.name) inp.name = 'A' + (i + 1);
+                    if (inp.inputMode === undefined) inp.inputMode = 0;
+                    if (!inp.rgb) inp.rgb = '#f59e0b';
+                    if (inp.source === undefined) inp.source = 'gpio';
+                    if (inp.messages) {
+                        for (var m = 0; m < inp.messages.length; m++) {
+                            var amsg = inp.messages[m];
+                            if (!amsg.type) amsg.type = 'CC';
+                            if (amsg.channel === undefined) amsg.channel = 1;
+                        }
+                    }
+                }
+            }
             return data;
         }
 
@@ -2702,6 +2719,16 @@
                                 if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
                                 if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
                                 if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+
+                                // Merge OLED config if present (v1.5 beta)
+                                if (data.system.oled) {
+                                    if (!presetData.system.oled) presetData.system.oled = {};
+                                    presetData.system.oled = JSON.parse(JSON.stringify(data.system.oled));
+                                }
+                            }
+                            // Merge Analog Inputs if present (v1.5 beta)
+                            if (data.analogInputs) {
+                                presetData.analogInputs = JSON.parse(JSON.stringify(data.analogInputs));
                             }
                             presetData.currentPreset = data.currentPreset || 0;
                             selectedBtn = 0;

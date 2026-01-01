@@ -2532,8 +2532,9 @@ void handleSerialConfig() {
         Serial.print(",\"brightnessDim\":");
         Serial.print(ledBrightnessDim);
         Serial.print(",\"brightnessTap\":");
-        Serial.print(ledBrightnessTap);
-        Serial.print("},\"oled\":{");
+        Serial.print(",\"analogInputCount\":");
+        Serial.print(MAX_ANALOG_INPUTS);
+        Serial.print(",\"oled\":{");
         Serial.print("\"type\":\"");
         Serial.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
         Serial.print("\",\"rotation\":");
@@ -2592,7 +2593,7 @@ void handleSerialConfig() {
         // Overlay Screen
         Serial.print("},\"overlay\":{\"textSize\":");
         Serial.print(oledConfig.overlay.titleSize);
-        Serial.print("}}}"); // Close overlay, screens, oled
+        Serial.print("}}}}"); // Close overlay, screens, oled, system
 
         Serial.print(",\"analogInputs\":[");
 
@@ -3414,8 +3415,9 @@ void handleBtSerialConfig() {
         SerialBT.print(",\"brightnessDim\":");
         SerialBT.print(ledBrightnessDim);
         SerialBT.print(",\"brightnessTap\":");
-        SerialBT.print(ledBrightnessTap);
-        SerialBT.print("},\"oled\":{");
+        SerialBT.print(",\"analogInputCount\":");
+        SerialBT.print(MAX_ANALOG_INPUTS);
+        SerialBT.print(",\"oled\":{");
         SerialBT.print("\"type\":\"");
         SerialBT.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
         SerialBT.print("\",\"rotation\":");
@@ -3474,7 +3476,7 @@ void handleBtSerialConfig() {
         // Overlay Screen
         SerialBT.print("},\"overlay\":{\"textSize\":");
         SerialBT.print(oledConfig.overlay.titleSize);
-        SerialBT.print("}}}"); // Close overlay, screens, oled
+        SerialBT.print("}}}}"); // Close overlay, screens, oled, system
 
         SerialBT.print(",\"analogInputs\":[");
 
