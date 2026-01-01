@@ -207,57 +207,49 @@ ArduinoJson @ ^6.21.0
 
 ## Usage Guide
 
-### Button Operation
-- **Short Press** - Send primary MIDI message (configurable action types)
-- **2nd Press** - Send alternate message (toggle mode)
-- **Long Press** - Send secondary action with configurable hold time (200-3000ms)
-- **Double Tap** - Send tertiary action when button is tapped twice quickly
-- **Combo** - Press two buttons simultaneously for special actions
-- **LED Feedback** - Bright when active, dim when inactive (customizable colors)
+### Controls
 
-### Encoder Operation
-- **Rotate** - Navigate menu, adjust parameters
-- **Short Press** - Select menu item, confirm
-- **Long Press** - Enter/exit menu
+| Input | Action | Result |
+|-------|--------|--------|
+| **Button Short Press** | Primary action | Send MIDI message (CC, Note, PC, SysEx) |
+| **Button 2nd Press** | Toggle action | Send alternate message |
+| **Button Long Press** | Secondary action | Configurable hold time (200-3000ms) |
+| **Button Double Tap** | Tertiary action | Quick double-press trigger |
+| **Button Combo** | Two buttons | Simultaneous press for special actions |
+| **Encoder Rotate** | Navigate/adjust | Menu navigation, parameter changes |
+| **Encoder Short Press** | Confirm | Select menu item |
+| **Encoder Long Press** | Menu toggle | Enter/exit menu system |
 
 ### Tap Tempo
-1. Assign TAP_TEMPO message type to any button
-2. Press button to enter tap tempo mode
-3. Tap repeatedly to set tempo
-4. Rotate encoder to adjust BPM (±0.5 per click)
-5. Short-press encoder to cycle rhythm patterns
-6. Auto-exits after 3 seconds of inactivity
+Assign **TAP_TEMPO** to any button → Press to enter mode → Tap to set BPM → Encoder adjusts ±0.5 BPM → Encoder press cycles rhythm patterns (1/8, 1/8d, 1/4, 1/2) → Auto-exits after 3 seconds
 
 ### Presets
-- 4 presets available (selected in code or via encoder)
-- Each preset stores:
-  - 4-10 button configurations (matches system button count)
-  - Custom preset name
-  - MIDI mappings and colors
+4 presets storing up to 16 button configurations each, with custom names, LED colors, and per-preset LED modes (Normal/Selection/Hybrid)
+
+### Analog Inputs (v1.5)
+Up to 16 inputs via GPIO or multiplexer → Expression pedals, pots, FSRs, piezo → Each input maps to CC/Note with configurable ranges, smoothing, and hysteresis
 
 ### Web Interface
+Access `http://192.168.4.1` when WiFi enabled:
+- **Presets** — Configure buttons, MIDI messages, LED colors
+- **System** — Button count, pins, BLE settings, analog inputs, multiplexer
+- **Export/Import** — JSON backup and restore
 
-Access at `http://192.168.4.1` when WiFi is enabled:
+### USB Configuration (v1.5)
+Connect via USB → Open editor in Chrome/Edge → Read/write config directly (no WiFi needed)
 
-- **Buttons Tab** - Configure MIDI mappings for all buttons
-- **Settings Tab** - System settings (BLE name, WiFi credentials, LED brightness)
-- **Export/Import** - Backup and restore configurations
-
-### Menu System
-
-Long-press encoder to access:
-- **Save and Exit** - Save changes and return to preset mode
-- **Exit without Saving** - Discard changes
-- **Wi-Fi Config** - Toggle WiFi on/off
-- **LED Bright (On/Dim)** - Adjust brightness levels
-- **Pad Debounce** - Adjust button debounce timing
-- **Clear BLE Bonds** - Reset Bluetooth pairings
-- **Reboot** - Restart the controller
-- **Factory Reset** - Restore default settings
-- **Name Font Size** - Adjust button name display size
-- **WiFi ON/OFF at Boot** - Toggle WiFi auto-start
-- **BLE Mode** - Toggle CLIENT/DUAL/SERVER modes
-- **Analog Debug (v1.5)** - Show live ADC values for calibration
+### Menu System (Encoder Long Press)
+| Item | Description |
+|------|-------------|
+| Save and Exit | Persist changes, return to preset mode |
+| Exit without Saving | Discard changes |
+| Wi-Fi Config | Toggle WiFi on/off |
+| LED Brightness | Adjust on/dim/tap levels |
+| Pad Debounce | Button debounce timing |
+| Clear BLE Bonds | Reset Bluetooth pairings |
+| BLE Mode | CLIENT/SERVER/DUAL |
+| Analog Debug | Show live ADC values |
+| Factory Reset | Restore defaults |
 
 ## BLE Connection
 
