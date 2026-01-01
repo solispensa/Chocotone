@@ -2,34 +2,11 @@
 #include "BleMidi.h"
 #include "Globals.h"
 #include "Storage.h"
+#include "UI_Display.h"
 #include <Arduino.h>
 
 // Global array
 AnalogInputConfig analogInputs[MAX_ANALOG_INPUTS];
-
-// Initialize analog input pins
-void setupAnalogInputs() {
-  Serial.println("Setting up analog inputs...");
-
-  for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
-    AnalogInputConfig &cfg = analogInputs[i];
-    if (cfg.enabled && cfg.pin >= 32 && cfg.pin <= 39) {
-      // Configure ADC
-      pinMode(cfg.pin, INPUT);
-      analogSetAttenuation(ADC_11db); // Full 0-3.3V range
-
-      // Initialize runtime state
-      cfg.smoothedValue = readOversampled(cfg.pin);
-      cfg.lastMidiValue = 255;
-      cfg.switchState = false;
-      cfg.peakValue = 0;
-      cfg.isPeakScanning = false;
-
-      Serial.printf("  A%d: GPIO%d, Mode=%d, Msgs=%d\n", i + 1, cfg.pin,
-                    cfg.inputMode, cfg.messageCount);
-    }
-  }
-}
 
 uint16_t readOversampled(uint8_t pin) {
   uint32_t sum = 0;
@@ -37,6 +14,73 @@ uint16_t readOversampled(uint8_t pin) {
     sum += analogRead(pin);
   }
   return sum / OVERSAMPLE_COUNT;
+}
+
+uint16_t readMux(uint8_t channel) {
+  if (!systemConfig.multiplexer.enabled)
+    return 0;
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(systemConfig.multiplexer.selectPins[i], (channel >> i) & 0x01);
+  }
+  delayMicroseconds(10); // Settle time
+  return readOversampled(systemConfig.multiplexer.signalPin);
+}
+
+// Initialize analog input pins
+void setupAnalogInputs() {
+  Serial.println("Setting up analog inputs...");
+
+  if (systemConfig.multiplexer.enabled) {
+    for (int i = 0; i < 4; i++) {
+      pinMode(systemConfig.multiplexer.selectPins[i], OUTPUT);
+    }
+    // If used for buttons, common pin needs pullup
+    if (strstr(systemConfig.multiplexer.useFor, "buttons") != NULL ||
+        strstr(systemConfig.multiplexer.useFor, "both") != NULL) {
+      pinMode(systemConfig.multiplexer.signalPin, INPUT_PULLUP);
+    }
+  }
+
+  for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+    AnalogInputConfig &cfg = analogInputs[i];
+    if (cfg.enabled || systemConfig.debugAnalogIn) {
+      if (cfg.source == AIN_SOURCE_GPIO) {
+        if (cfg.pin >= 0 && cfg.pin <= 39) {
+          pinMode(cfg.pin, INPUT);
+          analogSetAttenuation(ADC_11db);
+        }
+      }
+
+      // Initialize runtime state
+      if (cfg.source == AIN_SOURCE_MUX) {
+        cfg.smoothedValue = readMux(cfg.pin);
+      } else {
+        cfg.smoothedValue = readOversampled(cfg.pin);
+      }
+      cfg.lastMidiValue = 255;
+      cfg.switchState = false;
+      cfg.peakValue = 0;
+      cfg.isPeakScanning = false;
+
+      if (cfg.enabled) {
+        Serial.printf("  A%d: GPIO%d, Mode=%d, Msgs=%d\n", i + 1, cfg.pin,
+                      cfg.inputMode, cfg.messageCount);
+      } else if (systemConfig.debugAnalogIn) {
+        Serial.printf("  A%d: Debug Setup (Source=%d, Pin=%d)\n", i + 1,
+                      cfg.source, cfg.pin);
+      }
+    }
+  }
+}
+
+bool readMuxDigital(uint8_t channel) {
+  if (!systemConfig.multiplexer.enabled)
+    return HIGH;
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(systemConfig.multiplexer.selectPins[i], (channel >> i) & 0x01);
+  }
+  delayMicroseconds(5); // Settle time (faster for digital)
+  return digitalRead(systemConfig.multiplexer.signalPin);
 }
 
 // Logic to trigger actions based on value/velocity
@@ -51,22 +95,18 @@ void triggerAnalogActions(AnalogInputConfig &cfg, int value, int velocity) {
       continue;
 
     // Dispatch based on type
-    // For Continuous (Pot/FSR): map value within range
     int outVal = value;
     if (cfg.inputMode == AIN_MODE_POT || cfg.inputMode == AIN_MODE_FSR) {
-      // Re-map value relative to the zone?
-      // Logic: If range is 50-100%, and input is 75%, that's 50% of the zone.
-      // For now, simpler global mapping to 0-127 is safer unless specific
-      // 'outMin'/'outMax' exist. We'll stick to passing 'value' (0-127)
-      // directly.
-      outVal = value;
+      // Map based on minOut/maxOut (v1.5)
+      outVal = map(value, 0, 127, msg.minOut, msg.maxOut);
     } else if (cfg.inputMode == AIN_MODE_PIEZO) {
-      outVal = velocity; // Velocity is the value
+      outVal = map(velocity, 0, 127, msg.minOut, msg.maxOut);
     }
+    outVal = constrain(outVal, 0, 127);
 
     switch (msg.type) {
     case CC:
-      sendMidiCC(msg.data1, outVal, msg.channel);
+      sendMidiCC(msg.channel, msg.data1, outVal);
       break;
     case NOTE_ON: // Piezo triggers Note On
       if (cfg.inputMode == AIN_MODE_PIEZO) {
@@ -102,11 +142,46 @@ void processContinuous(AnalogInputConfig &cfg, uint16_t raw) {
     mapped = 127 - mapped;
   mapped = constrain(mapped, 0, 127);
 
+  // Apply Curves (v1.5)
+  if (cfg.actionType == AIN_ACTION_LOG || cfg.actionType == AIN_ACTION_EXP) {
+    float x = (float)mapped / 127.0f;
+    float y = x;
+    float k = cfg.curve;
+    if (k > 0) {
+      if (cfg.actionType == AIN_ACTION_LOG) {
+        y = log(1.0f + k * x) / log(1.0f + k);
+      } else {
+        y = (exp(k * x) - 1.0f) / (exp(k) - 1.0f);
+      }
+    }
+    mapped = (int)(y * 127.0f);
+  } else if (cfg.actionType == AIN_ACTION_JOYSTICK) {
+    int adc = (int)cfg.smoothedValue;
+    int dz = (cfg.maxVal - cfg.minVal) *
+             (cfg.deadzone / 200.0f); // Half for each side
+    if (adc > cfg.center + dz) {
+      mapped = map(adc, cfg.center + dz, cfg.maxVal, 64, 127);
+    } else if (adc < cfg.center - dz) {
+      mapped = map(adc, cfg.minVal, cfg.center - dz, 0, 64);
+    } else {
+      mapped = 64;
+    }
+  }
+
   // Hysteresis
   if (abs(mapped - (int)cfg.lastMidiValue) > cfg.hysteresis ||
       cfg.lastMidiValue == 255) {
     triggerAnalogActions(cfg, mapped, 0);
     cfg.lastMidiValue = mapped;
+
+    // LED Feedback (v1.5)
+    if (cfg.ledIndex < 10) { // Check if LED is assigned
+      // Scale brightness based on value (0-127)
+      uint8_t r = (uint16_t)cfg.rgb[0] * mapped / 127;
+      uint8_t g = (uint16_t)cfg.rgb[1] * mapped / 127;
+      uint8_t b = (uint16_t)cfg.rgb[2] * mapped / 127;
+      updateIndividualLed(cfg.ledIndex, r, g, b);
+    }
   }
 }
 
@@ -173,7 +248,7 @@ void processSwitch(AnalogInputConfig &cfg, uint16_t raw) {
 void readAnalogInputs() {
   for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
     AnalogInputConfig &cfg = analogInputs[i];
-    if (!cfg.enabled)
+    if (!cfg.enabled && !systemConfig.debugAnalogIn)
       continue;
 
     unsigned long now = millis();
@@ -181,17 +256,8 @@ void readAnalogInputs() {
       continue;
     cfg.lastReadTime = now;
 
-    uint16_t raw = readOversampled(cfg.pin);
-
-    // Debug: Print readings every 500ms
-    static unsigned long lastDebugPrint = 0;
-    if (now - lastDebugPrint > 500) {
-      Serial.printf(
-          "Analog Input %d (%s on GPIO%d): RAW=%d, SMOOTH=%d, MIDI=%d\n", i + 1,
-          cfg.name, cfg.pin, raw, (int)cfg.smoothedValue, cfg.lastMidiValue);
-      if (i == MAX_ANALOG_INPUTS - 1)
-        lastDebugPrint = now;
-    }
+    uint16_t raw = (cfg.source == AIN_SOURCE_MUX) ? readMux(cfg.pin)
+                                                  : readOversampled(cfg.pin);
 
     switch (cfg.inputMode) {
     case AIN_MODE_PIEZO:

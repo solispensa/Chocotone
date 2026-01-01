@@ -169,7 +169,34 @@ MidiCommandType parseCommandType(String s) {
     return CLEAR_BLE_BONDS;
   if (s == "WIFI_TOGGLE")
     return WIFI_TOGGLE;
+  if (s == "MENU_TOGGLE")
+    return MENU_TOGGLE;
+  if (s == "MENU_UP")
+    return MENU_UP;
+  if (s == "MENU_DOWN")
+    return MENU_DOWN;
+  if (s == "MENU_ENTER")
+    return MENU_ENTER;
   return MIDI_OFF;
+}
+ActionType parseActionType(String s) {
+  if (s == "PRESS")
+    return ACTION_PRESS;
+  if (s == "2ND_PRESS")
+    return ACTION_2ND_PRESS;
+  if (s == "RELEASE")
+    return ACTION_RELEASE;
+  if (s == "2ND_RELEASE")
+    return ACTION_2ND_RELEASE;
+  if (s == "LONG_PRESS")
+    return ACTION_LONG_PRESS;
+  if (s == "2ND_LONG_PRESS")
+    return ACTION_2ND_LONG_PRESS;
+  if (s == "DOUBLE_TAP")
+    return ACTION_DOUBLE_TAP;
+  if (s == "COMBO")
+    return ACTION_COMBO;
+  return ACTION_NO_ACTION;
 }
 
 void rgbToHex(char *buffer, size_t size, const byte rgb[3]) {
@@ -887,6 +914,15 @@ void handleSaveSystem() {
     }
   }
 
+  if (server.hasArg("debugAnalogIn")) {
+    bool dbg = server.arg("debugAnalogIn") == "true" ||
+               server.arg("debugAnalogIn") == "1";
+    if (dbg != systemConfig.debugAnalogIn) {
+      systemConfig.debugAnalogIn = dbg;
+      changed = true;
+    }
+  }
+
   if (changed) {
     saveSystemSettings();
     rebootESP("Settings Saved!");
@@ -1086,7 +1122,9 @@ void handleExport() {
   sys += "\"ledPin\":" + String(systemConfig.ledPin) + ",";
   sys += "\"encoderA\":" + String(systemConfig.encoderA) + ",";
   sys += "\"encoderB\":" + String(systemConfig.encoderB) + ",";
-  sys += "\"encoderBtn\":" + String(systemConfig.encoderBtn) + "}";
+  sys += "\"encoderBtn\":" + String(systemConfig.encoderBtn) + ",";
+  sys += "\"debugAnalogIn\":" +
+         String(systemConfig.debugAnalogIn ? "true" : "false") + "}";
   server.sendContent(sys);
 
   // End Root Object
@@ -1768,6 +1806,8 @@ void setup_web_server() {
         msg.data2 = mObj["data2"] | 0;
         msg.minInput = mObj["inMin"] | 0;
         msg.maxInput = mObj["inMax"] | 100;
+        msg.minOut = mObj["min"] | 0;   // Output range min (editor sends 'min')
+        msg.maxOut = mObj["max"] | 127; // Output range max (editor sends 'max')
 
         cfg.messageCount++;
       }
@@ -1960,6 +2000,8 @@ String buildFullConfigJson() {
   json += String(ledBrightnessDim);
   json += ",\"brightnessTap\":";
   json += String(ledBrightnessTap);
+  json += ",\"debugAnalogIn\":";
+  json += systemConfig.debugAnalogIn ? "true" : "false";
 
   // OLED Configuration (v1.5)
   json += ",\"oled\":{";
@@ -2071,6 +2113,369 @@ String buildFullConfigJson() {
   return json;
 }
 
+// Consolidated Configuration Parsing (v1.5)
+bool applyConfigJson(JsonObject doc) {
+  // Config Metadata
+  if (doc.containsKey("configName")) {
+    strncpy(configProfileName, doc["configName"] | "", 31);
+    configProfileName[31] = '\0';
+  }
+  if (doc.containsKey("lastModified")) {
+    strncpy(configLastModified, doc["lastModified"] | "", 31);
+    configLastModified[31] = '\0';
+  }
+
+  // Process Presets
+  JsonArray presets = doc["presets"];
+  if (!presets.isNull()) {
+    for (int p = 0; p < (int)presets.size() && p < 4; p++) {
+      JsonObject pObj = presets[p];
+      if (pObj.containsKey("name")) {
+        strncpy(presetNames[p], pObj["name"] | "Preset", 20);
+        presetNames[p][20] = '\0';
+      }
+
+      if (pObj.containsKey("presetLedMode")) {
+        String m = pObj["presetLedMode"].as<String>();
+        if (m == "SELECTION")
+          presetLedModes[p] = PRESET_LED_SELECTION;
+        else if (m == "HYBRID")
+          presetLedModes[p] = PRESET_LED_HYBRID;
+        else
+          presetLedModes[p] = PRESET_LED_NORMAL;
+      }
+
+      if (pObj.containsKey("syncMode")) {
+        String s = pObj["syncMode"].as<String>();
+        if (s == "SPM")
+          presetSyncMode[p] = SYNC_SPM;
+        else if (s == "GP5")
+          presetSyncMode[p] = SYNC_GP5;
+        else
+          presetSyncMode[p] = SYNC_NONE;
+      }
+
+      // Buttons
+      JsonArray buttons = pObj["buttons"];
+      if (!buttons.isNull()) {
+        for (int b = 0; b < (int)buttons.size() && b < MAX_BUTTONS; b++) {
+          JsonObject bObj = buttons[b];
+          ButtonConfig &btn = buttonConfigs[p][b];
+
+          if (bObj.containsKey("name")) {
+            strncpy(btn.name, bObj["name"] | "BTN", 20);
+            btn.name[20] = '\0';
+          }
+          if (bObj.containsKey("ledMode")) {
+            btn.ledMode = (bObj["ledMode"].as<String>() == "TOGGLE")
+                              ? LED_TOGGLE
+                              : LED_MOMENTARY;
+          }
+          btn.inSelectionGroup = bObj["inSelectionGroup"] | false;
+
+          JsonArray msgs = bObj["messages"];
+          if (!msgs.isNull()) {
+            btn.messageCount = 0;
+            for (JsonObject mObj : msgs) {
+              if (btn.messageCount >= MAX_ACTIONS_PER_BUTTON)
+                break;
+              ActionMessage &msg = btn.messages[btn.messageCount];
+              memset(&msg, 0, sizeof(ActionMessage));
+
+              msg.action = parseActionType(mObj["action"] | "PRESS");
+              msg.type = parseCommandType(mObj["type"] | "CC");
+              msg.channel = mObj["channel"] | 1;
+              msg.data1 = mObj["data1"] | 0;
+              msg.data2 = mObj["data2"] | 0;
+              msg.minInput = mObj["inMin"] | 0;
+              msg.maxInput = mObj["inMax"] | 100;
+              msg.minOut = mObj["min"] | 0;
+              msg.maxOut = mObj["max"] | 127;
+
+              if (mObj.containsKey("rgb"))
+                hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
+              if (mObj.containsKey("label")) {
+                strncpy(msg.label, mObj["label"] | "", 5);
+                msg.label[5] = '\0';
+              }
+
+              if (msg.action == ACTION_COMBO)
+                msg.combo.partner = mObj["partner"] | 0;
+              if (msg.action == ACTION_LONG_PRESS ||
+                  msg.action == ACTION_2ND_LONG_PRESS) {
+                msg.longPress.holdMs = mObj["holdMs"] | 500;
+              }
+
+              if (msg.type == TAP_TEMPO) {
+                msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
+                msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
+                msg.tapTempo.tapLock = mObj["tapLock"] | 7;
+              }
+
+              if (msg.type == SYSEX && mObj.containsKey("sysex")) {
+                const char *hex = mObj["sysex"];
+                int len = strlen(hex) / 2;
+                if (len > 48)
+                  len = 48;
+                msg.sysex.length = len;
+                for (int i = 0; i < len; i++) {
+                  char bh[3] = {hex[i * 2], hex[i * 2 + 1], 0};
+                  msg.sysex.data[i] = (uint8_t)strtol(bh, NULL, 16);
+                }
+              }
+              btn.messageCount++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // System Configuration
+  JsonObject sys = doc["system"];
+  if (!sys.isNull()) {
+    if (sys.containsKey("bleDeviceName")) {
+      strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"] | "Chocotone",
+              23);
+      systemConfig.bleDeviceName[23] = '\0';
+    }
+    if (sys.containsKey("buttonCount"))
+      systemConfig.buttonCount = sys["buttonCount"];
+    if (sys.containsKey("brightness"))
+      ledBrightnessOn = sys["brightness"];
+    if (sys.containsKey("brightnessDim"))
+      ledBrightnessDim = sys["brightnessDim"];
+    if (sys.containsKey("brightnessTap"))
+      ledBrightnessTap = sys["brightnessTap"];
+    if (sys.containsKey("debounce"))
+      buttonDebounce = sys["debounce"];
+    if (sys.containsKey("wifiOnAtBoot"))
+      systemConfig.wifiOnAtBoot = sys["wifiOnAtBoot"];
+    if (sys.containsKey("bleMode")) {
+      String bm = sys["bleMode"].as<String>();
+      if (bm == "SERVER")
+        systemConfig.bleMode = BLE_SERVER_ONLY;
+      else if (bm == "DUAL")
+        systemConfig.bleMode = BLE_DUAL_MODE;
+      else
+        systemConfig.bleMode = BLE_CLIENT_ONLY;
+    }
+    if (sys.containsKey("targetDevice"))
+      systemConfig.targetDevice = (DeviceType)(sys["targetDevice"] | 0);
+    if (sys.containsKey("midiChannel"))
+      systemConfig.midiChannel = sys["midiChannel"] | 1;
+    if (sys.containsKey("debugAnalogIn"))
+      systemConfig.debugAnalogIn = sys["debugAnalogIn"] | false;
+
+    if (sys.containsKey("buttonPins")) {
+      String pinsStr = sys["buttonPins"].as<String>();
+      // Simple comma parser
+      int idx = 0;
+      char *token = strtok((char *)pinsStr.c_str(), ", ");
+      while (token != NULL && idx < 10) {
+        systemConfig.buttonPins[idx++] = atoi(token);
+        token = strtok(NULL, ", ");
+      }
+    }
+    if (sys.containsKey("ledPin"))
+      systemConfig.ledPin = sys["ledPin"];
+    if (sys.containsKey("ledsPerButton"))
+      systemConfig.ledsPerButton = sys["ledsPerButton"];
+    if (sys.containsKey("ledMap")) {
+      String mapStr = sys["ledMap"].as<String>();
+      int idx = 0;
+      char *token = strtok((char *)mapStr.c_str(), ", ");
+      while (token != NULL && idx < 10) {
+        systemConfig.ledMap[idx++] = atoi(token);
+        token = strtok(NULL, ", ");
+      }
+    }
+    if (sys.containsKey("encoderA"))
+      systemConfig.encoderA = sys["encoderA"];
+    if (sys.containsKey("encoderB"))
+      systemConfig.encoderB = sys["encoderB"];
+    if (sys.containsKey("encoderBtn"))
+      systemConfig.encoderBtn = sys["encoderBtn"];
+
+    // Multiplexer (v1.5)
+    if (sys.containsKey("multiplexer")) {
+      JsonObject mux = sys["multiplexer"];
+      systemConfig.multiplexer.enabled = mux["enabled"] | false;
+      if (mux.containsKey("type")) {
+        strncpy(systemConfig.multiplexer.type, mux["type"] | "cd74hc4067", 15);
+        systemConfig.multiplexer.type[15] = '\0';
+      }
+      if (mux.containsKey("signalPin"))
+        systemConfig.multiplexer.signalPin = mux["signalPin"];
+      if (mux.containsKey("selectPins")) {
+        JsonArray pins = mux["selectPins"];
+        for (int i = 0; i < 4 && i < (int)pins.size(); i++)
+          systemConfig.multiplexer.selectPins[i] = pins[i];
+      }
+      if (mux.containsKey("useFor")) {
+        strncpy(systemConfig.multiplexer.useFor, mux["useFor"] | "analog", 7);
+        systemConfig.multiplexer.useFor[7] = '\0';
+      }
+      if (mux.containsKey("buttonChannels")) {
+        String chStr = mux["buttonChannels"].as<String>();
+        for (int i = 0; i < 10; i++)
+          systemConfig.multiplexer.buttonChannels[i] = -1;
+        int idx = 0;
+        char *token = strtok((char *)chStr.c_str(), ", ");
+        while (token != NULL && idx < 10) {
+          systemConfig.multiplexer.buttonChannels[idx++] = atoi(token);
+          token = strtok(NULL, ", ");
+        }
+      }
+    }
+
+    // OLED Configuration
+    if (sys.containsKey("oled")) {
+      JsonObject oled = sys["oled"];
+      String t = oled["type"] | "128x64";
+      oledConfig.type = (t == "128x32" || t == "1") ? OLED_128X32 : OLED_128X64;
+
+      int r = oled["rotation"] | 0;
+      if (r >= 270)
+        oledConfig.rotation = 3;
+      else if (r >= 180)
+        oledConfig.rotation = 2;
+      else if (r >= 90)
+        oledConfig.rotation = 1;
+      else
+        oledConfig.rotation = 0;
+
+      if (oled.containsKey("screens")) {
+        JsonObject scs = oled["screens"];
+        if (scs.containsKey("main")) {
+          JsonObject m = scs["main"];
+          oledConfig.main.labelSize = m["labelSize"] | 1;
+          oledConfig.main.titleSize = m["titleSize"] | 2;
+          oledConfig.main.statusSize = m["statusSize"] | 1;
+          oledConfig.main.topRowY = m["topRowY"] | 0;
+          oledConfig.main.titleY = m["titleY"] | 14;
+          oledConfig.main.statusY = m["statusY"] | 32;
+          oledConfig.main.bottomRowY = m["bottomRowY"] | 56;
+          oledConfig.main.showBpm = m["showBpm"] | true;
+          oledConfig.main.showAnalog = m["showAnalog"] | false;
+        }
+        if (scs.containsKey("menu")) {
+          JsonObject m = scs["menu"];
+          oledConfig.menu.labelSize = m["itemSize"] | 1;
+          oledConfig.menu.titleSize = m["headerSize"] | 1;
+          oledConfig.menu.topRowY = m["headerY"] | 0;
+          oledConfig.menu.titleY = m["itemStartY"] | 14;
+        }
+        if (scs.containsKey("tap")) {
+          JsonObject m = scs["tap"];
+          oledConfig.tap.labelSize = m["labelSize"] | 1;
+          oledConfig.tap.titleSize = m["bpmSize"] | 3;
+          oledConfig.tap.statusSize = m["patternSize"] | 1;
+          oledConfig.tap.topRowY = m["labelTopY"] | 0;
+          oledConfig.tap.titleY = m["bpmY"] | 16;
+          oledConfig.tap.statusY = m["patternY"] | 46;
+          oledConfig.tap.bottomRowY = m["labelBottomY"] | 56;
+        }
+        if (scs.containsKey("overlay")) {
+          JsonObject m = scs["overlay"];
+          oledConfig.overlay.titleSize = m["textSize"] | 2;
+        }
+      }
+    }
+  }
+
+  // Analog Inputs
+  JsonArray analogs = doc["analogInputs"];
+  if (!analogs.isNull()) {
+    for (int i = 0; i < MAX_ANALOG_INPUTS && i < (int)analogs.size(); i++) {
+      JsonObject aObj = analogs[i];
+      AnalogInputConfig &acfg = analogInputs[i];
+
+      if (aObj.containsKey("enabled"))
+        acfg.enabled = aObj["enabled"];
+      if (aObj.containsKey("source")) {
+        acfg.source = (aObj["source"].as<String>() == "mux") ? AIN_SOURCE_MUX
+                                                             : AIN_SOURCE_GPIO;
+      }
+      if (aObj.containsKey("pin"))
+        acfg.pin = aObj["pin"];
+      if (aObj.containsKey("name")) {
+        strncpy(acfg.name, aObj["name"] | "A1", 10);
+        acfg.name[10] = '\0';
+      }
+      if (aObj.containsKey("inputMode"))
+        acfg.inputMode = (AnalogInputMode)(aObj["inputMode"] | 0);
+
+      if (aObj.containsKey("actionType")) {
+        String at = aObj["actionType"].as<String>();
+        if (at == "log_linear")
+          acfg.actionType = AIN_ACTION_LOG;
+        else if (at == "linear_log")
+          acfg.actionType = AIN_ACTION_EXP;
+        else if (at == "joystick")
+          acfg.actionType = AIN_ACTION_JOYSTICK;
+        else
+          acfg.actionType = AIN_ACTION_LINEAR;
+      }
+      if (aObj.containsKey("actionOptions")) {
+        JsonObject ao = aObj["actionOptions"];
+        if (ao.containsKey("curve"))
+          acfg.curve = ao["curve"];
+        if (ao.containsKey("center"))
+          acfg.center = ao["center"];
+        if (ao.containsKey("deadzone"))
+          acfg.deadzone = ao["deadzone"];
+      }
+      if (aObj.containsKey("rgb"))
+        hexToRgb(aObj["rgb"].as<String>(), acfg.rgb);
+      if (aObj.containsKey("ledIndex"))
+        acfg.ledIndex = aObj["ledIndex"];
+
+      if (aObj.containsKey("piezoThreshold"))
+        acfg.piezoThreshold = aObj["piezoThreshold"];
+      if (aObj.containsKey("piezoScanTime"))
+        acfg.piezoScanTime = aObj["piezoScanTime"];
+      if (aObj.containsKey("piezoMaskTime"))
+        acfg.piezoMaskTime = aObj["piezoMaskTime"];
+      if (aObj.containsKey("fsrThreshold"))
+        acfg.fsrThreshold = aObj["fsrThreshold"];
+      if (aObj.containsKey("minVal"))
+        acfg.minVal = aObj["minVal"];
+      if (aObj.containsKey("maxVal"))
+        acfg.maxVal = aObj["maxVal"];
+      if (aObj.containsKey("inverted"))
+        acfg.inverted = aObj["inverted"];
+      if (aObj.containsKey("emaAlpha"))
+        acfg.emaAlpha = aObj["emaAlpha"];
+      if (aObj.containsKey("hysteresis"))
+        acfg.hysteresis = aObj["hysteresis"];
+
+      JsonArray amsgs = aObj["messages"];
+      if (!amsgs.isNull()) {
+        acfg.messageCount = 0;
+        for (JsonObject amObj : amsgs) {
+          if (acfg.messageCount >= 4)
+            break;
+          ActionMessage &amsg = acfg.messages[acfg.messageCount];
+          memset(&amsg, 0, sizeof(ActionMessage));
+          amsg.action = ACTION_PRESS;
+          amsg.type = parseCommandType(amObj["type"] | "CC");
+          amsg.channel = amObj["channel"] | 1;
+          amsg.data1 = amObj["data1"] | 0;
+          amsg.data2 = amObj["data2"] | 0;
+          amsg.minInput = amObj["inMin"] | 0;
+          amsg.maxInput = amObj["inMax"] | 100;
+          amsg.minOut = amObj["min"] | 0;
+          amsg.maxOut = amObj["max"] | 127;
+          acfg.messageCount++;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 bool processConfigChunk(const String &jsonStr, int chunkNum) {
   // Parse and apply JSON config (same logic as multipart upload handler)
   StaticJsonDocument<512> filter;
@@ -2086,229 +2491,7 @@ bool processConfigChunk(const String &jsonStr, int chunkNum) {
     return false;
   }
 
-  // Parse config metadata (editor fields)
-  const char *cfgName = doc["configName"] | "";
-  if (strlen(cfgName) > 0) {
-    strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
-    configProfileName[sizeof(configProfileName) - 1] = '\0';
-  }
-  const char *cfgModified = doc["lastModified"] | "";
-  if (strlen(cfgModified) > 0) {
-    strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
-    configLastModified[sizeof(configLastModified) - 1] = '\0';
-  }
-
-  // Process presets
-  JsonArray presets = doc["presets"];
-  if (!presets.isNull()) {
-    int p = 0;
-    for (JsonObject pObj : presets) {
-      if (p >= 4)
-        break;
-
-      const char *pName = pObj["name"] | "";
-      strncpy(presetNames[p], pName, 20);
-      presetNames[p][20] = '\0';
-
-      // LED Mode
-      const char *ledModeStr = pObj["presetLedMode"] | "NORMAL";
-      if (strcmp(ledModeStr, "SELECTION") == 0)
-        presetLedModes[p] = PRESET_LED_SELECTION;
-      else if (strcmp(ledModeStr, "HYBRID") == 0)
-        presetLedModes[p] = PRESET_LED_HYBRID;
-      else
-        presetLedModes[p] = PRESET_LED_NORMAL;
-
-      // Sync Mode
-      if (pObj.containsKey("syncMode")) {
-        const char *syncStr = pObj["syncMode"] | "NONE";
-        if (strcmp(syncStr, "SPM") == 0)
-          presetSyncMode[p] = SYNC_SPM;
-        else if (strcmp(syncStr, "GP5") == 0)
-          presetSyncMode[p] = SYNC_GP5;
-        else
-          presetSyncMode[p] = SYNC_NONE;
-      }
-
-      // Buttons
-      JsonArray buttons = pObj["buttons"];
-      if (!buttons.isNull()) {
-        int b = 0;
-        for (JsonObject bObj : buttons) {
-          if (b >= MAX_BUTTONS)
-            break;
-          ButtonConfig &cfg = buttonConfigs[p][b];
-
-          const char *bName = bObj["name"] | "";
-          strncpy(cfg.name, bName, 20);
-          cfg.name[20] = '\0';
-
-          const char *lmStr = bObj["ledMode"] | "TOGGLE";
-          cfg.ledMode =
-              (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
-          cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
-          cfg.messageCount = 0;
-
-          JsonArray msgs = bObj["messages"];
-          if (!msgs.isNull()) {
-            for (int m = 0; m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON;
-                 m++) {
-              JsonObject mObj = msgs[m];
-              ActionMessage &msg = cfg.messages[m];
-
-              // Action type
-              const char *actStr = mObj["action"] | "PRESS";
-              if (strcmp(actStr, "PRESS") == 0)
-                msg.action = ACTION_PRESS;
-              else if (strcmp(actStr, "2ND_PRESS") == 0)
-                msg.action = ACTION_2ND_PRESS;
-              else if (strcmp(actStr, "RELEASE") == 0)
-                msg.action = ACTION_RELEASE;
-              else if (strcmp(actStr, "2ND_RELEASE") == 0)
-                msg.action = ACTION_2ND_RELEASE;
-              else if (strcmp(actStr, "LONG_PRESS") == 0)
-                msg.action = ACTION_LONG_PRESS;
-              else if (strcmp(actStr, "2ND_LONG_PRESS") == 0)
-                msg.action = ACTION_2ND_LONG_PRESS;
-              else if (strcmp(actStr, "DOUBLE_TAP") == 0)
-                msg.action = ACTION_DOUBLE_TAP;
-              else
-                msg.action = ACTION_PRESS;
-
-              // MIDI type
-              const char *typeStr = mObj["type"] | "OFF";
-              msg.type = parseCommandType(String(typeStr));
-
-              msg.channel = mObj["channel"] | 1;
-              msg.data1 = mObj["data1"] | 0;
-              msg.data2 = mObj["data2"] | 127;
-
-              // Color - web editor uses "rgb", check both
-              const char *colorStr = mObj["rgb"] | (mObj["color"] | "#bb86fc");
-              hexToRgb(String(colorStr), msg.rgb);
-
-              // Metadata and Extended fields
-              const char *labelStr = mObj["label"] | "";
-              strncpy(msg.label, labelStr, 5);
-              msg.label[5] = '\0';
-
-              msg.combo.partner = mObj["partner"] | 255;
-
-              if (msg.action == ACTION_LONG_PRESS ||
-                  msg.action == ACTION_2ND_LONG_PRESS) {
-                msg.longPress.holdMs = mObj["holdMs"] | 500;
-              }
-
-              // Tap Tempo
-              if (msg.type == TAP_TEMPO) {
-                msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 255;
-                msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 255;
-                msg.tapTempo.tapLock = mObj["tapLock"] | 255;
-              }
-
-              // SysEx
-              if (msg.type == SYSEX && mObj.containsKey("sysex")) {
-                const char *hex = mObj["sysex"];
-                int len = strlen(hex) / 2;
-                if (len > 32)
-                  len = 32;
-                msg.sysex.length = len;
-                for (int i = 0; i < len; i++) {
-                  char byteStr[3] = {hex[i * 2], hex[i * 2 + 1], '\0'};
-                  msg.sysex.data[i] = (uint8_t)strtol(byteStr, NULL, 16);
-                }
-              }
-
-              cfg.messageCount++;
-            }
-          }
-          b++;
-        }
-      }
-      p++;
-    }
-  }
-
-  // Process system config
-  JsonObject sys = doc["system"];
-  if (!sys.isNull()) {
-    if (sys.containsKey("buttonCount"))
-      systemConfig.buttonCount = sys["buttonCount"];
-    if (sys.containsKey("ledsPerButton"))
-      systemConfig.ledsPerButton = sys["ledsPerButton"];
-    if (sys.containsKey("bleDeviceName")) {
-      strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"] | "Chocotone",
-              23);
-    }
-    if (sys.containsKey("brightness"))
-      ledBrightnessOn = sys["brightness"];
-    if (sys.containsKey("brightnessDim"))
-      ledBrightnessDim = sys["brightnessDim"];
-    if (sys.containsKey("brightnessTap"))
-      ledBrightnessTap = sys["brightnessTap"];
-
-    // Parse OLED Configuration (v1.5 - 128x32 support)
-    if (sys.containsKey("oled")) {
-      JsonObject oled = sys["oled"];
-
-      // Handle both numeric (0/1) and string ("0"/"1"/"128x32")
-      String typeStr = oled["type"].as<String>();
-      oledConfig.type =
-          (typeStr == "128x32" || typeStr == "1") ? OLED_128X32 : OLED_128X64;
-
-      // Convert degrees to SSD1306 rotation (0=0°, 1=90°, 2=180°, 3=270°)
-      int rotDeg = oled["rotation"] | 0;
-      if (rotDeg >= 270)
-        oledConfig.rotation = 3;
-      else if (rotDeg >= 180)
-        oledConfig.rotation = 2;
-      else if (rotDeg >= 90)
-        oledConfig.rotation = 1;
-      else
-        oledConfig.rotation = 0;
-
-      // Per-screen settings
-      if (oled.containsKey("screens")) {
-        JsonObject screens = oled["screens"];
-
-        if (screens.containsKey("main")) {
-          JsonObject main = screens["main"];
-          oledConfig.main.labelSize = main["labelSize"] | 1;
-          oledConfig.main.titleSize = main["titleSize"] | 2;
-          oledConfig.main.statusSize = main["statusSize"] | 1;
-          oledConfig.main.topRowY = main["topRowY"] | 0;
-          oledConfig.main.titleY = main["titleY"] | 14;
-          oledConfig.main.statusY = main["statusY"] | 32;
-          oledConfig.main.bottomRowY = main["bottomRowY"] | 56;
-          oledConfig.main.showBpm = main["showBpm"] | true;
-          oledConfig.main.showAnalog = main["showAnalog"] | false;
-        }
-        if (screens.containsKey("menu")) {
-          JsonObject menu = screens["menu"];
-          oledConfig.menu.labelSize = menu["itemSize"] | 1;
-          oledConfig.menu.titleSize = menu["headerSize"] | 1;
-          oledConfig.menu.topRowY = menu["headerY"] | 0;
-          oledConfig.menu.titleY = menu["itemStartY"] | 14;
-        }
-        if (screens.containsKey("tap")) {
-          JsonObject tap = screens["tap"];
-          oledConfig.tap.labelSize = tap["labelSize"] | 1;
-          oledConfig.tap.titleSize = tap["bpmSize"] | 3;
-          oledConfig.tap.statusSize = tap["patternSize"] | 1;
-          oledConfig.tap.topRowY = tap["labelTopY"] | 0;
-          oledConfig.tap.titleY = tap["bpmY"] | 16;
-          oledConfig.tap.statusY = tap["patternY"] | 46;
-          oledConfig.tap.bottomRowY = tap["labelBottomY"] | 56;
-        }
-        if (screens.containsKey("overlay")) {
-          JsonObject overlay = screens["overlay"];
-          oledConfig.overlay.titleSize = overlay["textSize"] | 2;
-        }
-      }
-    }
-  }
-
-  return true;
+  return applyConfigJson(doc.as<JsonObject>());
 }
 
 void finalizeConfigUpload() {
@@ -2447,6 +2630,14 @@ void handleSerialConfig() {
               Serial.print(msg.data1);
               Serial.print(",\"data2\":");
               Serial.print(msg.data2);
+              Serial.print(",\"inMin\":");
+              Serial.print(msg.minInput);
+              Serial.print(",\"inMax\":");
+              Serial.print(msg.maxInput);
+              Serial.print(",\"min\":");
+              Serial.print(msg.minOut);
+              Serial.print(",\"max\":");
+              Serial.print(msg.maxOut);
               Serial.print(",\"rgb\":\"");
               Serial.print(hexColor);
               Serial.print("\"");
@@ -2532,8 +2723,40 @@ void handleSerialConfig() {
         Serial.print(",\"brightnessDim\":");
         Serial.print(ledBrightnessDim);
         Serial.print(",\"brightnessTap\":");
+        Serial.print(ledBrightnessTap);
         Serial.print(",\"analogInputCount\":");
         Serial.print(MAX_ANALOG_INPUTS);
+        Serial.print(",\"targetDevice\":");
+        Serial.print((uint8_t)systemConfig.targetDevice);
+        Serial.print(",\"midiChannel\":");
+        Serial.print(systemConfig.midiChannel);
+        Serial.print(",\"debugAnalogIn\":");
+        Serial.print(systemConfig.debugAnalogIn ? "true" : "false");
+
+        // Multiplexer Settings
+        Serial.print(",\"multiplexer\":{");
+        Serial.print("\"enabled\":");
+        Serial.print(systemConfig.multiplexer.enabled ? "true" : "false");
+        Serial.print(",\"type\":\"");
+        Serial.print(systemConfig.multiplexer.type);
+        Serial.print("\",\"signalPin\":");
+        Serial.print(systemConfig.multiplexer.signalPin);
+        Serial.print(",\"selectPins\":[");
+        for (int i = 0; i < 4; i++) {
+          if (i > 0)
+            Serial.print(",");
+          Serial.print(systemConfig.multiplexer.selectPins[i]);
+        }
+        Serial.print("],\"useFor\":\"");
+        Serial.print(systemConfig.multiplexer.useFor);
+        Serial.print("\",\"buttonChannels\":\"");
+        for (int i = 0; i < 10; i++) {
+          if (i > 0)
+            Serial.print(",");
+          Serial.print(systemConfig.multiplexer.buttonChannels[i]);
+        }
+        Serial.print("\"}");
+
         Serial.print(",\"oled\":{");
         Serial.print("\"type\":\"");
         Serial.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
@@ -2605,12 +2828,42 @@ void handleSerialConfig() {
 
           Serial.print("{\"enabled\":");
           Serial.print(cfg.enabled ? "true" : "false");
-          Serial.print(",\"pin\":");
+          Serial.print(",\"source\":\"");
           Serial.print(cfg.pin);
           Serial.print(",\"name\":\"");
           Serial.print(cfg.name);
           Serial.print("\",\"inputMode\":");
           Serial.print(cfg.inputMode);
+
+          Serial.print(",\"actionType\":\"");
+          Serial.print(cfg.actionType == AIN_ACTION_LOG
+                           ? "log_linear"
+                           : (cfg.actionType == AIN_ACTION_EXP
+                                  ? "linear_log"
+                                  : (cfg.actionType == AIN_ACTION_JOYSTICK
+                                         ? "joystick"
+                                         : "linear_linear")));
+
+          if (cfg.actionType == AIN_ACTION_LOG ||
+              cfg.actionType == AIN_ACTION_EXP) {
+            Serial.print(",\"actionOptions\":{\"curve\":");
+            Serial.print(cfg.curve);
+            Serial.print("}");
+          } else if (cfg.actionType == AIN_ACTION_JOYSTICK) {
+            Serial.print(",\"actionOptions\":{\"center\":");
+            Serial.print(cfg.center);
+            Serial.print(",\"deadzone\":");
+            Serial.print(cfg.deadzone);
+            Serial.print("}");
+          }
+
+          char hexColor[8];
+          rgbToHex(hexColor, sizeof(hexColor), cfg.rgb);
+          Serial.print(",\"rgb\":\"");
+          Serial.print(hexColor);
+          Serial.print("\"");
+          Serial.print(",\"ledIndex\":");
+          Serial.print(cfg.ledIndex);
 
           Serial.print(",\"piezoThreshold\":");
           Serial.print(cfg.piezoThreshold);
@@ -2649,6 +2902,10 @@ void handleSerialConfig() {
             Serial.print(msg.minInput);
             Serial.print(",\"inMax\":");
             Serial.print(msg.maxInput);
+            Serial.print(",\"min\":");
+            Serial.print(msg.minOut);
+            Serial.print(",\"max\":");
+            Serial.print(msg.maxOut);
             Serial.print("}");
           }
           Serial.print("]}");
@@ -2713,375 +2970,30 @@ void handleSerialConfig() {
           Serial.print("JSON_ERROR:");
           Serial.println(error.c_str());
         } else {
-          // Parse config metadata (editor fields)
-          const char *cfgName = doc["configName"] | "";
-          if (strlen(cfgName) > 0) {
-            strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
-            configProfileName[sizeof(configProfileName) - 1] = '\0';
-          }
-          const char *cfgModified = doc["lastModified"] | "";
-          if (strlen(cfgModified) > 0) {
-            strncpy(configLastModified, cfgModified,
-                    sizeof(configLastModified) - 1);
-            configLastModified[sizeof(configLastModified) - 1] = '\0';
-          }
+          applyConfigJson(doc.as<JsonObject>());
 
-          // Parse presets (reuse logic from web import)
-          JsonArray presets = doc["presets"];
-          if (!presets.isNull()) {
-            Serial.println("Parsing presets...");
-            Serial.printf("  Found %d presets in JSON\n", presets.size());
-            for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
-              JsonObject pObj = presets[p];
-              strncpy(presetNames[p], pObj["name"] | "Preset", 20);
-              presetNames[p][20] = '\0';
-              Serial.printf("  Preset %d: name='%s'\n", p, presetNames[p]);
+          savePresets();
+          saveSystemSettings();
+          saveAnalogInputs();
 
-              const char *pmStr = pObj["presetLedMode"] | "NORMAL";
-              if (strcmp(pmStr, "SELECTION") == 0)
-                presetLedModes[p] = PRESET_LED_SELECTION;
-              else if (strcmp(pmStr, "HYBRID") == 0)
-                presetLedModes[p] = PRESET_LED_HYBRID;
-              else
-                presetLedModes[p] = PRESET_LED_NORMAL;
-
-              // Parse syncMode (NONE/SPM/GP5)
-              const char *syncStr = pObj["syncMode"] | "NONE";
-              if (strcmp(syncStr, "SPM") == 0)
-                presetSyncMode[p] = SYNC_SPM;
-              else if (strcmp(syncStr, "GP5") == 0)
-                presetSyncMode[p] = SYNC_GP5;
-              else
-                presetSyncMode[p] = SYNC_NONE;
-
-              JsonArray buttons = pObj["buttons"];
-              if (buttons.isNull())
-                continue;
-
-              int btnCount =
-                  min((int)buttons.size(), (int)systemConfig.buttonCount);
-              Serial.printf("    Buttons: %d in JSON, parsing %d\n",
-                            buttons.size(), btnCount);
-              for (int b = 0; b < btnCount; b++) {
-                JsonObject bObj = buttons[b];
-                ButtonConfig &cfg = buttonConfigs[p][b];
-
-                strncpy(cfg.name, bObj["name"] | "BTN", 20);
-                cfg.name[20] = '\0';
-                Serial.printf("    Button %d: name='%s'\n", b, cfg.name);
-
-                const char *lmStr = bObj["ledMode"] | "MOMENTARY";
-                cfg.ledMode =
-                    (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
-                cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
-                cfg.messageCount = 0;
-
-                JsonArray msgs = bObj["messages"];
-                if (!msgs.isNull()) {
-                  for (int m = 0;
-                       m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON;
-                       m++) {
-                    JsonObject mObj = msgs[m];
-                    ActionMessage &msg = cfg.messages[m];
-                    memset(&msg, 0, sizeof(ActionMessage));
-
-                    const char *actStr = mObj["action"] | "PRESS";
-                    if (strcmp(actStr, "PRESS") == 0)
-                      msg.action = ACTION_PRESS;
-                    else if (strcmp(actStr, "2ND_PRESS") == 0)
-                      msg.action = ACTION_2ND_PRESS;
-                    else if (strcmp(actStr, "RELEASE") == 0)
-                      msg.action = ACTION_RELEASE;
-                    else if (strcmp(actStr, "2ND_RELEASE") == 0)
-                      msg.action = ACTION_2ND_RELEASE;
-                    else if (strcmp(actStr, "LONG_PRESS") == 0)
-                      msg.action = ACTION_LONG_PRESS;
-                    else if (strcmp(actStr, "2ND_LONG_PRESS") == 0)
-                      msg.action = ACTION_2ND_LONG_PRESS;
-                    else if (strcmp(actStr, "DOUBLE_TAP") == 0)
-                      msg.action = ACTION_DOUBLE_TAP;
-                    else if (strcmp(actStr, "COMBO") == 0)
-                      msg.action = ACTION_COMBO;
-                    else
-                      msg.action = ACTION_NO_ACTION;
-
-                    msg.type = parseCommandType(mObj["type"] | "OFF");
-                    msg.channel = mObj["channel"] | 1;
-                    msg.data1 = mObj["data1"] | 0;
-                    msg.data2 = mObj["data2"] | 0;
-                    hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
-
-                    if (msg.action == ACTION_LONG_PRESS) {
-                      msg.longPress.holdMs = mObj["holdMs"] | 500;
-                    }
-                    if (msg.action == ACTION_COMBO) {
-                      msg.combo.partner = mObj["partner"] | 0;
-                    }
-                    // Parse label for ALL actions
-                    const char *label = mObj["label"] | "";
-                    strncpy(msg.label, label, 5);
-                    msg.label[5] = '\0';
-                    if (msg.type == TAP_TEMPO) {
-                      msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
-                      msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
-                      msg.tapTempo.tapLock = mObj["tapLock"] | 7;
-                    }
-                    if (msg.type == SYSEX) {
-                      const char *hex = mObj["sysex"] | "";
-                      size_t len = strlen(hex);
-                      msg.sysex.length = 0;
-                      for (size_t s = 0; s + 1 < len && msg.sysex.length < 48;
-                           s += 2) {
-                        char h[3] = {hex[s], hex[s + 1], 0};
-                        msg.sysex.data[msg.sysex.length++] =
-                            strtol(h, NULL, 16);
-                      }
-                    }
-                    cfg.messageCount++;
-                  }
-                }
-              }
-            }
-            savePresets();
-            Serial.println("Presets saved!");
-          }
-
-          // Parse system config
-          JsonObject sys = doc["system"];
-          if (!sys.isNull()) {
-            if (sys.containsKey("bleDeviceName"))
-              strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"], 23);
-            if (sys.containsKey("apSSID"))
-              strncpy(systemConfig.apSSID, sys["apSSID"], 23);
-            if (sys.containsKey("apPassword"))
-              strncpy(systemConfig.apPassword, sys["apPassword"], 15);
-            if (sys.containsKey("buttonCount"))
-              systemConfig.buttonCount = sys["buttonCount"];
-            // Parse buttonPins string "14,27,26,..." into array
-            if (sys.containsKey("buttonPins")) {
-              String pinsStr = sys["buttonPins"].as<String>();
-              int idx = 0;
-              int start = 0;
-              for (int i = 0; i <= pinsStr.length() && idx < 10; i++) {
-                if (i == pinsStr.length() || pinsStr[i] == ',') {
-                  if (i > start) {
-                    systemConfig.buttonPins[idx++] =
-                        pinsStr.substring(start, i).toInt();
-                  }
-                  start = i + 1;
-                }
-              }
-            }
-            if (sys.containsKey("ledPin"))
-              systemConfig.ledPin = sys["ledPin"];
-            if (sys.containsKey("ledsPerButton"))
-              systemConfig.ledsPerButton = sys["ledsPerButton"];
-            // Parse ledMap string "0,1,2,..." into array
-            if (sys.containsKey("ledMap")) {
-              String mapStr = sys["ledMap"].as<String>();
-              int idx = 0;
-              int start = 0;
-              for (int i = 0; i <= mapStr.length() && idx < 10; i++) {
-                if (i == mapStr.length() || mapStr[i] == ',') {
-                  if (i > start) {
-                    systemConfig.ledMap[idx++] =
-                        mapStr.substring(start, i).toInt();
-                  }
-                  start = i + 1;
-                }
-              }
-            }
-            if (sys.containsKey("encoderA"))
-              systemConfig.encoderA = sys["encoderA"];
-            if (sys.containsKey("encoderB"))
-              systemConfig.encoderB = sys["encoderB"];
-            if (sys.containsKey("encoderBtn"))
-              systemConfig.encoderBtn = sys["encoderBtn"];
-            if (sys.containsKey("bleMode")) {
-              String mode = sys["bleMode"].as<String>();
-              if (mode == "CLIENT")
-                systemConfig.bleMode = static_cast<BleMode>(0);
-              else if (mode == "SERVER")
-                systemConfig.bleMode = static_cast<BleMode>(1);
-              else if (mode == "DUAL")
-                systemConfig.bleMode = static_cast<BleMode>(2);
-            }
-            if (sys.containsKey("brightness"))
-              ledBrightnessOn = sys["brightness"];
-            if (sys.containsKey("brightnessDim"))
-              ledBrightnessDim = sys["brightnessDim"];
-            if (sys.containsKey("brightnessTap"))
-              ledBrightnessTap = sys["brightnessTap"];
-
-            // Parse OLED Configuration (v1.5 - 128x32 support)
-            if (sys.containsKey("oled")) {
-              JsonObject oled = sys["oled"];
-              Serial.println("Parsing OLED config...");
-
-              // Handle both string and numeric type
-              if (oled.containsKey("type")) {
-                String typeStr = oled["type"].as<String>();
-                oledConfig.type = (typeStr == "128x32" || typeStr == "1")
-                                      ? OLED_128X32
-                                      : OLED_128X64;
-                Serial.printf("  OLED type: %s -> %d\n", typeStr.c_str(),
-                              oledConfig.type);
-              }
-
-              if (oled.containsKey("rotation")) {
-                int rotDeg = oled["rotation"] | 0;
-                // Convert degrees to SSD1306 rotation (0=0°, 1=90°, 2=180°,
-                // 3=270°)
-                if (rotDeg >= 270)
-                  oledConfig.rotation = 3;
-                else if (rotDeg >= 180)
-                  oledConfig.rotation = 2;
-                else if (rotDeg >= 90)
-                  oledConfig.rotation = 1;
-                else
-                  oledConfig.rotation = 0;
-                Serial.printf("  OLED rotation: %d° -> %d\n", rotDeg,
-                              oledConfig.rotation);
-              }
-
-              // Per-screen settings
-              if (oled.containsKey("screens")) {
-                JsonObject screens = oled["screens"];
-
-                if (screens.containsKey("main")) {
-                  JsonObject main = screens["main"];
-                  oledConfig.main.labelSize = main["labelSize"] | 1;
-                  oledConfig.main.titleSize = main["titleSize"] | 2;
-                  oledConfig.main.statusSize = main["statusSize"] | 1;
-                  oledConfig.main.topRowY = main["topRowY"] | 0;
-                  oledConfig.main.titleY = main["titleY"] | 14;
-                  oledConfig.main.statusY = main["statusY"] | 32;
-                  oledConfig.main.bottomRowY = main["bottomRowY"] | 56;
-                  oledConfig.main.showBpm = main["showBpm"] | true;
-                  oledConfig.main.showAnalog = main["showAnalog"] | false;
-                }
-                if (screens.containsKey("menu")) {
-                  JsonObject menu = screens["menu"];
-                  oledConfig.menu.labelSize = menu["itemSize"] | 1;
-                  oledConfig.menu.titleSize = menu["headerSize"] | 1;
-                  oledConfig.menu.topRowY = menu["headerY"] | 0;
-                  oledConfig.menu.titleY = menu["itemStartY"] | 14;
-                }
-                if (screens.containsKey("tap")) {
-                  JsonObject tap = screens["tap"];
-                  oledConfig.tap.labelSize = tap["labelSize"] | 1;
-                  oledConfig.tap.titleSize = tap["bpmSize"] | 3;
-                  oledConfig.tap.statusSize = tap["patternSize"] | 1;
-                  oledConfig.tap.topRowY = tap["labelTopY"] | 0;
-                  oledConfig.tap.titleY = tap["bpmY"] | 16;
-                  oledConfig.tap.statusY = tap["patternY"] | 46;
-                  oledConfig.tap.bottomRowY = tap["labelBottomY"] | 56;
-                }
-                if (screens.containsKey("overlay")) {
-                  JsonObject overlay = screens["overlay"];
-                  oledConfig.overlay.titleSize = overlay["textSize"] | 2;
-                }
-              }
-            }
-
-            saveSystemSettings();
-            Serial.println("System config saved!");
-
-            // Reinitialize display with new config (important for OLED type
-            // change)
-            initDisplayHardware();
-            displayOLED();
-            updateLeds();
-            Serial.println("Display reinitialized!");
-          }
-
-          // Parse Analog Inputs
-          JsonArray analogs = doc["analogInputs"];
-          if (!analogs.isNull()) {
-            for (int i = 0; i < MAX_ANALOG_INPUTS && i < (int)analogs.size();
-                 i++) {
-              AnalogInputConfig &cfg = analogInputs[i];
-              JsonObject aObj = analogs[i];
-
-              if (aObj.containsKey("enabled"))
-                cfg.enabled = aObj["enabled"];
-              if (aObj.containsKey("pin"))
-                cfg.pin = aObj["pin"];
-              if (aObj.containsKey("name")) {
-                strncpy(cfg.name, aObj["name"] | "A1", 10);
-                cfg.name[10] = 0;
-              }
-              if (aObj.containsKey("inputMode"))
-                cfg.inputMode = (AnalogInputMode)(aObj["inputMode"] | 0);
-
-              if (aObj.containsKey("piezoThreshold"))
-                cfg.piezoThreshold = aObj["piezoThreshold"];
-              if (aObj.containsKey("piezoScanTime"))
-                cfg.piezoScanTime = aObj["piezoScanTime"];
-              if (aObj.containsKey("piezoMaskTime"))
-                cfg.piezoMaskTime = aObj["piezoMaskTime"];
-              if (aObj.containsKey("fsrThreshold"))
-                cfg.fsrThreshold = aObj["fsrThreshold"];
-
-              if (aObj.containsKey("minVal"))
-                cfg.minVal = aObj["minVal"];
-              if (aObj.containsKey("maxVal"))
-                cfg.maxVal = aObj["maxVal"];
-              if (aObj.containsKey("inverted"))
-                cfg.inverted = aObj["inverted"];
-              if (aObj.containsKey("emaAlpha"))
-                cfg.emaAlpha = aObj["emaAlpha"];
-              if (aObj.containsKey("hysteresis"))
-                cfg.hysteresis = aObj["hysteresis"];
-
-              JsonArray msgs = aObj["messages"];
-              if (!msgs.isNull()) {
-                cfg.messageCount = 0;
-                for (JsonObject mObj : msgs) {
-                  if (cfg.messageCount >= 4)
-                    break;
-                  ActionMessage &msg = cfg.messages[cfg.messageCount];
-                  memset(&msg, 0, sizeof(ActionMessage));
-
-                  msg.action = ACTION_PRESS;
-                  String typeStr = mObj["type"] | "CC";
-                  msg.type = parseCommandType(typeStr);
-                  msg.channel = mObj["channel"] | 1;
-                  msg.data1 = mObj["data1"] | 0;
-                  msg.data2 = mObj["data2"] | 0;
-                  msg.minInput = mObj["inMin"] | 0;
-                  msg.maxInput = mObj["inMax"] | 100;
-
-                  cfg.messageCount++;
-                }
-              }
-            }
-            saveAnalogInputs();
-            setupAnalogInputs();
-          }
-
-          currentPreset = 0;
+          // Reinitialize display
+          initDisplayHardware();
           displayOLED();
           updateLeds();
+
           Serial.println("SAVE_OK");
+          Serial.println("Config saved successfully!");
         }
       }
-      // SET_PRESET:N - Change current preset and update display
-      else if (serialBuffer.startsWith("SET_PRESET:")) {
-        int preset = serialBuffer.substring(11).toInt();
-        if (preset >= 0 && preset < 4) {
-          currentPreset = preset;
-          displayOLED();
-          updateLeds();
-          Serial.print("PRESET_OK:");
-          Serial.println(preset);
-        } else {
-          Serial.println("PRESET_ERROR:Invalid preset");
-        }
-      }
+      // Clear buffer after any command processed
       serialBuffer = "";
     } else {
+      // Not a newline - add to buffer
       serialBuffer += c;
+      // Prevent buffer overflow
+      if (serialBuffer.length() > 16000) {
+        serialBuffer = "";
+      }
     }
   }
 }
@@ -3318,6 +3230,14 @@ void handleBtSerialConfig() {
               SerialBT.print(msg.data1);
               SerialBT.print(",\"data2\":");
               SerialBT.print(msg.data2);
+              SerialBT.print(",\"inMin\":");
+              SerialBT.print(msg.minInput);
+              SerialBT.print(",\"inMax\":");
+              SerialBT.print(msg.maxInput);
+              SerialBT.print(",\"min\":");
+              SerialBT.print(msg.minOut);
+              SerialBT.print(",\"max\":");
+              SerialBT.print(msg.maxOut);
               SerialBT.print(",\"rgb\":\"");
               SerialBT.print(hexColor);
               SerialBT.print("\"");
@@ -3415,8 +3335,40 @@ void handleBtSerialConfig() {
         SerialBT.print(",\"brightnessDim\":");
         SerialBT.print(ledBrightnessDim);
         SerialBT.print(",\"brightnessTap\":");
+        SerialBT.print(ledBrightnessTap);
         SerialBT.print(",\"analogInputCount\":");
         SerialBT.print(MAX_ANALOG_INPUTS);
+        SerialBT.print(",\"targetDevice\":");
+        SerialBT.print((uint8_t)systemConfig.targetDevice);
+        SerialBT.print(",\"midiChannel\":");
+        SerialBT.print(systemConfig.midiChannel);
+        SerialBT.print(",\"debugAnalogIn\":");
+        SerialBT.print(systemConfig.debugAnalogIn ? "true" : "false");
+
+        // Multiplexer Settings
+        SerialBT.print(",\"multiplexer\":{");
+        SerialBT.print("\"enabled\":");
+        SerialBT.print(systemConfig.multiplexer.enabled ? "true" : "false");
+        SerialBT.print(",\"type\":\"");
+        SerialBT.print(systemConfig.multiplexer.type);
+        SerialBT.print("\",\"signalPin\":");
+        SerialBT.print(systemConfig.multiplexer.signalPin);
+        SerialBT.print(",\"selectPins\":[");
+        for (int i = 0; i < 4; i++) {
+          if (i > 0)
+            SerialBT.print(",");
+          SerialBT.print(systemConfig.multiplexer.selectPins[i]);
+        }
+        SerialBT.print("],\"useFor\":\"");
+        SerialBT.print(systemConfig.multiplexer.useFor);
+        SerialBT.print("\",\"buttonChannels\":\"");
+        for (int i = 0; i < 10; i++) {
+          if (i > 0)
+            SerialBT.print(",");
+          SerialBT.print(systemConfig.multiplexer.buttonChannels[i]);
+        }
+        SerialBT.print("\"}");
+
         SerialBT.print(",\"oled\":{");
         SerialBT.print("\"type\":\"");
         SerialBT.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
@@ -3489,12 +3441,44 @@ void handleBtSerialConfig() {
 
           SerialBT.print("{\"enabled\":");
           SerialBT.print(cfg.enabled ? "true" : "false");
-          SerialBT.print(",\"pin\":");
+          SerialBT.print(",\"source\":\"");
+          SerialBT.print(cfg.source == AIN_SOURCE_MUX ? "mux" : "gpio");
+          SerialBT.print("\",\"pin\":");
           SerialBT.print(cfg.pin);
           SerialBT.print(",\"name\":\"");
           SerialBT.print(cfg.name);
           SerialBT.print("\",\"inputMode\":");
           SerialBT.print(cfg.inputMode);
+
+          SerialBT.print(",\"actionType\":\"");
+          SerialBT.print(cfg.actionType == AIN_ACTION_LOG
+                             ? "log_linear"
+                             : (cfg.actionType == AIN_ACTION_EXP
+                                    ? "linear_log"
+                                    : (cfg.actionType == AIN_ACTION_JOYSTICK
+                                           ? "joystick"
+                                           : "linear_linear")));
+
+          if (cfg.actionType == AIN_ACTION_LOG ||
+              cfg.actionType == AIN_ACTION_EXP) {
+            SerialBT.print(",\"actionOptions\":{\"curve\":");
+            SerialBT.print(cfg.curve);
+            SerialBT.print("}");
+          } else if (cfg.actionType == AIN_ACTION_JOYSTICK) {
+            SerialBT.print(",\"actionOptions\":{\"center\":");
+            SerialBT.print(cfg.center);
+            SerialBT.print(",\"deadzone\":");
+            SerialBT.print(cfg.deadzone);
+            SerialBT.print("}");
+          }
+
+          char hexColor[8];
+          rgbToHex(hexColor, sizeof(hexColor), cfg.rgb);
+          SerialBT.print(",\"rgb\":\"");
+          SerialBT.print(hexColor);
+          SerialBT.print("\"");
+          SerialBT.print(",\"ledIndex\":");
+          SerialBT.print(cfg.ledIndex);
 
           SerialBT.print(",\"piezoThreshold\":");
           SerialBT.print(cfg.piezoThreshold);
@@ -3533,6 +3517,10 @@ void handleBtSerialConfig() {
             SerialBT.print(msg.minInput);
             SerialBT.print(",\"inMax\":");
             SerialBT.print(msg.maxInput);
+            SerialBT.print(",\"min\":");
+            SerialBT.print(msg.minOut);
+            SerialBT.print(",\"max\":");
+            SerialBT.print(msg.maxOut);
             SerialBT.print("}");
           }
           SerialBT.print("]}");
@@ -3598,170 +3586,22 @@ void handleBtSerialConfig() {
           SerialBT.println(error.c_str());
           Serial.printf("BT: JSON error: %s\n", error.c_str());
         } else {
-          // Parse config metadata
-          const char *cfgName = doc["configName"] | "";
-          if (strlen(cfgName) > 0) {
-            strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
-            configProfileName[sizeof(configProfileName) - 1] = '\0';
-          }
-          const char *cfgModified = doc["lastModified"] | "";
-          if (strlen(cfgModified) > 0) {
-            strncpy(configLastModified, cfgModified,
-                    sizeof(configLastModified) - 1);
-            configLastModified[sizeof(configLastModified) - 1] = '\0';
-          }
-          yield(); // Feed watchdog
+          applyConfigJson(doc.as<JsonObject>());
 
-          // Parse presets
-          JsonArray presets = doc["presets"];
-          if (!presets.isNull()) {
-            for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
-              yield(); // Feed watchdog for each preset
-              JsonObject pObj = presets[p];
-              strncpy(presetNames[p], pObj["name"] | "Preset", 20);
-              presetNames[p][20] = '\0';
+          savePresets();
+          saveSystemSettings();
+          saveAnalogInputs();
 
-              const char *pmStr = pObj["presetLedMode"] | "NORMAL";
-              if (strcmp(pmStr, "SELECTION") == 0)
-                presetLedModes[p] = PRESET_LED_SELECTION;
-              else if (strcmp(pmStr, "HYBRID") == 0)
-                presetLedModes[p] = PRESET_LED_HYBRID;
-              else
-                presetLedModes[p] = PRESET_LED_NORMAL;
-
-              const char *syncStr = pObj["syncMode"] | "NONE";
-              if (strcmp(syncStr, "SPM") == 0)
-                presetSyncMode[p] = SYNC_SPM;
-              else if (strcmp(syncStr, "GP5") == 0)
-                presetSyncMode[p] = SYNC_GP5;
-              else
-                presetSyncMode[p] = SYNC_NONE;
-
-              JsonArray buttons = pObj["buttons"];
-              if (buttons.isNull())
-                continue;
-
-              int btnCount =
-                  min((int)buttons.size(), (int)systemConfig.buttonCount);
-              for (int b = 0; b < btnCount; b++) {
-                yield(); // Feed watchdog for each button
-                JsonObject bObj = buttons[b];
-                ButtonConfig &cfg = buttonConfigs[p][b];
-
-                strncpy(cfg.name, bObj["name"] | "BTN", 20);
-                cfg.name[20] = '\0';
-
-                const char *lmStr = bObj["ledMode"] | "MOMENTARY";
-                cfg.ledMode =
-                    (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
-                cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
-                cfg.messageCount = 0;
-
-                JsonArray msgs = bObj["messages"];
-                if (!msgs.isNull()) {
-                  for (int m = 0;
-                       m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON;
-                       m++) {
-                    JsonObject mObj = msgs[m];
-                    ActionMessage &msg = cfg.messages[m];
-                    memset(&msg, 0, sizeof(ActionMessage));
-
-                    const char *actStr = mObj["action"] | "PRESS";
-                    if (strcmp(actStr, "PRESS") == 0)
-                      msg.action = ACTION_PRESS;
-                    else if (strcmp(actStr, "2ND_PRESS") == 0)
-                      msg.action = ACTION_2ND_PRESS;
-                    else if (strcmp(actStr, "RELEASE") == 0)
-                      msg.action = ACTION_RELEASE;
-                    else if (strcmp(actStr, "2ND_RELEASE") == 0)
-                      msg.action = ACTION_2ND_RELEASE;
-                    else if (strcmp(actStr, "LONG_PRESS") == 0)
-                      msg.action = ACTION_LONG_PRESS;
-                    else if (strcmp(actStr, "2ND_LONG_PRESS") == 0)
-                      msg.action = ACTION_2ND_LONG_PRESS;
-                    else if (strcmp(actStr, "DOUBLE_TAP") == 0)
-                      msg.action = ACTION_DOUBLE_TAP;
-                    else if (strcmp(actStr, "COMBO") == 0)
-                      msg.action = ACTION_COMBO;
-                    else
-                      msg.action = ACTION_NO_ACTION;
-
-                    msg.type = parseCommandType(mObj["type"] | "OFF");
-                    msg.channel = mObj["channel"] | 1;
-                    msg.data1 = mObj["data1"] | 0;
-                    msg.data2 = mObj["data2"] | 0;
-                    hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
-
-                    // COMBO partner
-                    if (msg.action == ACTION_COMBO) {
-                      msg.combo.partner = mObj["partner"] | 0;
-                    }
-
-                    // LONG_PRESS holdMs
-                    if (msg.action == ACTION_LONG_PRESS ||
-                        msg.action == ACTION_2ND_LONG_PRESS) {
-                      msg.longPress.holdMs = mObj["holdMs"] | 500;
-                    }
-
-                    // Label
-                    const char *label = mObj["label"] | "";
-                    strncpy(msg.label, label, 5);
-                    msg.label[5] = '\0';
-
-                    // TAP_TEMPO fields
-                    if (msg.type == TAP_TEMPO) {
-                      msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
-                      msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
-                      msg.tapTempo.tapLock = mObj["tapLock"] | 7;
-                    }
-
-                    // SYSEX data
-                    if (msg.type == SYSEX) {
-                      const char *hex = mObj["sysex"] | "";
-                      size_t len = strlen(hex);
-                      msg.sysex.length = 0;
-                      for (size_t s = 0; s + 1 < len && msg.sysex.length < 48;
-                           s += 2) {
-                        char h[3] = {hex[s], hex[s + 1], 0};
-                        msg.sysex.data[msg.sysex.length++] =
-                            strtol(h, NULL, 16);
-                      }
-                    }
-                    cfg.messageCount++;
-                  }
-                }
-              }
-            }
-            yield(); // Feed watchdog before save
-            savePresets();
-            yield(); // Feed watchdog after save
-            Serial.println("BT: Presets saved!");
-          }
-
-          // Parse system config
-          JsonObject sys = doc["system"];
-          if (!sys.isNull()) {
-            if (sys.containsKey("bleDeviceName"))
-              strncpy(systemConfig.bleDeviceName, sys["bleDeviceName"], 23);
-            if (sys.containsKey("buttonCount"))
-              systemConfig.buttonCount = sys["buttonCount"];
-            if (sys.containsKey("brightness"))
-              ledBrightnessOn = sys["brightness"];
-            yield(); // Feed watchdog before save
-            saveSystemSettings();
-            yield(); // Feed watchdog after save
-            Serial.println("BT: System config saved!");
-          }
-
-          currentPreset = 0;
-          yield(); // Feed watchdog before display update
+          // Reinitialize display
+          initDisplayHardware();
           displayOLED();
           updateLeds();
+
+          currentPreset = 0;
           SerialBT.println("SAVE_OK");
           Serial.println("BT: Config saved successfully!");
         }
       }
-
       btSerialBuffer = "";
     } else {
       btSerialBuffer += c;

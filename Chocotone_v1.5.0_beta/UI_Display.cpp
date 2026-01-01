@@ -73,6 +73,22 @@ void getButtonSummary(char *b, size_t s, MidiCommandType type, int data1) {
     strncpy(b, "SYS", s - 1);
     b[s - 1] = '\0';
     break;
+  case MENU_TOGGLE:
+    strncpy(b, "MENU", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case MENU_UP:
+    strncpy(b, "M.UP", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case MENU_DOWN:
+    strncpy(b, "M.DN", s - 1);
+    b[s - 1] = '\0';
+    break;
+  case MENU_ENTER:
+    strncpy(b, "M.OK", s - 1);
+    b[s - 1] = '\0';
+    break;
   case MIDI_OFF:
     strncpy(b, "OFF", s - 1);
     b[s - 1] = '\0';
@@ -116,7 +132,7 @@ void displayOLED() {
   uint8_t titleSize = oledConfig.main.titleSize;
   uint8_t statusSize = oledConfig.main.statusSize;
   bool showBpm = oledConfig.main.showBpm;
-  bool showAnalog = oledConfig.main.showAnalog;
+  bool showAnalog = oledConfig.main.showAnalog || systemConfig.debugAnalogIn;
 
   // For 128x32, adjust bottomRowY if using default 128x64 value
   int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
@@ -219,12 +235,16 @@ void displayOLED() {
     if (showAnalog) {
       // Find first enabled analog input
       for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
-        if (analogInputs[i].enabled) {
-          int val = analogInputs[i].lastMidiValue;
-          if (val == 255)
+        if (analogInputs[i].enabled || systemConfig.debugAnalogIn) {
+          int val = systemConfig.debugAnalogIn
+                        ? (int)analogInputs[i].smoothedValue
+                        : analogInputs[i].lastMidiValue;
+          if (!systemConfig.debugAnalogIn && val == 255)
             val = 0;
-          snprintf(statusBuf, sizeof(statusBuf), "%s.%d", analogInputs[i].name,
-                   val);
+
+          snprintf(statusBuf, sizeof(statusBuf),
+                   systemConfig.debugAnalogIn ? "%s:%04d" : "%s:%d",
+                   analogInputs[i].name, val);
           statusText = statusBuf;
           break;
         }
@@ -266,12 +286,16 @@ void displayOLED() {
       char analogStr[16];
       int offset = 0;
       for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
-        if (analogInputs[i].enabled) {
-          int val = analogInputs[i].lastMidiValue;
-          if (val == 255)
+        if (analogInputs[i].enabled || systemConfig.debugAnalogIn) {
+          int val = systemConfig.debugAnalogIn
+                        ? (int)analogInputs[i].smoothedValue
+                        : analogInputs[i].lastMidiValue;
+          if (!systemConfig.debugAnalogIn && val == 255)
             val = 0;
-          snprintf(analogStr, sizeof(analogStr), "%s:%d", analogInputs[i].name,
-                   val);
+
+          snprintf(analogStr, sizeof(analogStr),
+                   systemConfig.debugAnalogIn ? "%s:%04d" : "%s:%d",
+                   analogInputs[i].name, val);
           displayPtr->getTextBounds(analogStr, 0, 0, &x1, &y1, &w, &h);
           displayPtr->setCursor((SCREEN_WIDTH - w) / 2,
                                 statusY + (showBpm ? 10 : 0) + offset);
@@ -440,10 +464,16 @@ void displayMenu() {
   int lineHeight = (oledConfig.type == OLED_128X32) ? 8 : 10;
   int maxVisibleItems = (oledConfig.type == OLED_128X32) ? 3 : 5;
 
+  // Adjust for 128x32 to fit items below header without clipping
+  if (oledConfig.type == OLED_128X32) {
+    itemStartY = 9; // Start just below header (header ends ~8px)
+    lineHeight = 8; // 8px per line means items at Y=9, 17, 25 (all fit in 32px)
+  }
+
   displayPtr->setTextSize(itemSize);
 
   // Build menu items dynamically to show status
-  char menuItems[13][25]; // Array to hold menu item strings
+  char menuItems[14][25]; // Array to hold menu item strings
   strncpy(menuItems[0], "Save and Exit", 25);
   strncpy(menuItems[1], "Exit without Saving", 25);
   snprintf(menuItems[2], 25, "Wi-Fi LoadCfg (%s)", isWifiOn ? "ON" : "OFF");
@@ -463,8 +493,10 @@ void displayMenu() {
                            : systemConfig.bleMode == BLE_DUAL_MODE   ? "DUAL"
                                                                      : "SERVER";
   snprintf(menuItems[12], 25, "BLE Mode: %s", bleModeStr);
+  snprintf(menuItems[13], 25, "Analog Debug %s",
+           systemConfig.debugAnalogIn ? "ON" : "OFF");
 
-  int numMenuItems = 13;
+  int numMenuItems = 14;
 
   displayPtr->setCursor(0, 0);
   displayPtr->printf("-- Menu CHOCOTONE --");
@@ -669,6 +701,13 @@ void updateLeds() {
     strip.show();
     yield(); // Give WiFi stack time after LED update
   }
+}
+
+void updateIndividualLed(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
+  if (index >= strip.numPixels())
+    return;
+  strip.setPixelColor(index, strip.Color(r, g, b));
+  strip.show();
 }
 
 void blinkAllLeds() {

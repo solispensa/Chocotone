@@ -6,19 +6,34 @@ Frequently Asked Questions about the Chocotone MIDI Controller.
 
 ## Coming Soon
 
-> These features are planned but **not yet implemented** (as of December 2025). Stay tuned for updates!
-
-### Does the controller accept analog inputs?
-Unfortunately, **not yet**. Analog input support (for potentiometers, faders, etc.) is planned for a future update.
+> These features are planned but **not yet implemented** (as of January 2025). Stay tuned for updates!
 
 ### Can I use MIDI USB?
 **Not yet.** USB MIDI In/Out is on the roadmap. Currently, the controller only uses BLE MIDI, via Client, Server or Dual mode.
 
-### Can I connect an expression pedal?
-**Not yet.** Expression pedal input support is planned. The hardware wiring is simple (TRS jack with 1MΩ resistor), but the firmware support is still in development.
-
 ### Is there battery level monitoring?
 **Not yet.** Battery level display on the OLED is on the roadmap for battery-powered builds.
+
+---
+
+## Analog Inputs (v1.5+)
+
+### Does the controller support analog inputs?
+**Yes!** As of v1.5, Chocotone supports up to **4 analog inputs** (on GPIO 32-39). You can use:
+- **Potentiometers** for expression control
+- **Expression pedals** via TRS jack with 1MΩ resistor
+- **FSR (Force Sensitive Resistors)** for velocity-sensitive pads
+- **Piezo sensors** for drum pads with velocity detection
+- **Switches** for digital input via analog pins
+
+### How do I configure analog inputs?
+In the web editor, go to **System Config** → **Analog Inputs** section. Set the count, configure pins, input modes, and MIDI messages for each input.
+
+### How do I see live analog values?
+Enable **Analog Debug** from the OLED menu. This shows raw ADC values on the display in real-time for calibration and testing.
+
+### My analog input is jittery
+Adjust the **Smoothing α** (lower = more smoothing) and **Hysteresis** (higher = less jitter) values in the analog input configuration.
 
 ---
 
@@ -146,9 +161,25 @@ Sync modes allow the controller to synchronize button LED states with the actual
 |------|-------------|
 | **NONE** | No synchronization — LEDs only reflect local button state |
 | **SPM** | Sonicake Pocket Master sync — controller reads CC responses from SPM to update LED states |
-| **GP5** | Valeton GP-5 sync (coming soon) — will read SysEx responses to update states |
+| **GP5** | Valeton GP-5 sync — reads SysEx responses to update effect states |
 
 When connected to a synced device, pressing a button on the controller updates the LED to match the actual effect state reported by the device.
+
+### What are the internal command types? (v1.5+)
+These commands control the device itself rather than sending MIDI:
+
+| Command | Description |
+|---------|-------------|
+| TAP_TEMPO | Enter tap tempo mode |
+| PRESET_UP/DOWN | Navigate presets |
+| PRESET_1-4 | Jump to specific preset |
+| WIFI_TOGGLE | Toggle WiFi on/off |
+| CLEAR_BLE_BONDS | Clear BLE bonding data |
+| MENU_TOGGLE | Enter/exit menu mode |
+| MENU_UP/DOWN | Navigate menu items |
+| MENU_ENTER | Select menu item |
+
+Use the **Internal Commands** optgroup in the editor's Type dropdown to access these.
 
 ---
 

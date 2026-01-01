@@ -17,6 +17,7 @@ void setup() {
   // Load Settings FIRST to determine OLED type
   Serial.println("Loading settings to determine hardware config...");
   loadSystemSettings();
+  yield(); // Feed watchdog after NVS operations
 
   // Initialize Display hardware
   Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
@@ -27,44 +28,56 @@ void setup() {
   // === Chocotone v1.5 BETA Loading Screen ===
   int16_t x1, y1;
   uint16_t w, h;
+  bool is32 = (displayPtr->height() == 32);
 
-  // Title: "CHOCOTONE" - Size 2, Centered
-  displayPtr->setTextSize(2);
-  displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
-  displayPtr->setCursor((128 - w) / 2, 10);
-  displayPtr->print(F("CHOCOTONE"));
+  if (is32) {
+    // 128x32 Compact Layout
+    displayPtr->setTextSize(1);
+    displayPtr->setCursor(0, 10);
+    displayPtr->print(F("CHOCOTONE"));
+    displayPtr->setCursor(94, 10);
+    displayPtr->print(F("v1.5b"));
+  } else {
+    // 128x64 Standard Layout
+    // Title: "CHOCOTONE" - Size 2, Centered
+    displayPtr->setTextSize(2);
+    displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((128 - w) / 2, 10);
+    displayPtr->print(F("CHOCOTONE"));
 
-  // Subtitle: "MIDI by ANDRE SOLIS" - Size 1, Centered
-  displayPtr->setTextSize(1);
-  displayPtr->getTextBounds("MIDI by ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
-  displayPtr->setCursor((128 - w) / 2, 30);
-  displayPtr->print(F("MIDI by ANDRE SOLIS"));
+    // Subtitle: "MIDI by ANDRE SOLIS" - Size 1, Centered
+    displayPtr->setTextSize(1);
+    displayPtr->getTextBounds("MIDI by ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((128 - w) / 2, 30);
+    displayPtr->print(F("MIDI by ANDRE SOLIS"));
+
+    // Version Badge - White rounded rect with black text
+    displayPtr->fillRoundRect(94, 47, 28, 10, 2, SSD1306_WHITE);
+    displayPtr->setTextColor(SSD1306_BLACK);
+    displayPtr->setTextSize(1);
+    displayPtr->setCursor(96, 48);
+    displayPtr->print(F("v1.5b"));
+    displayPtr->setTextColor(SSD1306_WHITE); // Reset
+  }
 
   // 8 Dots Grid (2 rows x 4 cols) - Initially hollow
-  for (int row = 0; row < 2; row++) {
-    for (int col = 0; col < 4; col++) {
-      int x = 4 + col * 8 + 2;
-      int y = 45 + row * 8 + 2;
+  // For 32px, we'll put them in a single row or skip for brevity?
+  // Let's put them in a row at the bottom for 32px
+  for (int row = 0; row < (is32 ? 1 : 2); row++) {
+    for (int col = 0; col < (is32 ? 8 : 4); col++) {
+      int x = is32 ? (4 + col * 12 + 2) : (4 + col * 8 + 2);
+      int y = is32 ? 22 : (45 + row * 8 + 2);
       displayPtr->drawCircle(x, y, 2, SSD1306_WHITE);
     }
   }
-
-  // Version Badge - White rounded rect with black text
-  displayPtr->fillRoundRect(94, 47, 28, 10, 2, SSD1306_WHITE);
-  displayPtr->setTextColor(SSD1306_BLACK);
-  displayPtr->setTextSize(1);
-  displayPtr->setCursor(96, 48);
-  displayPtr->print(F("v1.5b"));
-  displayPtr->setTextColor(SSD1306_WHITE); // Reset
-
   displayPtr->display();
 
   // Helper lambda to fill a loading dot (0-7)
-  auto fillLoadingDot = [](int dotIndex) {
-    int row = dotIndex / 4;
-    int col = dotIndex % 4;
-    int x = 4 + col * 8 + 2;
-    int y = 45 + row * 8 + 2;
+  auto fillLoadingDot = [is32](int dotIndex) {
+    int row = is32 ? 0 : (dotIndex / 4);
+    int col = is32 ? dotIndex : (dotIndex % 4);
+    int x = is32 ? (4 + col * 12 + 2) : (4 + col * 8 + 2);
+    int y = is32 ? 22 : (45 + row * 8 + 2);
     displayPtr->fillCircle(x, y, 2, SSD1306_WHITE);
     displayPtr->display();
   };
@@ -77,6 +90,7 @@ void setup() {
   fillLoadingDot(1); // Dot 1: System settings loaded
 
   loadPresets();
+  yield();           // Feed watchdog after SPIFFS operations
   fillLoadingDot(2); // Dot 2: Presets loaded
 
   loadCurrentPresetIndex(); // Restore last used preset
@@ -196,6 +210,15 @@ void loop() {
         millis() >= buttonNameDisplayUntil) {
       buttonNameDisplayUntil = 0;
       safeDisplayOLED();
+    }
+
+    // Periodic OLED refresh for analog debug (shows live ADC values)
+    if (!isWifiOn && systemConfig.debugAnalogIn && currentMode == 0) {
+      static unsigned long lastAnalogDbgRefresh = 0;
+      if (millis() - lastAnalogDbgRefresh > 100) { // 10Hz refresh
+        lastAnalogDbgRefresh = millis();
+        safeDisplayOLED();
+      }
     }
   }
 

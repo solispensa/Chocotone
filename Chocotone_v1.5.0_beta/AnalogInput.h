@@ -19,15 +19,37 @@ enum AnalogInputMode : uint8_t {
   AIN_MODE_SWITCH = 3
 };
 
+// Input Sources
+enum AnalogInputSource : uint8_t { AIN_SOURCE_GPIO = 0, AIN_SOURCE_MUX = 1 };
+
+// Action Types (Signal Processing Curve)
+enum AnalogActionType : uint8_t {
+  AIN_ACTION_LINEAR = 0,
+  AIN_ACTION_LOG = 1,
+  AIN_ACTION_EXP = 2,
+  AIN_ACTION_JOYSTICK = 3
+};
+
 // Analog Input Configuration
 struct AnalogInputConfig {
   // Configuration (saved to SPIFFS)
   bool enabled = false;
-  uint8_t pin = 34;     // Default GPIO34
+  AnalogInputSource source = AIN_SOURCE_GPIO;
+  uint8_t pin = 34;     // GPIO or Mux channel
   char name[11] = "A1"; // Short name
 
   // Mode & Parameters
   AnalogInputMode inputMode = AIN_MODE_POT;
+
+  // Signal Processing
+  AnalogActionType actionType = AIN_ACTION_LINEAR;
+  float curve = 2.0f;     // For LOG/EXP curves
+  uint16_t center = 2048; // For Joystick mode
+  uint8_t deadzone = 5;   // For Joystick mode %
+
+  // LED Feedback
+  uint8_t rgb[3] = {245, 158, 11}; // RGB color
+  int16_t ledIndex = -1;           // Optional LED index (-1 = none)
 
   // Piezo / Peak Detection
   uint16_t piezoThreshold = 400;
@@ -74,6 +96,7 @@ void readAnalogInputs(); // Called from main loop()
 void startCalibration(uint8_t index);
 void stopCalibration(uint8_t index);
 uint16_t readOversampled(uint8_t pin);
+bool readMuxDigital(uint8_t channel);
 
 // External array declaration
 extern AnalogInputConfig analogInputs[MAX_ANALOG_INPUTS];

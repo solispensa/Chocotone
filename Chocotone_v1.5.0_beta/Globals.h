@@ -42,7 +42,12 @@ enum MidiCommandType : uint8_t {
   PRESET_3, // Direct jump to Preset 3
   PRESET_4, // Direct jump to Preset 4
   CLEAR_BLE_BONDS,
-  WIFI_TOGGLE
+  WIFI_TOGGLE,
+  // Menu Navigation Commands (v1.5.1)
+  MENU_TOGGLE, // Enter/Exit menu mode (long press equivalent)
+  MENU_UP,     // Navigate menu up / decrease value
+  MENU_DOWN,   // Navigate menu down / increase value
+  MENU_ENTER   // Select menu item / confirm value
 };
 
 // Action Type - when this message triggers
@@ -94,8 +99,10 @@ struct ActionMessage {
 
   // Analog Range limits (0-100%) - ignored for digital buttons, used for Analog
   // Actions
-  uint8_t minInput; // 1 byte - Min input % to trigger
-  uint8_t maxInput; // 1 byte - Max input % to trigger
+  uint8_t minInput;
+  uint8_t maxInput;
+  uint8_t minOut; // Min MIDI output value
+  uint8_t maxOut; // Max MIDI output value
 
   // Action-specific data (union to save memory)
   union {
@@ -143,8 +150,19 @@ struct ButtonConfig {
   bool isAlternate; // 1 byte - Current toggle state
 };
 
+// Multiplexer Configuration (v1.5)
+struct MultiplexerConfig {
+  bool enabled;
+  char type[16]; // e.g. "cd74hc4067"
+  uint8_t signalPin;
+  uint8_t selectPins[4];
+  char useFor[8]; // "analog" or "buttons" or "both"
+  int8_t
+      buttonChannels[10]; // Mux channel for each physical button (-1 = not mux)
+};
+
 // ============================================
-// SYSTEM CONFIG (~95 bytes)
+// SYSTEM CONFIG (~130 bytes)
 // ============================================
 struct SystemConfig {
   char bleDeviceName[24]; // 24 bytes
@@ -165,6 +183,9 @@ struct SystemConfig {
   DeviceType
       targetDevice;    // 1 byte - Which device to control (SPM, GP5, Generic)
   uint8_t midiChannel; // 1 byte - MIDI channel for device (1-16)
+
+  MultiplexerConfig multiplexer; // ~25 bytes
+  bool debugAnalogIn;            // v1.5: Show raw ADC values on OLED
 };
 
 // ============================================

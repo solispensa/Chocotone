@@ -2,7 +2,7 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
-## [v1.5] - 2024-12-31 (BETA)
+## [v1.5] - 2025-01-01 (BETA)
 
 ### Added
 - **128x32 OLED Support** - Full layout adaptation for smaller displays.
@@ -13,14 +13,25 @@ All notable changes to the Chocotone MIDI Controller project will be documented 
 - **Enhanced Analog Inputs** - Support for up to 4 inputs (ADC pins 32-39).
   - Modes: Potentiometer, FSR (Force Sensitive Resistor), Piezo (Drum Pad), and Switch.
   - Signal conditioning: 64x oversampling, EMA smoothing, and hysteresis.
-  - Real-time value display on OLED (e.g., "A1.127").
+  - Real-time value display on OLED (e.g., "A1:127").
+  - Multi-message support per input with input/output range mapping.
+- **Analog Debug Mode** - Menu toggle to show raw ADC values on OLED for calibration.
+  - 10Hz refresh rate for live monitoring.
+- **Menu Button Commands** - Navigate device menu using buttons without encoder.
+  - MENU_TOGGLE: Enter/exit menu mode.
+  - MENU_UP/DOWN: Navigate menu items.
+  - MENU_ENTER: Select menu item.
+- **GP5 Sync Mode** - LED synchronization with Valeton GP-5 via SysEx.
+- **Grouped Command Types** - Editor now separates MIDI Commands and Internal Commands in dropdown.
 - **Serial Debugging** - Throttled debug prints for raw/smoothed analog readings and OLED layout info.
 
 ### Fixed
 - **OLED Configuration Persistence** - `oledConfig` now correctly saves to and loads from NVS.
 - **USB Serial Config Parsing** - Added full parsing for OLED and Analog Input settings in `WebInterface.cpp`.
 - **128x32 Layout Overlap** - Fixed centered text overlap on smaller screens by switching to optimized horizontal layout.
+- **128x32 Menu Scrolling** - Fixed menu item clipping at bottom of display.
 - **Rotation Handling** - Fixed rotation not applying on reboot.
+- **Analog Input CC Parameter Order** - Fixed sendMidiCC parameter order (channel, cc, value).
 
 ---
 

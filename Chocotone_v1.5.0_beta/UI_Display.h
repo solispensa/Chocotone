@@ -6,6 +6,7 @@
 void displayOLED();
 void displayMenu();
 void updateLeds();
+void updateIndividualLed(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
 void blinkAllLeds();
 void blinkTapButton(int buttonIndex);
 void displayTapTempoMode();

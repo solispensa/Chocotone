@@ -52,6 +52,14 @@ void saveSystemSettings() {
 
   // OLED Configuration (v1.5)
   prefs.putBytes("s_oledCfg", &oledConfig, sizeof(OledConfig));
+
+  // v1.5 Additions
+  prefs.putBytes("s_muxCfg", &systemConfig.multiplexer,
+                 sizeof(MultiplexerConfig));
+  prefs.putUChar("s_target", (uint8_t)systemConfig.targetDevice);
+  prefs.putUChar("s_midiCh", systemConfig.midiChannel);
+  prefs.putBool("s_debugAin", systemConfig.debugAnalogIn);
+
   Serial.printf("Saved OLED config: type=%d, rotation=%d\n", oledConfig.type,
                 oledConfig.rotation);
 
@@ -61,6 +69,7 @@ void saveSystemSettings() {
 
 void loadSystemSettings() {
   // Use SAME namespace as presets to avoid namespace switch issues
+  yield(); // Feed watchdog before NVS operation
   systemPrefs.begin(PRESETS_NAMESPACE, true);
 
   // Check for new format (sys_ver key) or old format
@@ -135,6 +144,21 @@ void loadSystemSettings() {
     Serial.println("Using default OLED config (128x64)");
   }
 
+  // Load Multiplexer Configuration (v1.5)
+  if (systemPrefs.getBytesLength("s_muxCfg") == sizeof(MultiplexerConfig)) {
+    systemPrefs.getBytes("s_muxCfg", &systemConfig.multiplexer,
+                         sizeof(MultiplexerConfig));
+  } else {
+    systemConfig.multiplexer.enabled = false;
+    for (int i = 0; i < 10; i++)
+      systemConfig.multiplexer.buttonChannels[i] = -1;
+  }
+
+  systemConfig.targetDevice = (DeviceType)systemPrefs.getUChar("s_target", 0);
+  systemConfig.midiChannel = systemPrefs.getUChar("s_midiCh", 1);
+  systemConfig.debugAnalogIn = systemPrefs.getBool("s_debugAin", false);
+
+  yield(); // Feed watchdog before closing
   systemPrefs.end();
   Serial.println("=== System Settings Loaded ===");
 }
@@ -206,7 +230,8 @@ void savePresets() {
 void loadPresets() {
   Serial.println("Loading Presets (SPIFFS storage)...");
 
-  // Initialize SPIFFS
+  // Initialize SPIFFS - this can take a while on first boot
+  yield(); // Feed watchdog before potentially slow operation
   if (!SPIFFS.begin(true)) {
     Serial.println("ERROR: SPIFFS mount failed!");
     loadFactoryPresets();
@@ -242,8 +267,8 @@ void loadPresets() {
     return;
   }
 
-  // Read button configs
   size_t read = file.read((uint8_t *)buttonConfigs, sizeof(buttonConfigs));
+  yield(); // Feed watchdog after large read
   Serial.printf("  buttonConfigs: %d/%d bytes\n", read, sizeof(buttonConfigs));
   if (read != sizeof(buttonConfigs)) {
     Serial.println("  ERROR: Size mismatch - using defaults");

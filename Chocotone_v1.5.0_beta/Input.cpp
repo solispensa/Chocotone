@@ -1,9 +1,10 @@
 #include "Input.h"
+#include "AnalogInput.h"
 #include "BleMidi.h"
+#include "GP5Protocol.h"
 #include "Storage.h"
 #include "UI_Display.h"
 #include "WebInterface.h"
-
 
 // Temp variable to track if BLE mode was changed (requires reboot)
 static bool bleModeChanged = false;
@@ -85,6 +86,50 @@ void executeActionMessage(const ActionMessage &msg) {
 
   case CLEAR_BLE_BONDS:
     clearBLEBonds();
+    return;
+
+  case MENU_TOGGLE:
+    // Toggle between preset mode (0) and menu mode (1)
+    if (currentMode == 0) {
+      currentMode = 1;
+      menuSelection = 0;
+      inSubMenu = false;
+      inTapTempoMode = false;
+      displayMenu();
+    } else {
+      // Exit menu without saving
+      currentMode = 0;
+      safeDisplayOLED();
+      updateLeds();
+    }
+    return;
+
+  case MENU_UP:
+    if (currentMode == 1) {
+      if (inSubMenu || factoryResetConfirm) {
+        editingValue--;
+      } else {
+        menuSelection = (menuSelection - 1 + 13) % 13;
+      }
+      displayMenu();
+    }
+    return;
+
+  case MENU_DOWN:
+    if (currentMode == 1) {
+      if (inSubMenu || factoryResetConfirm) {
+        editingValue++;
+      } else {
+        menuSelection = (menuSelection + 1) % 13;
+      }
+      displayMenu();
+    }
+    return;
+
+  case MENU_ENTER:
+    if (currentMode == 1) {
+      handleMenuSelection();
+    }
     return;
 
   case NOTE_ON:
@@ -193,7 +238,18 @@ void loop_presetMode() {
   // ===== BUTTON LOOP =====
   for (int i = 0; i < systemConfig.buttonCount; i++) {
     int pin = systemConfig.buttonPins[i];
-    bool pressed = (digitalRead(pin) == LOW);
+    bool pressed = false;
+
+    // Check if multiplexed button
+    if (systemConfig.multiplexer.enabled &&
+        (strstr(systemConfig.multiplexer.useFor, "buttons") != NULL ||
+         strstr(systemConfig.multiplexer.useFor, "both") != NULL) &&
+        systemConfig.multiplexer.buttonChannels[i] >= 0) {
+      pressed =
+          (readMuxDigital(systemConfig.multiplexer.buttonChannels[i]) == LOW);
+    } else {
+      pressed = (digitalRead(pin) == LOW);
+    }
 
     if (pressed != buttonPinActive[i]) {
       if (pressed) {
@@ -609,12 +665,68 @@ void loop_presetMode() {
 // ============================================
 
 void loop_menuMode() {
+  // === Scan buttons for menu commands ===
+  // This allows buttons configured with MENU_UP/DOWN/ENTER to work in menu mode
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    int pin = systemConfig.buttonPins[i];
+    bool isPressed = (digitalRead(pin) == LOW);
+
+    if (isPressed && !buttonPinActive[i]) {
+      // Button just pressed - check for menu commands
+      unsigned long now = millis();
+      if (now - lastButtonPressTime_pads[i] > buttonDebounce) {
+        lastButtonPressTime_pads[i] = now;
+        buttonPinActive[i] = true;
+
+        // Check this button's first message for menu commands
+        ButtonConfig &btn = buttonConfigs[currentPreset][i];
+        if (btn.messageCount > 0) {
+          ActionMessage &msg = btn.messages[0];
+          if (msg.action == ACTION_PRESS) {
+            switch (msg.type) {
+            case MENU_TOGGLE:
+              // Exit menu mode
+              currentMode = 0;
+              safeDisplayOLED();
+              updateLeds();
+              return;
+            case MENU_UP:
+              if (inSubMenu || factoryResetConfirm) {
+                editingValue--;
+              } else {
+                menuSelection = (menuSelection - 1 + 14) % 14;
+              }
+              displayMenu();
+              return;
+            case MENU_DOWN:
+              if (inSubMenu || factoryResetConfirm) {
+                editingValue++;
+              } else {
+                menuSelection = (menuSelection + 1) % 14;
+              }
+              displayMenu();
+              return;
+            case MENU_ENTER:
+              handleMenuSelection();
+              return;
+            default:
+              break;
+            }
+          }
+        }
+      }
+    } else if (!isPressed && buttonPinActive[i]) {
+      buttonPinActive[i] = false;
+    }
+  }
+
+  // === Encoder handling ===
   long newEncoderPosition = encoder.getCount();
   if (newEncoderPosition == oldEncoderPosition)
     return;
 
   int change = (newEncoderPosition - oldEncoderPosition);
-  int numMenuItems = 13; // Menu items count
+  int numMenuItems = 14; // Menu items count
 
   if (factoryResetConfirm) {
     // In Factory Reset confirmation - just toggle between Yes (0) and No (1)
@@ -759,23 +871,31 @@ void handleMenuSelection() {
       systemConfig.wifiOnAtBoot = !systemConfig.wifiOnAtBoot;
       displayMenu();
       break;
-    case 12: // BLE Mode - cycles: CLIENT → SERVER → EDIT(config) → back to
+    case 12: // BLE Mode - cycles: CLIENT → SERVER → DUAL → EDIT → back to
              // CLIENT
       if (bleConfigMode) {
         // Currently in EDIT mode, go to CLIENT
         toggleBleConfigMode(); // Turn off config mode
-        // Don't change bleMode or set bleModeChanged - just exiting EDIT
+        systemConfig.bleMode = BLE_CLIENT_ONLY;
+        bleModeChanged = true;
       } else if (systemConfig.bleMode == BLE_CLIENT_ONLY) {
         systemConfig.bleMode = BLE_SERVER_ONLY;
-        bleModeChanged = true; // Actual mode change requires reboot
+        bleModeChanged = true;
       } else if (systemConfig.bleMode == BLE_SERVER_ONLY) {
+        systemConfig.bleMode = BLE_DUAL_MODE;
+        bleModeChanged = true;
+      } else if (systemConfig.bleMode == BLE_DUAL_MODE) {
         // Enter EDIT mode - no reboot required
         toggleBleConfigMode(); // Turn on config mode
       } else {
-        // DUAL mode or other, go to CLIENT
+        // Any other mode, go to CLIENT
         systemConfig.bleMode = BLE_CLIENT_ONLY;
         bleModeChanged = true;
       }
+      displayMenu();
+      break;
+    case 13: // Analog Debug
+      systemConfig.debugAnalogIn = !systemConfig.debugAnalogIn;
       displayMenu();
       break;
     }
@@ -816,6 +936,17 @@ void handleEncoderButtonPress() {
         float finalDelayMs =
             (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
         sendDelayTime(constrain((int)finalDelayMs, 0, 1000));
+
+        // Send BPM to GP5 via CC 118 (if in GP5 sync mode and connected)
+        if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
+          // CC 118 value: BPM mapped to 0-127
+          uint8_t bpmValue =
+              constrain((int)currentBPM - 40, 0, 127); // GP5 range: 40-167 BPM
+          sendMidiCC(systemConfig.midiChannel, GP5MidiCC::BPM, bpmValue);
+          Serial.printf("GP5: Sent BPM %d (CC 118 = %d)\n", (int)currentBPM,
+                        bpmValue);
+        }
+
         tapModeTimeout = millis() + 3000;
         safeDisplayOLED();
       } else if (currentMode == 1) {

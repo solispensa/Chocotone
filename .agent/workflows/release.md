@@ -45,3 +45,4 @@ git push origin main
 - [ ] `.\scripts\build-firmware.ps1` run
 - [ ] Code pushed to GitHub
 - [ ] Installer shows new version in dropdown
+- [ ] Verify OLED layouts (128x64 & 128x32) in Editor Preview

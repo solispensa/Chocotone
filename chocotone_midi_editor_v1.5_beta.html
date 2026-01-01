@@ -487,6 +487,7 @@
             <span class="logo-part-1">CHOCO</span><span class="logo-part-2">TONE</span>
         </h1>
         <div class="logo-subline">OPEN MIDI CONTROLLER</div>
+        <div style="font-size:14px;color:#8c81df;margin-top:5px;font-weight:bold">Editor v1.5 Beta</div>
     </div>
 
     <div id="app"></div>
@@ -574,7 +575,11 @@
         }
 
         var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
-        var midiTypes = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE'];
+
+        // v1.5.1: Categorized command types for grouped dropdown
+        var MIDI_COMMANDS = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX'];
+        var INTERNAL_COMMANDS = ['TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE', 'MENU_TOGGLE', 'MENU_UP', 'MENU_DOWN', 'MENU_ENTER'];
+        var midiTypes = MIDI_COMMANDS.concat(INTERNAL_COMMANDS); // Combined for backward compatibility
         var analogActionTypes = ['linear_linear', 'log_linear', 'linear_log', 'joystick'];
         var analogActionLabels = {
             'linear_linear': 'Linear → Linear',
@@ -658,6 +663,7 @@
                 // Analog Input System (v1.5)
                 analogInputCount: 0,
                 fsrThreshold: 100, // Default for FSR input mode
+                debugAnalogIn: false, // Show raw ADC values on OLED
                 multiplexer: {
                     enabled: false,
                     type: "cd74hc4067",
@@ -1110,11 +1116,12 @@
                     var ainp = presetData.analogInputs[ai] || {};
                     var aiActive = (selectedAnalogInput === ai && !showSystem);
                     var aiColor = ainp.rgb || '#f59e0b';
+                    var msg1 = (ainp.messages && ainp.messages[0]) ? ainp.messages[0] : { type: 'OFF', data1: 0 };
                     html += '<div class="btn-tile' + (aiActive ? ' active' : '') + '" style="border-color:' + aiColor + '40" onclick="selAnalog(' + ai + ')">';
                     html += '<div style="flex:1;min-width:0">';
                     html += '<div class="num" style="color:#f59e0b">A' + (ai + 1) + '</div>';
                     html += '<div class="name" style="font-size:0.9rem">' + (ainp.name || 'A' + (ai + 1)) + '</div>';
-                    html += '<div class="info">' + (ainp.enabled ? 'CC' + ainp.midiCC : 'OFF') + '</div>';
+                    html += '<div class="info">' + (ainp.enabled ? (msg1.type === 'CC' ? 'CC' + msg1.data1 : msg1.type) : 'OFF') + '</div>';
                     html += '</div>';
                     html += '<div class="color-dot" style="background:' + aiColor + '"></div>';
                     html += '</div>';
@@ -1239,19 +1246,25 @@
                 html += '</div>';
             }
 
-            // MIDI Content
+            // MIDI Content - Only show for actual MIDI commands
+            var isMidiCommand = MIDI_COMMANDS.indexOf(msg.type) >= 0;
+            var isInternalNoFields = ['MENU_TOGGLE', 'MENU_UP', 'MENU_DOWN', 'MENU_ENTER', 'WIFI_TOGGLE', 'CLEAR_BLE_BONDS', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4'].indexOf(msg.type) >= 0;
+
             html += '<div class="row">';
             html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
-            html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
-            // D1/D2 hidden for TAP_TEMPO
-            if (msg.type !== 'TAP_TEMPO') {
-                // D1 as CC Picker dropdown for CC type
-                if (msg.type === 'CC') {
-                    html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
-                } else {
-                    html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+
+            if (!isInternalNoFields) {
+                html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
+                // D1/D2 hidden for TAP_TEMPO
+                if (msg.type !== 'TAP_TEMPO') {
+                    // D1 as CC Picker dropdown for CC type
+                    if (msg.type === 'CC') {
+                        html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                    } else {
+                        html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                    }
+                    html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
                 }
-                html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
             }
             html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
             html += '</div>';
@@ -1534,7 +1547,7 @@
             html += '<div class="msg-box"><div class="msg-title">Debug Options</div>';
             html += '<div class="row">';
             html += '<div style="display:flex;align-items:center;gap:8px">';
-            html += '<input type="checkbox" ' + (sys.debugAnalogIn !== false ? 'checked' : '') + ' onchange="updSys(\'debugAnalogIn\',this.checked)" style="width:16px;height:16px">';
+            html += '<input type="checkbox" ' + (sys.debugAnalogIn ? 'checked' : '') + ' onchange="updSys(\'debugAnalogIn\',this.checked)" style="width:16px;height:16px">';
             html += '<label style="font-size:12px">Debug Analog In (show ADC value on OLED)</label>';
             html += '</div>';
             html += '</div>';
@@ -1565,12 +1578,30 @@
                 case 'PRESET_4': return presetData.presets[3] ? presetData.presets[3].name : 'P4';
                 case 'WIFI_TOGGLE': return 'WiFi';
                 case 'CLEAR_BLE_BONDS': return 'xBLE';
+                case 'MENU_TOGGLE': return 'MENU';
+                case 'MENU_UP': return 'M.UP';
+                case 'MENU_DOWN': return 'M.DN';
+                case 'MENU_ENTER': return 'M.OK';
                 case 'OFF': return '';
                 default: return '';
             }
         }
 
-        function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }
+        // v1.5.1: Render grouped optgroups for MIDI and Internal commands
+        function typeOpts(sel) {
+            var html = '<optgroup label="MIDI Commands">';
+            for (var i = 0; i < MIDI_COMMANDS.length; i++) {
+                var t = MIDI_COMMANDS[i];
+                html += '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>';
+            }
+            html += '</optgroup><optgroup label="Internal Commands">';
+            for (var i = 0; i < INTERNAL_COMMANDS.length; i++) {
+                var t = INTERNAL_COMMANDS[i];
+                html += '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace(/_/g, ' ') + '</option>';
+            }
+            html += '</optgroup>';
+            return html;
+        }
         function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
 
         function chgPreset(v) {
@@ -2156,7 +2187,7 @@
                 } else if (is32) {
                     // Compact Loading
                     drawText('CHOCOTONE', 0, 10, 1);
-                    drawText('v1.4', 90, 10, 1);
+                    drawText('v1.5b', 90, 10, 1);
                 } else {
                     // STANDARD 128x64 (Exact Firmware Match)
                     // Line 35: CHOCOTONE centered Y=10 Size 2
@@ -2191,7 +2222,7 @@
                     // For preview, let's just draw the rect (white) then draw text (black/clear).
                     // Our drawChar sets pixels to true (white). To draw black, we need 'false'.
                     // Added: hack to draw black text
-                    var ver = "v1.4";
+                    var ver = "v1.5b";
                     var vx = 96; var vy = 48;
                     // Invert area first? drawFilledRoundRect already sets to true (white).
                     // We need to clear pixels for text.
@@ -2202,7 +2233,7 @@
                     // Firmware uses fillRoundRect(94, 47, 28, 10) then text at 96,48.
                     // drawInvertedText calculates background size: w=len*6*s + 4, h=7*s+2
                     // "v1.4" len 4 -> w=24+4=28. h=9. Close enough to 28x10.
-                    drawInvertedText('v1.4', 96, 48, 1);
+                    drawInvertedText('v1.5b', 96, 48, 1);
                 }
             } else {
                 // === MAIN SCREEN PREVIEW (Default) ===

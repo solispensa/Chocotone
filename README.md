@@ -4,7 +4,7 @@
 
 **A powerful, customizable ESP32-based BLE MIDI controller designed for wireless control of BLE MIDI devices like the Sonicake Pocket Master and Valeton GP-5.**
 
-![Version](https://img.shields.io/badge/version-1.4.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.5.0--beta-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Arduino](https://img.shields.io/badge/Framework-Arduino-00979D.svg)](https://www.arduino.cc/)
@@ -40,6 +40,10 @@
   - Tap tempo blink feedback on all LEDs
 - **WiFi Access Point** - Wireless configuration via web browser
 - **Configurable GPIO** - Customize button pin assignments via web editor
+- **Analog Inputs (v1.5)** - Up to 4 analog inputs for expression pedals, pots, FSRs, piezo, switches
+  - Configurable signal processing: oversampling, smoothing, hysteresis
+  - Multi-message support with input/output range mapping
+- **128x32 OLED Support (v1.5)** - Compact displays with optimized layouts
 
 ### MIDI Capabilities
 - **BLE MIDI Dual-Mode** - Connect to BLE devices AND accept connections from DAWs/Apps
@@ -88,7 +92,7 @@
 | Component | Specification | Notes |
 |-----------|---------------|-------|
 | Microcontroller | ESP32 (any variant with BLE) | Tested with ESP32 NodeMCU32s |
-| OLED Display | 128x64 I2C SSD1306 | 0.96" typical |
+| OLED Display | 128x64 or 128x32 I2C SSD1306 | 0.96" or 0.91" |
 | Rotary Encoder | Standard EC11 type | With push button |
 | NeoPixel LEDs | WS2812B strip/ring | Match button count (4-10) |
 | Buttons | Tactile switches | 4-10 (configurable via web) |
@@ -252,6 +256,7 @@ Long-press encoder to access:
 - **Name Font Size** - Adjust button name display size
 - **WiFi ON/OFF at Boot** - Toggle WiFi auto-start
 - **BLE Mode** - Toggle CLIENT/DUAL/SERVER modes
+- **Analog Debug (v1.5)** - Show live ADC values for calibration
 
 ## BLE Connection
 
