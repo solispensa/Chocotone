@@ -6,31 +6,44 @@ Frequently Asked Questions about the Chocotone MIDI Controller.
 
 ## Coming Soon
 
-> These features are planned but **not yet implemented** (as of January 2025). Stay tuned for updates!
+> These features are planned but **not yet implemented** (as of January 2026). Stay tuned for updates!
 
-### Can I use MIDI USB?
-**Not yet.** USB MIDI In/Out is on the roadmap. Currently, the controller only uses BLE MIDI, via Client, Server or Dual mode.
+### Can I use USB MIDI class-compliant?
+**Not yet.** USB MIDI class-compliant mode is on the roadmap. Currently, USB is used for configuration transfer only.
 
 ### Is there battery level monitoring?
 **Not yet.** Battery level display on the OLED is on the roadmap for battery-powered builds.
+
+### Will there be more than 16 analog inputs?
+**Planned.** With multiplexer support, up to 16 channels are supported currently. Dual-multiplexer support for 32+ inputs is under consideration.
 
 ---
 
 ## Analog Inputs (v1.5+)
 
 ### Does the controller support analog inputs?
-**Yes!** As of v1.5, Chocotone supports up to **4 analog inputs** (on GPIO 32-39). You can use:
+**Yes!** As of v1.5, Chocotone supports up to **16 analog inputs**. You can use:
 - **Potentiometers** for expression control
 - **Expression pedals** via TRS jack with 1MΩ resistor
 - **FSR (Force Sensitive Resistors)** for velocity-sensitive pads
 - **Piezo sensors** for drum pads with velocity detection
+- **Rotary encoders** (with additional code)
 - **Switches** for digital input via analog pins
 
+### Which GPIO pins support analog input?
+- **ADC1 Pins (WiFi-safe):** GPIO 32, 33, 34, 35, 36, 39
+- **ADC2 Pins (no WiFi):** GPIO 25, 26, 27
+
+💡 ADC2 pins cannot be used when WiFi is enabled.
+
+### How do I use more than 6 analog inputs?
+Use a **multiplexer** (CD74HC4067 for 16 channels, or CD74HC4051 for 8 channels). Configure it in **System Config** → **Multiplexer** section.
+
 ### How do I configure analog inputs?
-In the web editor, go to **System Config** → **Analog Inputs** section. Set the count, configure pins, input modes, and MIDI messages for each input.
+In the web editor, go to **System Config** → **Analog Inputs** section. Set the count, configure source (GPIO or MUX), pins, input modes, and MIDI messages for each input.
 
 ### How do I see live analog values?
-Enable **Analog Debug** from the OLED menu. This shows raw ADC values on the display in real-time for calibration and testing.
+Enable **Debug Analog In** in System Config or from the OLED menu. This shows raw 12-bit ADC values (0-4095) on the display in real-time for calibration and testing.
 
 ### My analog input is jittery
 Adjust the **Smoothing α** (lower = more smoothing) and **Hysteresis** (higher = less jitter) values in the analog input configuration.
@@ -57,10 +70,16 @@ Chocotone works with any BLE MIDI device that accepts standard MIDI messages. Te
 ## Hardware
 
 ### How many buttons can I use?
-You can configure **4 to 10 buttons** via the web editor. The layout automatically adjusts on the OLED display. I plan adding more buttons in the future.
+You can configure **4 to 10 buttons** via the web editor. The layout automatically adjusts on the OLED display. More buttons planned for future versions.
 
 ### What ESP32 board should I use?
 Any ESP32 development board with BLE support works. The project was developed and tested with the ESP32 NodeMCU32s.
+
+### What OLED displays are supported? (v1.5+)
+Both **128x64** and **128x32** pixel OLED displays are supported. Configure the display type in **System Config** → **OLED Settings**. The firmware automatically adjusts the layout for each size.
+
+### Can I configure the controller via USB?
+**Yes!** As of v1.5, you can read and write configuration via USB serial using the web editor. Connect via USB, open the editor in Chrome/Edge, and use the USB connection buttons.
 
 ### Do I need pull-up resistors?
 - Most GPIOs have internal pull-ups that work fine
@@ -96,10 +115,13 @@ See [docs/WIRING.md](docs/WIRING.md) for detailed wiring diagrams and pin assign
 In the web editor, go to **System Config** and change the "Buttons #" field. Click "Apply Changes" to update the layout.
 
 ### What are the different BLE modes?
-- **CLIENT**: Connects to external BLE MIDI devices (like pedals)
-- **SERVER**: Makes Chocotone visible to DAWs and apps
-- **EDIT**: Pauses BLE scanning for configuration (web editor connections)
-- **DUAL**: Both CLIENT and SERVER active simultaneously
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **CLIENT** | Connects to external BLE MIDI devices | Control pedals like SPM, GP-5 |
+| **SERVER** | Makes Chocotone visible to DAWs/apps | Send MIDI to iOS, Mac, Windows apps |
+| **DUAL** | Both CLIENT and SERVER active | Control pedals AND send to DAW simultaneously |
+
+💡 **For DAW connections (SERVER/DUAL)**: Use MIDIberry on Windows, or native BLE MIDI on Mac/iOS. Connect from within the MIDI app, not from system Bluetooth settings.
 
 ### How do I save my configuration?
 In the web editor, changes are saved when you click "Save to Device". From the OLED menu, select "Save and Exit" to persist settings.
