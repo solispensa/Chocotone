@@ -1,6 +1,7 @@
 # Arduino/ESP32 Build Artifacts
 *.elf
 *.bin
+!firmware/*.bin
 *.hex
 *.map
 *.lst
@@ -17,6 +18,7 @@ build/
 
 # VS Code
 .vscode/
+!.vscode/c_cpp_properties.json
 .theia/
 
 # Compilation
