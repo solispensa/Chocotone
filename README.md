@@ -24,6 +24,7 @@
 | | |
 |---|---|
 | 👉 **[Chocotone Web Installer](https://solispensa.github.io/Chocotone/web_tools/installer.html)** | Flash firmware in one click |
+| 🎛️ **[Chocotone Editor](https://solispensa.github.io/Chocotone/chocotone_midi_editor.html)** | Configure buttons and MIDI via USB |
 | 📖 **[Beginner's Guide](docs/BEGINNER_GUIDE.md)** | Step-by-step tutorial |
 
 **Requirements:** Chrome/Edge/Brave browser • USB cable • ESP32 board
