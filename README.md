@@ -2,7 +2,7 @@
 
 ![Chocotone Header](images/chocotone_header.png)
 
-**A powerful, customizable ESP32-based BLE MIDI controller designed for wireless control of BLE MIDI devices like the Sonicake Pocket Master and Valeton GP-5.**
+**A powerful, open-source ESP32-based BLE MIDI controller for wireless control of any BLE MIDI device, DAW, or mobile app.**
 
 ![Version](https://img.shields.io/badge/version-1.5.0--beta-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
