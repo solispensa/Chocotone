@@ -1227,7 +1227,11 @@ void handleBleConnection() {
 
   // Only scan if not connected, config mode OFF, and enough time has passed
   // bleConfigMode pauses scanning to allow web editor BLE connection
-  if (!clientConnected && !doConnect && !bleConfigMode &&
+  // In DUAL mode, also pause scanning when server has a connection (DAW
+  // connected)
+  bool shouldPauseScan =
+      (systemConfig.bleMode == BLE_DUAL_MODE && serverConnected);
+  if (!clientConnected && !doConnect && !bleConfigMode && !shouldPauseScan &&
       (millis() - lastScanAttempt > RESCAN_INTERVAL)) {
     Serial.println("→ Scanning for SPM (BLE Client auto-connect)...");
     startBleScan();
