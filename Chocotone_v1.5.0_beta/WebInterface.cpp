@@ -134,6 +134,14 @@ const char *getCommandTypeString(MidiCommandType t) {
     return "CLEAR_BLE_BONDS";
   case WIFI_TOGGLE:
     return "WIFI_TOGGLE";
+  case MENU_TOGGLE:
+    return "MENU_TOGGLE";
+  case MENU_UP:
+    return "MENU_UP";
+  case MENU_DOWN:
+    return "MENU_DOWN";
+  case MENU_ENTER:
+    return "MENU_ENTER";
   default:
     return "OFF";
   }
