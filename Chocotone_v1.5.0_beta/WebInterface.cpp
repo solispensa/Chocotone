@@ -923,6 +923,16 @@ void handleSaveSystem() {
     }
   }
 
+  if (server.hasArg("analogInputCount")) {
+    uint8_t cnt = server.arg("analogInputCount").toInt();
+    if (cnt > MAX_ANALOG_INPUTS)
+      cnt = MAX_ANALOG_INPUTS;
+    if (cnt != systemConfig.analogInputCount) {
+      systemConfig.analogInputCount = cnt;
+      changed = true;
+    }
+  }
+
   if (changed) {
     saveSystemSettings();
     rebootESP("Settings Saved!");
@@ -2266,6 +2276,12 @@ bool applyConfigJson(JsonObject doc) {
       systemConfig.midiChannel = sys["midiChannel"] | 1;
     if (sys.containsKey("debugAnalogIn"))
       systemConfig.debugAnalogIn = sys["debugAnalogIn"] | false;
+    if (sys.containsKey("analogInputCount")) {
+      uint8_t cnt = sys["analogInputCount"] | 0;
+      if (cnt > MAX_ANALOG_INPUTS)
+        cnt = MAX_ANALOG_INPUTS;
+      systemConfig.analogInputCount = cnt;
+    }
 
     if (sys.containsKey("buttonPins")) {
       String pinsStr = sys["buttonPins"].as<String>();
@@ -2725,7 +2741,7 @@ void handleSerialConfig() {
         Serial.print(",\"brightnessTap\":");
         Serial.print(ledBrightnessTap);
         Serial.print(",\"analogInputCount\":");
-        Serial.print(MAX_ANALOG_INPUTS);
+        Serial.print(systemConfig.analogInputCount);
         Serial.print(",\"targetDevice\":");
         Serial.print((uint8_t)systemConfig.targetDevice);
         Serial.print(",\"midiChannel\":");
@@ -3340,7 +3356,7 @@ void handleBtSerialConfig() {
         SerialBT.print(",\"brightnessTap\":");
         SerialBT.print(ledBrightnessTap);
         SerialBT.print(",\"analogInputCount\":");
-        SerialBT.print(MAX_ANALOG_INPUTS);
+        SerialBT.print(systemConfig.analogInputCount);
         SerialBT.print(",\"targetDevice\":");
         SerialBT.print((uint8_t)systemConfig.targetDevice);
         SerialBT.print(",\"midiChannel\":");

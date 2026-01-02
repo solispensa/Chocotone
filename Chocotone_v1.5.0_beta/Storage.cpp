@@ -59,6 +59,7 @@ void saveSystemSettings() {
   prefs.putUChar("s_target", (uint8_t)systemConfig.targetDevice);
   prefs.putUChar("s_midiCh", systemConfig.midiChannel);
   prefs.putBool("s_debugAin", systemConfig.debugAnalogIn);
+  prefs.putUChar("s_ainCount", systemConfig.analogInputCount);
 
   Serial.printf("Saved OLED config: type=%d, rotation=%d\n", oledConfig.type,
                 oledConfig.rotation);
@@ -158,6 +159,7 @@ void loadSystemSettings() {
   systemConfig.targetDevice = (DeviceType)systemPrefs.getUChar("s_target", 0);
   systemConfig.midiChannel = systemPrefs.getUChar("s_midiCh", 1);
   systemConfig.debugAnalogIn = systemPrefs.getBool("s_debugAin", false);
+  systemConfig.analogInputCount = systemPrefs.getUChar("s_ainCount", 0);
 
   yield(); // Feed watchdog before closing
   systemPrefs.end();

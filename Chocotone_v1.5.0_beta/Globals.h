@@ -186,6 +186,7 @@ struct SystemConfig {
 
   MultiplexerConfig multiplexer; // ~25 bytes
   bool debugAnalogIn;            // v1.5: Show raw ADC values on OLED
+  uint8_t analogInputCount;      // v1.5: Number of enabled analog inputs (0-16)
 };
 
 // ============================================
