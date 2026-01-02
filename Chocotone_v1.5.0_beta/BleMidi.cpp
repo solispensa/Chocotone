@@ -435,7 +435,14 @@ void startBleScan() {
   pBLEScan->setInterval(1349);
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
-  pBLEScan->start(1, false);
+  pBLEScan->start(1, false); // 1 second scan, non-blocking
+
+  // In DUAL or SERVER mode, restart advertising after starting scan
+  // ESP32 can interleave short scan windows with advertising intervals
+  if (systemConfig.bleMode == BLE_SERVER_ONLY ||
+      systemConfig.bleMode == BLE_DUAL_MODE) {
+    BLEDevice::startAdvertising();
+  }
 }
 
 bool connectToServer() {
