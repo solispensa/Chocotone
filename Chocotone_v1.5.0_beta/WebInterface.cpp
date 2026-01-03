@@ -1184,7 +1184,7 @@ void handleImport() {
 // ============================================================================
 
 // Static buffer for upload - stored in BSS, not heap (avoids fragmentation)
-static char uploadBuffer[32768]; // 32KB static buffer
+static char uploadBuffer[20480]; // 20KB static buffer (DRAM limited)
 static size_t uploadBufferLen = 0;
 static bool pendingRestart = false; // Flag to trigger restart after response
 static char uploadError[128] = "";  // Error message for browser
