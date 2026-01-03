@@ -1184,7 +1184,7 @@ void handleImport() {
 // ============================================================================
 
 // Static buffer for upload - stored in BSS, not heap (avoids fragmentation)
-static char uploadBuffer[14336]; // 14KB static buffer
+static char uploadBuffer[32768]; // 32KB static buffer
 static size_t uploadBufferLen = 0;
 static bool pendingRestart = false; // Flag to trigger restart after response
 static char uploadError[128] = "";  // Error message for browser
@@ -2542,7 +2542,7 @@ bool processConfigChunk(const String &jsonStr, int chunkNum) {
   filter["presets"] = true;
   filter["system"] = true;
 
-  DynamicJsonDocument doc(24576); // 24KB for full config
+  DynamicJsonDocument doc(32768); // 32KB for full config
   DeserializationError error = deserializeJson(doc, jsonStr);
 
   if (error) {
