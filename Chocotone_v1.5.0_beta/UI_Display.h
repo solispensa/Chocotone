@@ -5,6 +5,7 @@
 
 void displayOLED();
 void displayMenu();
+void displayAnalogDebug(); // v1.5: Dedicated analog debug screen
 void updateLeds();
 void updateIndividualLed(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
 void blinkAllLeds();

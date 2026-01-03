@@ -952,15 +952,23 @@ void handleEncoderButtonPress() {
       } else if (currentMode == 1) {
         handleMenuSelection();
       } else if (currentMode == 0) {
-        currentPreset = (currentPreset + 1) % 4;
-        for (int j = 0; j < MAX_BUTTONS; j++) {
-          ledToggleState[j] = false;
+        // If in analog debug mode, pressing encoder exits to menu
+        if (systemConfig.debugAnalogIn) {
+          systemConfig.debugAnalogIn = false; // Exit analog debug
+          currentMode = 1;                    // Go to menu
+          menuSelection = 13;                 // Highlight "Analog Debug" option
+          displayMenu();
+        } else {
+          currentPreset = (currentPreset + 1) % 4;
+          for (int j = 0; j < MAX_BUTTONS; j++) {
+            ledToggleState[j] = false;
+          }
+          saveCurrentPresetIndex();
+          displayOLED();
+          updateLeds();
+          if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected)
+            requestPresetState();
         }
-        saveCurrentPresetIndex();
-        displayOLED();
-        updateLeds();
-        if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected)
-          requestPresetState();
       }
     } else if (pressDuration >= LONG_PRESS_DURATION) {
       // Long press only enters menu from preset mode

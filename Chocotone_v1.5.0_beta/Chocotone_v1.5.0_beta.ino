@@ -202,21 +202,22 @@ void loop() {
   if (currentMode == 1) {
     loop_menuMode();
   } else {
-    loop_presetMode();
+    // Show analog debug screen if enabled (dedicated screen mode)
+    if (systemConfig.debugAnalogIn) {
+      static unsigned long lastAnalogDebugRefresh = 0;
+      if (millis() - lastAnalogDebugRefresh > 100) { // 10Hz refresh
+        lastAnalogDebugRefresh = millis();
+        displayAnalogDebug();
+      }
+      // Skip normal preset mode when in analog debug
+    } else {
+      loop_presetMode();
 
-    // Update display to handle button name timeout
-    // SKIP when WiFi is on to prevent crash
-    if (!isWifiOn && buttonNameDisplayUntil > 0 &&
-        millis() >= buttonNameDisplayUntil) {
-      buttonNameDisplayUntil = 0;
-      safeDisplayOLED();
-    }
-
-    // Periodic OLED refresh for analog debug (shows live ADC values)
-    if (!isWifiOn && systemConfig.debugAnalogIn && currentMode == 0) {
-      static unsigned long lastAnalogDbgRefresh = 0;
-      if (millis() - lastAnalogDbgRefresh > 100) { // 10Hz refresh
-        lastAnalogDbgRefresh = millis();
+      // Update display to handle button name timeout
+      // SKIP when WiFi is on to prevent crash
+      if (!isWifiOn && buttonNameDisplayUntil > 0 &&
+          millis() >= buttonNameDisplayUntil) {
+        buttonNameDisplayUntil = 0;
         safeDisplayOLED();
       }
     }

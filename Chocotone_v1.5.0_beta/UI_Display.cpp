@@ -132,7 +132,8 @@ void displayOLED() {
   uint8_t titleSize = oledConfig.main.titleSize;
   uint8_t statusSize = oledConfig.main.statusSize;
   bool showBpm = oledConfig.main.showBpm;
-  bool showAnalog = oledConfig.main.showAnalog || systemConfig.debugAnalogIn;
+  // Note: showAnalog removed - analog debug now uses dedicated
+  // displayAnalogDebug() screen
 
   // For 128x32, adjust bottomRowY if using default 128x64 value
   int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
@@ -228,28 +229,12 @@ void displayOLED() {
     displayPtr->setCursor(0, titleY);
     displayPtr->print(truncatedName);
 
-    // Status in center (BLE state)
+    // Status in center (BLE state) - analog debug now uses dedicated screen
     displayPtr->setTextSize(statusSize);
-    char statusBuf[16];
-    const char *statusText = "BL:CL";
-    if (showAnalog) {
-      // Find first enabled analog input
-      for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
-        if (analogInputs[i].enabled || systemConfig.debugAnalogIn) {
-          int val = systemConfig.debugAnalogIn
-                        ? (int)analogInputs[i].smoothedValue
-                        : analogInputs[i].lastMidiValue;
-          if (!systemConfig.debugAnalogIn && val == 255)
-            val = 0;
-
-          snprintf(statusBuf, sizeof(statusBuf),
-                   systemConfig.debugAnalogIn ? "%s:%04d" : "%s:%d",
-                   analogInputs[i].name, val);
-          statusText = statusBuf;
-          break;
-        }
-      }
-    }
+    const char *statusText = clientConnected ? "SYNC"
+                             : (systemConfig.bleMode == BLE_SERVER_ONLY)
+                                 ? "SRV"
+                                 : "BLE";
     displayPtr->getTextBounds(statusText, 0, 0, &x1, &y1, &w, &h);
     displayPtr->setCursor((SCREEN_WIDTH - w) / 2, titleY);
     displayPtr->print(statusText);
@@ -281,31 +266,9 @@ void displayOLED() {
       displayPtr->print(bpmStr);
     }
 
-    // Analog Values Display (if enabled)
-    if (showAnalog) {
-      char analogStr[16];
-      int offset = 0;
-      for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
-        if (analogInputs[i].enabled || systemConfig.debugAnalogIn) {
-          int val = systemConfig.debugAnalogIn
-                        ? (int)analogInputs[i].smoothedValue
-                        : analogInputs[i].lastMidiValue;
-          if (!systemConfig.debugAnalogIn && val == 255)
-            val = 0;
-
-          snprintf(analogStr, sizeof(analogStr),
-                   systemConfig.debugAnalogIn ? "%s:%04d" : "%s:%d",
-                   analogInputs[i].name, val);
-          displayPtr->getTextBounds(analogStr, 0, 0, &x1, &y1, &w, &h);
-          displayPtr->setCursor((SCREEN_WIDTH - w) / 2,
-                                statusY + (showBpm ? 10 : 0) + offset);
-          displayPtr->print(analogStr);
-          offset += 10;
-          if (offset >= 20)
-            break; // Max 2 on screen to avoid overlap
-        }
-      }
-    }
+    // Note: Analog debug now uses dedicated displayAnalogDebug() screen
+    // The showAnalog option in oledConfig.main is for potential future
+    // "always show first analog" feature, not for debug mode
   }
 
   // Status Line - Show connection mode and state
@@ -556,6 +519,90 @@ void displayMenu() {
       }
     }
   }
+  displayPtr->display();
+}
+
+// ============================================================================
+// ANALOG DEBUG SCREEN (v1.5)
+// Dedicated screen for viewing all analog input values
+// Activated via menu "Analog Debug" or editor checkbox
+// Press encoder button to exit back to menu
+// ============================================================================
+void displayAnalogDebug() {
+  displayPtr->clearDisplay();
+  displayPtr->setTextColor(SSD1306_WHITE);
+
+  bool is32 = (oledConfig.type == OLED_128X32);
+  int screenHeight = is32 ? 32 : 64;
+
+  // Header
+  displayPtr->setTextSize(1);
+  displayPtr->setCursor(0, 0);
+  displayPtr->print("ANALOG DEBUG");
+
+  // Show exit hint on right side
+  displayPtr->setCursor(90, 0);
+  displayPtr->print("[ENC]");
+
+  // Count ONLY enabled inputs (not all inputs when debug mode is on)
+  int enabledCount = 0;
+  for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+    if (analogInputs[i].enabled) {
+      enabledCount++;
+    }
+  }
+
+  if (enabledCount == 0) {
+    // No analog inputs enabled - show helpful message
+    displayPtr->setCursor(0, is32 ? 12 : 20);
+    displayPtr->print("Enable Analog Inputs");
+    displayPtr->setCursor(0, is32 ? 22 : 32);
+    displayPtr->print("in your Config Profile");
+    displayPtr->display();
+    return;
+  }
+
+  // Compact grid layout to fit up to 16 values
+  // 128x64: 2 columns, 8 rows (need smaller text or tighter spacing)
+  // 128x32: 2 columns, 2 rows (limited)
+  int cols = 2;
+  int colWidth = SCREEN_WIDTH / cols; // 64 pixels per column
+  int startY = 10;                    // Below header
+  int lineHeight = is32 ? 10 : 7;     // Tighter for 128x64 to fit 8 rows
+  int maxRows = is32 ? 2 : 8;         // 8 rows x 2 cols = 16 values for 128x64
+
+  int col = 0;
+  int row = 0;
+  int displayedCount = 0;
+
+  for (int i = 0; i < MAX_ANALOG_INPUTS && displayedCount < (maxRows * cols);
+       i++) {
+    // Only show ENABLED analog inputs
+    if (!analogInputs[i].enabled) {
+      continue;
+    }
+
+    // Get raw ADC value (smoothed)
+    int rawVal = (int)analogInputs[i].smoothedValue;
+
+    // Format: "A1:0000" - always use index+1 for label
+    char buf[12];
+    snprintf(buf, sizeof(buf), "A%d:%04d", i + 1, rawVal);
+
+    int x = col * colWidth;
+    int y = startY + (row * lineHeight);
+
+    displayPtr->setCursor(x, y);
+    displayPtr->print(buf);
+
+    displayedCount++;
+    col++;
+    if (col >= cols) {
+      col = 0;
+      row++;
+    }
+  }
+
   displayPtr->display();
 }
 

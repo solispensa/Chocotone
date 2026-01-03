@@ -517,10 +517,10 @@
                         { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
                         { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
                         { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 13, data2: 127, rhythmPrev: 0, rhythmNext: 4, tapLock: 7, rgb: "#ffffff" }] },
-                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, label: "" }] },
+                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }, { action: "LONG_PRESS", type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "" }] },
                         { name: "FX2", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 49, data2: 127, rgb: "#11f3ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 49, data2: 0, rgb: "#11f3ff" }] },
-                        { name: "DLY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#332aff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#332aff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE", channel: 1, data1: 0, data2: 0, label: "" }] },
-                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }, { action: "COMBO", partner: 3, type: "PRESET_UP", channel: 1, data1: 0, data2: 0, label: "" }] }
+                        { name: "DLY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#332aff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#332aff" }] },
+                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }, { action: "LONG_PRESS", type: "PRESET_UP", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "" }] }
                     ]
                 },
                 {
@@ -549,14 +549,14 @@
                 },
                 {
                     name: "Note", presetLedMode: "SELECTION", buttons: [
-                        { name: "1st", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 60, data2: 127, rgb: "#fd0000" }] },
-                        { name: "2nd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 62, data2: 127, rgb: "#fd0000" }] },
-                        { name: "3rd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 64, data2: 127, rgb: "#fd0000" }] },
-                        { name: "4th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 65, data2: 127, rgb: "#fd0000" }] },
-                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 67, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
-                        { name: "6th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 69, data2: 127, rgb: "#fd0000" }] },
-                        { name: "7th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 71, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
-                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 72, data2: 127, rgb: "#fd0000" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                        { name: "1st", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 40, rgb: "#fd0000" }] },
+                        { name: "2nd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 41, rgb: "#fd0000" }] },
+                        { name: "3rd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 42, rgb: "#fd0000" }] },
+                        { name: "4th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 43, rgb: "#fd0000" }] },
+                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 44, rgb: "#fd0000" }, { action: "LONG_PRESS", type: "PRESET_DOWN", holdMs: 700 }] },
+                        { name: "6th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 45, rgb: "#fd0000" }] },
+                        { name: "7th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 46, rgb: "#fd0000" }] },
+                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 47, rgb: "#fd0000" }, { action: "LONG_PRESS", type: "PRESET_UP", holdMs: 700 }] }
                     ]
                 }
             ],
