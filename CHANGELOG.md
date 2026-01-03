@@ -2,30 +2,21 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
-## [v1.5] - 2025-01-01 (BETA)
+## [v1.5.0-beta] - 2026-01-03
 
 ### Added
 - **128x32 OLED Support** - Full layout adaptation for smaller displays.
   - Compact horizontal layout (Preset | Status | BPM) for 128x32.
   - Dynamic display initialization based on config.
   - Support for 0, 90, 180, 270 degree rotation.
-- **OLED Layout Editor** - Configure Y-positions and text sizes per screen (Main, Menu, Tap, Overlay) via USB.
-- **Enhanced Analog Inputs** - Support for up to 4 inputs (ADC pins 32-39).
-  - Modes: Potentiometer, FSR (Force Sensitive Resistor), Piezo (Drum Pad), and Switch.
-  - Signal conditioning: 64x oversampling, EMA smoothing, and hysteresis.
-  - Real-time value display on OLED (e.g., "A1:127").
-  - Multi-message support per input with input/output range mapping.
-- **Analog Debug Mode** - Menu toggle to show raw ADC values on OLED for calibration.
-  - 10Hz refresh rate for live monitoring.
-- **Menu Button Commands** - Navigate device menu using buttons without encoder.
-  - MENU_TOGGLE: Enter/exit menu mode.
-  - MENU_UP/DOWN: Navigate menu items.
-  - MENU_ENTER: Select menu item.
-- **GP5 Sync Mode** - LED synchronization with Valeton GP-5 via SysEx.
-- **Grouped Command Types** - Editor now separates MIDI Commands and Internal Commands in dropdown.
-- **Serial Debugging** - Throttled debug prints for raw/smoothed analog readings and OLED layout info.
+- **Input Mapping** - Custom mapping of button/analog input IDs for Top/Bottom rows (e.g., "5,6,A1,8").
+- **Text Alignment** - Configurable alignment (Left, Center, Right) for Title, BPM, and Status text.
+- **Show Status Toggle** - Option to show/hide the OLED status line via Editor.
+- **Edit Mode Preview** - Added "Edit Mode (Preview)" to BLE Mode dropdown to visualize "BLE:EDIT" status.
+- **Improved Vertical Layout** - New dynamic vertical rendering for 90/270 degree rotation.
 
 ### Fixed
+- **OLED Status Line Offset** - Removed fixed Y-offset to respect user-configured `statusY`.
 - **OLED Configuration Persistence** - `oledConfig` now correctly saves to and loads from NVS.
 - **USB Serial Config Parsing** - Added full parsing for OLED and Analog Input settings in `WebInterface.cpp`.
 - **128x32 Layout Overlap** - Fixed centered text overlap on smaller screens by switching to optimized horizontal layout.

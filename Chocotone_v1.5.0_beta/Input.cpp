@@ -744,7 +744,7 @@ void loop_menuMode() {
     if (menuSelection == 6)
       editingValue = constrain(editingValue, 1, 500); // Pad Debounce
     if (menuSelection == 10)
-      editingValue = constrain(editingValue, 1, 5); // Name Font Size
+      editingValue = constrain(editingValue, 1, 7); // Name Font Size (Overlay)
   } else {
     long menuStep = newEncoderPosition / 2;
     long oldMenuStep = oldEncoderPosition / 2;
@@ -865,7 +865,8 @@ void handleMenuSelection() {
       break;
     case 10:
       inSubMenu = true;
-      editingValue = buttonNameFontSize;
+      editingValue =
+          oledConfig.overlay.titleSize > 0 ? oledConfig.overlay.titleSize : 2;
       break;
     case 11: // WiFi at Boot
       systemConfig.wifiOnAtBoot = !systemConfig.wifiOnAtBoot;
@@ -914,7 +915,7 @@ void handleMenuSelection() {
       buttonDebounce = editingValue;
       break;
     case 10:
-      buttonNameFontSize = editingValue;
+      oledConfig.overlay.titleSize = editingValue;
       break;
     }
   }

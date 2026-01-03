@@ -94,9 +94,46 @@ void getButtonSummary(char *b, size_t s, MidiCommandType type, int data1) {
     b[s - 1] = '\0';
     break;
   default:
-    strncpy(b, "---", s - 1);
-    b[s - 1] = '\0';
     break;
+  }
+}
+
+// Logic to get a label string for an input ID (e.g. "1", "A1")
+void getInputLabel(char *target, size_t targetSize, const char *labelId,
+                   int maxCharsDisplay) {
+  if (labelId[0] == 'A' || labelId[0] == 'a') {
+    int aIdx = atoi(&labelId[1]) - 1;
+    if (aIdx >= 0 && aIdx < MAX_ANALOG_INPUTS && analogInputs[aIdx].enabled) {
+      snprintf(target, targetSize, "%.*s", maxCharsDisplay,
+               analogInputs[aIdx].name);
+    } else {
+      snprintf(target, targetSize, "%.*s", maxCharsDisplay, labelId);
+    }
+  } else {
+    int bIdx = atoi(labelId) - 1;
+    if (bIdx >= 0 && bIdx < systemConfig.buttonCount) {
+      const ButtonConfig &config = buttonConfigs[currentPreset][bIdx];
+      char defaultName[21];
+      snprintf(defaultName, sizeof(defaultName), "B%d", bIdx + 1);
+      if (strncmp(config.name, defaultName, 20) == 0 ||
+          strlen(config.name) == 0) {
+        char summary[10];
+        ActionMessage *firstAction = (config.messageCount > 0)
+                                         ? (ActionMessage *)&config.messages[0]
+                                         : nullptr;
+        if (firstAction) {
+          getButtonSummary(summary, sizeof(summary), firstAction->type,
+                           firstAction->data1);
+        } else {
+          strncpy(summary, "---", sizeof(summary));
+        }
+        snprintf(target, targetSize, "%.*s", maxCharsDisplay, summary);
+      } else {
+        snprintf(target, targetSize, "%.*s", maxCharsDisplay, config.name);
+      }
+    } else {
+      snprintf(target, targetSize, "%.*s", maxCharsDisplay, labelId);
+    }
   }
 }
 
@@ -127,13 +164,18 @@ void displayOLED() {
   uint8_t topRowY = oledConfig.main.topRowY;
   uint8_t titleY = oledConfig.main.titleY;
   uint8_t statusY = oledConfig.main.statusY;
+  uint8_t bpmY = oledConfig.main.bpmY;
   uint8_t bottomRowY = oledConfig.main.bottomRowY;
   uint8_t labelSize = oledConfig.main.labelSize;
   uint8_t titleSize = oledConfig.main.titleSize;
   uint8_t statusSize = oledConfig.main.statusSize;
+  uint8_t bpmSize = oledConfig.main.bpmSize;
   bool showBpm = oledConfig.main.showBpm;
-  // Note: showAnalog removed - analog debug now uses dedicated
-  // displayAnalogDebug() screen
+  bool showTopRow = oledConfig.main.showTopRow;
+  bool showBottomRow = oledConfig.main.showBottomRow;
+  uint8_t titleAlign = oledConfig.main.titleAlign;
+  uint8_t statusAlign = oledConfig.main.statusAlign;
+  uint8_t bpmAlign = oledConfig.main.bpmAlign;
 
   // For 128x32, adjust bottomRowY if using default 128x64 value
   int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
@@ -154,97 +196,186 @@ void displayOLED() {
   displayPtr->setTextSize(labelSize);
   char summary[10];
 
-  // Dynamic layout based on button count
-  int btnCount = systemConfig.buttonCount;
-  int buttonsPerRow = (btnCount > 8) ? 5 : 4;  // 5 per row for 9-10 buttons
-  int colWidth = SCREEN_WIDTH / buttonsPerRow; // 25 or 32 pixels
-  int maxChars = (btnCount > 8) ? 3 : 4;       // Fewer chars when cramped
+  // Dynamic layout based on button count and orientation
+  bool isVertical = (oledConfig.rotation == 90 || oledConfig.rotation == 270);
+  int w = displayPtr->width();
+  int h = displayPtr->height();
 
-  // Top Row (upper half of buttons)
-  int topRowStart = btnCount / 2; // 5 for 10 buttons, 4 for 8 buttons
-  for (int i = 0; i < buttonsPerRow && (topRowStart + i) < btnCount; i++) {
-    int buttonIndex = topRowStart + i;
-    const ButtonConfig &config = buttonConfigs[currentPreset][buttonIndex];
-    char defaultName[21];
-    snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
-    char toDisplay[10];
-    if (strncmp(config.name, defaultName, 20) == 0 ||
-        strlen(config.name) == 0) {
-      // Get first PRESS action for summary
-      ActionMessage *firstAction = (config.messageCount > 0)
-                                       ? (ActionMessage *)&config.messages[0]
-                                       : nullptr;
-      if (firstAction) {
-        getButtonSummary(summary, sizeof(summary), firstAction->type,
-                         firstAction->data1);
-      } else {
-        strncpy(summary, "---", sizeof(summary));
-      }
-      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
-    } else {
-      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
+  // Text bounds variables
+  int16_t bx, by;
+  uint16_t bw, bh;
+
+  // Top Row (conditional on showTopRow)
+  if (showTopRow) {
+    char tempMap[34];
+    strncpy(tempMap, oledConfig.main.topRowMap, 33);
+    tempMap[33] = '\0';
+    int itemCount = 0;
+    char *p = tempMap;
+    while (*p) {
+      if (*p == ',')
+        itemCount++;
+      p++;
     }
-    displayPtr->setCursor(i * colWidth, topRowY);
-    displayPtr->print(toDisplay);
+    if (strlen(tempMap) > 0)
+      itemCount++;
+
+    if (itemCount > 0) {
+      if (isVertical) {
+        // Vertical layout: top row items at the top
+        int yOffset = topRowY;
+        int maxVerticalChars = (w < 40) ? 4 : 8;
+        char *token = strtok(tempMap, ",");
+        while (token != NULL) {
+          char label[11];
+          getInputLabel(label, sizeof(label), token, maxVerticalChars);
+          displayPtr->setCursor(1, yOffset);
+          displayPtr->print(label);
+          yOffset += labelSize * 8 + 2;
+          token = strtok(NULL, ",");
+          if (yOffset > h / 2)
+            break; // Stop if too many items
+        }
+      } else {
+        // Horizontal layout: row of items
+        int dynColWidth = w / itemCount;
+        int dynMaxChars = (itemCount > 4) ? 3 : 4;
+        char *token = strtok(tempMap, ",");
+        int i = 0;
+        while (token != NULL) {
+          char label[11];
+          getInputLabel(label, sizeof(label), token, dynMaxChars);
+          displayPtr->setCursor(i * dynColWidth, topRowY);
+          displayPtr->print(label);
+          token = strtok(NULL, ",");
+          i++;
+        }
+      }
+    }
   }
 
-  // Bottom Row (lower half of buttons)
-  for (int i = 0; i < buttonsPerRow && i < topRowStart; i++) {
-    int buttonIndex = i;
-    const ButtonConfig &config = buttonConfigs[currentPreset][buttonIndex];
-    char defaultName[21];
-    snprintf(defaultName, sizeof(defaultName), "B%d", buttonIndex + 1);
-    char toDisplay[10];
-    if (strncmp(config.name, defaultName, 20) == 0 ||
-        strlen(config.name) == 0) {
-      // Get first PRESS action for summary
-      ActionMessage *firstAction = (config.messageCount > 0)
-                                       ? (ActionMessage *)&config.messages[0]
-                                       : nullptr;
-      if (firstAction) {
-        getButtonSummary(summary, sizeof(summary), firstAction->type,
-                         firstAction->data1);
-      } else {
-        strncpy(summary, "---", sizeof(summary));
-      }
-      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, summary);
-    } else {
-      snprintf(toDisplay, sizeof(toDisplay), "%.*s", maxChars, config.name);
+  // Bottom Row (conditional on showBottomRow)
+  if (showBottomRow) {
+    char tempMap[34];
+    strncpy(tempMap, oledConfig.main.bottomRowMap, 33);
+    tempMap[33] = '\0';
+    int itemCount = 0;
+    char *p = tempMap;
+    while (*p) {
+      if (*p == ',')
+        itemCount++;
+      p++;
     }
-    displayPtr->setCursor(i * colWidth, bottomRowY);
-    displayPtr->print(toDisplay);
+    if (strlen(tempMap) > 0)
+      itemCount++;
+
+    if (itemCount > 0) {
+      if (isVertical) {
+        // Vertical layout: bottom row items at the bottom
+        int yOffset = h - (itemCount * (labelSize * 8 + 2)) - 2;
+        if (yOffset < h / 2)
+          yOffset = h / 2; // Prevent overlap
+        int maxVerticalChars = (w < 40) ? 4 : 8;
+        char *token = strtok(tempMap, ",");
+        while (token != NULL) {
+          char label[11];
+          getInputLabel(label, sizeof(label), token, maxVerticalChars);
+          displayPtr->setCursor(1, yOffset);
+          displayPtr->print(label);
+          yOffset += labelSize * 8 + 2;
+          token = strtok(NULL, ",");
+        }
+      } else {
+        // Horizontal layout: row of items
+        int dynColWidth = w / itemCount;
+        int dynMaxChars = (itemCount > 4) ? 3 : 4;
+        char *token = strtok(tempMap, ",");
+        int i = 0;
+        while (token != NULL) {
+          char label[11];
+          getInputLabel(label, sizeof(label), token, dynMaxChars);
+          displayPtr->setCursor(i * dynColWidth, bottomRowY);
+          displayPtr->print(label);
+          token = strtok(NULL, ",");
+          i++;
+        }
+      }
+    }
+  }
+
+  // Middle Area - Skip rest of rendering if vertical for now to avoid mess,
+  // or implement clean vertical middle
+  if (isVertical) {
+    // Basic Vertical Middle Info
+    int midY = h / 2 - (titleSize * 4);
+    char truncatedName[9];
+    snprintf(truncatedName, sizeof(truncatedName), "%.8s",
+             presetNames[currentPreset]);
+    displayPtr->setTextSize(titleSize);
+    displayPtr->getTextBounds(truncatedName, 0, 0, &bx, &by, &bw, &bh);
+    int titleX = (titleAlign == 0)   ? 0
+                 : (titleAlign == 2) ? (w - bw)
+                                     : (w - bw) / 2;
+    displayPtr->setCursor(titleX, midY);
+    displayPtr->print(truncatedName);
+
+    if (showBpm) {
+      displayPtr->setTextSize(bpmSize);
+      char bpmStr[8];
+      snprintf(bpmStr, sizeof(bpmStr), "%.1f", currentBPM);
+      displayPtr->getTextBounds(bpmStr, 0, 0, &bx, &by, &bw, &bh);
+      int bpmX = (bpmAlign == 0)   ? 0
+                 : (bpmAlign == 2) ? (w - bw)
+                                   : (w - bw) / 2;
+      displayPtr->setCursor(bpmX, midY + (titleSize * 8) + 2);
+      displayPtr->print(bpmStr);
+    }
+    displayPtr->display();
+    return;
   }
 
   // Middle Area - Layout differs for 128x32 vs 128x64
-  int16_t x1, y1;
-  uint16_t w, h;
   displayPtr->setTextSize(titleSize);
 
   if (oledConfig.type == OLED_128X32) {
     // === 128x32 COMPACT HORIZONTAL LAYOUT ===
-    // Preset name on LEFT, Status in CENTER, BPM on RIGHT (all on titleY line)
     char truncatedName[7];
     snprintf(truncatedName, sizeof(truncatedName), "%.6s",
              presetNames[currentPreset]);
-    displayPtr->setCursor(0, titleY);
+    displayPtr->setTextSize(titleSize);
+    displayPtr->getTextBounds(truncatedName, 0, 0, &bx, &by, &bw, &bh);
+    int titleX = (titleAlign == 0)   ? 0
+                 : (titleAlign == 2) ? (w - bw)
+                                     : (w - bw) / 2;
+    displayPtr->setCursor(titleX, titleY);
     displayPtr->print(truncatedName);
 
-    // Status in center (BLE state) - analog debug now uses dedicated screen
+    // Status / Analog center or per alignment
     displayPtr->setTextSize(statusSize);
     const char *statusText = clientConnected ? "SYNC"
                              : (systemConfig.bleMode == BLE_SERVER_ONLY)
                                  ? "SRV"
                                  : "BLE";
-    displayPtr->getTextBounds(statusText, 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((SCREEN_WIDTH - w) / 2, titleY);
+    if (oledConfig.main.showAnalog) {
+      statusText = "A1";
+    }
+    displayPtr->getTextBounds(statusText, 0, 0, &bx, &by, &bw, &bh);
+    int statusX = (statusAlign == 0)   ? 0
+                  : (statusAlign == 2) ? (w - bw)
+                                       : (w - bw) / 2;
+    displayPtr->setCursor(statusX, titleY);
     displayPtr->print(statusText);
 
-    // BPM on right (just the number)
+    // BPM with alignment and bpmSize
     if (showBpm) {
+      displayPtr->setTextSize(bpmSize);
       char bpmStr[8];
       snprintf(bpmStr, sizeof(bpmStr), "%.1f", currentBPM);
-      displayPtr->getTextBounds(bpmStr, 0, 0, &x1, &y1, &w, &h);
-      displayPtr->setCursor(SCREEN_WIDTH - w - 2, titleY);
+      displayPtr->getTextBounds(bpmStr, 0, 0, &bx, &by, &bw, &bh);
+      int bpmX = (bpmAlign == 0)   ? 0
+                 : (bpmAlign == 2) ? (w - bw - 2)
+                                   : (w - bw) / 2;
+      displayPtr->setCursor(bpmX, titleY);
       displayPtr->print(bpmStr);
     }
   } else {
@@ -252,42 +383,47 @@ void displayOLED() {
     char truncatedName[11];
     snprintf(truncatedName, sizeof(truncatedName), "%.10s",
              presetNames[currentPreset]);
-    displayPtr->getTextBounds(truncatedName, 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((SCREEN_WIDTH - w) / 2, titleY);
+    displayPtr->getTextBounds(truncatedName, 0, 0, &bx, &by, &bw, &bh);
+    // Apply title alignment (0=Left, 1=Center, 2=Right)
+    int titleX = (titleAlign == 0)   ? 0
+                 : (titleAlign == 2) ? (w - bw)
+                                     : (w - bw) / 2;
+    displayPtr->setCursor(titleX, titleY);
     displayPtr->print(truncatedName);
-    displayPtr->setTextSize(statusSize);
 
-    // BPM Display (if enabled)
+    // BPM Display (if enabled) - use bpmSize and bpmY
     if (showBpm) {
+      displayPtr->setTextSize(bpmSize);
       char bpmStr[16];
       snprintf(bpmStr, sizeof(bpmStr), "%.1f BPM", currentBPM);
-      displayPtr->getTextBounds(bpmStr, 0, 0, &x1, &y1, &w, &h);
-      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusY);
+      displayPtr->getTextBounds(bpmStr, 0, 0, &bx, &by, &bw, &bh);
+      // Apply BPM alignment (0=Left, 1=Center, 2=Right)
+      int bpmX = (bpmAlign == 0)   ? 0
+                 : (bpmAlign == 2) ? (w - bw)
+                                   : (w - bw) / 2;
+      displayPtr->setCursor(bpmX, bpmY);
       displayPtr->print(bpmStr);
     }
-
-    // Note: Analog debug now uses dedicated displayAnalogDebug() screen
-    // The showAnalog option in oledConfig.main is for potential future
-    // "always show first analog" feature, not for debug mode
+    displayPtr->setTextSize(statusSize); // Reset for status line
   }
 
   // Status Line - Show connection mode and state
-  int statusLineY = statusY + 12; // Offset from BPM line
+  int statusLineY = statusY; // Use absolute statusY from config
   if (oledConfig.type == OLED_128X32) {
     // For 128x32, skip status line entirely (no room)
-  } else {
+  } else if (oledConfig.main.showStatus) {
     displayPtr->setCursor(0, statusLineY);
     if (isWifiOn) {
       // WiFi config mode - centered message
       const char *wifiMsg = "- WIFI CONFIG -";
-      displayPtr->getTextBounds(wifiMsg, 0, 0, &x1, &y1, &w, &h);
-      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusLineY);
+      displayPtr->getTextBounds(wifiMsg, 0, 0, &bx, &by, &bw, &bh);
+      displayPtr->setCursor((w - bw) / 2, statusLineY);
       displayPtr->print(wifiMsg);
     } else if (isBtSerialOn) {
       // BT Serial config mode - centered message
       const char *btMsg = "- BL Serial -";
-      displayPtr->getTextBounds(btMsg, 0, 0, &x1, &y1, &w, &h);
-      displayPtr->setCursor((SCREEN_WIDTH - w) / 2, statusLineY);
+      displayPtr->getTextBounds(btMsg, 0, 0, &bx, &by, &bw, &bh);
+      displayPtr->setCursor((w - bw) / 2, statusLineY);
       displayPtr->print(btMsg);
     } else {
       // Normal mode - show BLE state
@@ -309,6 +445,13 @@ void displayOLED() {
       } else {
         snprintf(statusLine, sizeof(statusLine), "BLE:%s", bleMode);
       }
+
+      // Apply status alignment (0=Left, 1=Center, 2=Right)
+      displayPtr->getTextBounds(statusLine, 0, 0, &bx, &by, &bw, &bh);
+      int statusX = (statusAlign == 0)   ? 0
+                    : (statusAlign == 2) ? (w - bw)
+                                         : (w - bw) / 2;
+      displayPtr->setCursor(statusX, statusLineY);
       displayPtr->print(statusLine);
     }
   }
@@ -396,10 +539,11 @@ void displayTapTempoMode() {
 void displayButtonName() {
   displayPtr->clearDisplay();
 
-  // Get layout config from oledConfig.overlay
+  // Get layout config from oledConfig.overlay (unified with menu "Name Font
+  // Size")
   uint8_t textSize = oledConfig.overlay.titleSize > 0
                          ? oledConfig.overlay.titleSize
-                         : buttonNameFontSize;
+                         : 2; // Default to 2 if not set
   int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
 
   displayPtr->setTextSize(textSize);
@@ -901,7 +1045,8 @@ void initDisplayHardware() {
   }
 
   // Apply rotation (0=normal, 1=90°CW, 2=180°, 3=270°CW)
-  displayPtr->setRotation(oledConfig.rotation);
+  // Config uses degrees (0, 90, 180, 270)
+  displayPtr->setRotation(oledConfig.rotation / 90);
 
   displayPtr->clearDisplay();
   displayPtr->setTextColor(SSD1306_WHITE);

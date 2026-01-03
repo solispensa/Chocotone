@@ -683,6 +683,252 @@ const FULL_CONFIGS = {
                 ]
             }
         ]
+    },
+    "GP5 Wisut Profile": {
+        description: "10-button config for Valeton GP-5 with hybrid preset/stomp banks",
+        system: {
+            bleDeviceName: "CHOCOTONE",
+            apSSID: "CHOCOTONE",
+            apPassword: "12345678",
+            buttonCount: 10,
+            buttonPins: "14,27,26,25,33,32,16,17",
+            ledPin: 15,
+            ledsPerButton: 1,
+            ledMap: "0,1,2,3,7,6,5,4,8,9",
+            encoderA: 18,
+            encoderB: 19,
+            encoderBtn: 23,
+            bleMode: "CLIENT",
+            brightness: 70,
+            brightnessDim: 10,
+            brightnessTap: 70
+        },
+        presets: [
+            {
+                name: "BANK-1", presetLedMode: "HYBRID", syncMode: "GP5", buttons: [
+                    {
+                        name: "P1", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 0, data2: 1, rgb: "#01becb", label: "", partner: -16, sysex: "f0070a000100000006010104030001000000000000f7" },
+                            { action: "LONG_PRESS", type: "PRESET_1", channel: 1, data1: 43, data2: 0, rgb: "#ffffff", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P2", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 0, data2: 2, rgb: "#4bca07", label: "", partner: -16, sysex: "f00400000100000006010104030002000000000000f7" },
+                            { action: "LONG_PRESS", type: "PRESET_2", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff", label: "", partner: 0, holdMs: 0 }
+                        ]
+                    },
+                    {
+                        name: "P3", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 0, data2: 3, rgb: "#3d00ad", label: "", partner: -16, sysex: "f00506000100000006010104030003000000000000f7" },
+                            { action: "LONG_PRESS", type: "PRESET_3", channel: 1, data1: 45, data2: 0, rgb: "#fc2c00", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P4", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 0, data2: 4, rgb: "#dc04a2", label: "", partner: -16, sysex: "f00304000100000006010104030004000000000000f7" },
+                            { action: "LONG_PRESS", type: "PRESET_4", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P5", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 0, data2: 5, rgb: "#f50000", label: "", partner: -16, sysex: "f00202000100000006010104030005000000000000f7" }
+                        ]
+                    },
+                    {
+                        name: "BOOT", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 49, data2: 127, rgb: "#abe60a", label: "", partner: -16, sysex: "f0000f00010000000a0101040900010000000000000001000000000000f7" },
+                            { action: "2ND_PRESS", type: "SYSEX", channel: 1, data1: 49, data2: 0, rgb: "#abe60a", label: "", partner: -16, sysex: "f0010900010000000a0101040900010000000000000000000000000000f7" }
+                        ]
+                    },
+                    {
+                        name: "OD", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 50, data2: 127, rgb: "#e6740a", label: "", partner: -16, sysex: "f0030a00010000000a0101040900020000000000000001000000000000f7" },
+                            { action: "2ND_PRESS", type: "SYSEX", channel: 1, data1: 50, data2: 0, rgb: "#e6740a", label: "", partner: -16, sysex: "f0020c00010000000a0101040900020000000000000000000000000000f7" }
+                        ]
+                    },
+                    {
+                        name: "MODU", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 55, data2: 127, rgb: "#8400f7", label: "", partner: -16, sysex: "f0070600010000000a0101040900060000000000000001000000000000f7" },
+                            { action: "2ND_PRESS", type: "SYSEX", channel: 1, data1: 55, data2: 0, rgb: "#8400f7", label: "", partner: -16, sysex: "f0060000010000000a0101040900060000000000000000000000000000f7" }
+                        ]
+                    },
+                    {
+                        name: "DELY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "SYSEX", channel: 1, data1: 56, data2: 127, rgb: "#0923ec", label: "", partner: -16, sysex: "f0060500010000000a0101040900070000000000000001000000000000f7" },
+                            { action: "2ND_PRESS", type: "SYSEX", channel: 1, data1: 56, data2: 127, rgb: "#0923ec", label: "", partner: -16, sysex: "f0070300010000000a0101040900070000000000000000000000000000f7" }
+                        ]
+                    },
+                    {
+                        name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 0, data2: 127, rgb: "#26c3f7", label: "", partner: 0, rhythmPrev: 0, rhythmNext: 4, tapLock: 7 }
+                        ]
+                    }
+                ]
+            },
+            {
+                name: "BANK-2", presetLedMode: "HYBRID", syncMode: "GP5", buttons: [
+                    {
+                        name: "P6", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 0, data2: 6, rgb: "#01d7f4", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_1", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P7", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 0, data2: 7, rgb: "#270ced", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_2", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P8", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 0, data2: 8, rgb: "#14f518", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_3", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P9", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 0, data2: 9, rgb: "#e18e19", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_4", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P10", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 0, data2: 10, rgb: "#f50000", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "BOOT", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 49, data2: 127, rgb: "#87f500", label: "", partner: 0 },
+                            { action: "2ND_PRESS", type: "CC", channel: 1, data1: 49, data2: 0, rgb: "#87f500", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "OD", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#f54900", label: "", partner: 0 },
+                            { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#f54900", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "MODU", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 55, data2: 127, rgb: "#f500ed", label: "", partner: 0 },
+                            { action: "2ND_PRESS", type: "CC", channel: 1, data1: 55, data2: 0, rgb: "#f500ed", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "DELY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 56, data2: 127, rgb: "#1a40ff", label: "", partner: 0 },
+                            { action: "2ND_PRESS", type: "CC", channel: 1, data1: 56, data2: 0, rgb: "#1a40ff", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 0, data2: 127, rgb: "#02f2e2", label: "", partner: 0, rhythmPrev: 0, rhythmNext: 4, tapLock: 7 }
+                        ]
+                    }
+                ]
+            },
+            {
+                name: "BANK-3", presetLedMode: "HYBRID", syncMode: "GP5", buttons: [
+                    {
+                        name: "P11", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 9, rgb: "#11f3ff", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_1", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P12", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 10, rgb: "#11f3ff", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_2", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P13", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 11, rgb: "#11f3ff", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_3", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P14", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 12, rgb: "#11f3ff", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_4", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P15", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 13, rgb: "#aa00ff", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "BOOT", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 14, rgb: "#aa00ff", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "OD", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 15, rgb: "#aa00ff", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "MODU", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 16, rgb: "#aa00ff", label: "", partner: 0 }
+                        ]
+                    },
+                    { name: "DELY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [] },
+                    { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [] }
+                ]
+            },
+            {
+                name: "BANK-4", presetLedMode: "HYBRID", syncMode: "GP5", buttons: [
+                    {
+                        name: "P16", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 60, data2: 127, rgb: "#fd0000", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_1", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P17", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 62, data2: 127, rgb: "#fd0000", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_2", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P18", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 64, data2: 127, rgb: "#fd0000", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_3", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P19", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 65, data2: 127, rgb: "#fd0000", label: "", partner: 0 },
+                            { action: "LONG_PRESS", type: "PRESET_4", channel: 1, data1: 0, data2: 127, rgb: "#bb86fc", label: "", partner: -12, holdMs: 500 }
+                        ]
+                    },
+                    {
+                        name: "P20", ledMode: "MOMENTARY", inSelectionGroup: true, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 67, data2: 127, rgb: "#fd0000", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "BOOT", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 69, data2: 127, rgb: "#fd0000", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "OD", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 71, data2: 127, rgb: "#fd0000", label: "", partner: 0 }
+                        ]
+                    },
+                    {
+                        name: "MODU", ledMode: "TOGGLE", inSelectionGroup: false, messages: [
+                            { action: "PRESS", type: "NOTE_MOMENTARY", channel: 1, data1: 72, data2: 127, rgb: "#fd0000", label: "", partner: 0 }
+                        ]
+                    },
+                    { name: "DELY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [] },
+                    { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [] }
+                ]
+            }
+        ]
     }
 };
 

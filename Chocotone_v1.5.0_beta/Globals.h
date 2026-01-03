@@ -195,15 +195,27 @@ struct SystemConfig {
 enum OledType : uint8_t { OLED_128X64 = 0, OLED_128X32 = 1 };
 
 struct OledScreenConfig {
-  uint8_t labelSize;  // 1 byte - Text size for button labels (1-3)
-  uint8_t titleSize;  // 1 byte - Text size for preset name (1-4)
-  uint8_t statusSize; // 1 byte - Text size for status info (1-3)
-  uint8_t topRowY;    // 1 byte - Y position for top button labels
-  uint8_t titleY;     // 1 byte - Y position for preset name
-  uint8_t statusY;    // 1 byte - Y position for BPM/status
-  uint8_t bottomRowY; // 1 byte - Y position for bottom labels
-  bool showBpm;       // 1 byte - Show BPM on main screen
-  bool showAnalog;    // 1 byte - Show analog input values
+  uint8_t labelSize;   // 1 byte - Text size for button labels (1-3)
+  uint8_t titleSize;   // 1 byte - Text size for preset name (1-4)
+  uint8_t statusSize;  // 1 byte - Text size for BLE status (1-3)
+  uint8_t bpmSize;     // 1 byte - Text size for BPM (1-3) - v1.5.1
+  uint8_t topRowY;     // 1 byte - Y position for top labels
+  uint8_t titleY;      // 1 byte - Y position for preset name
+  uint8_t statusY;     // 1 byte - Y position for BLE status
+  uint8_t bpmY;        // 1 byte - Y position for BPM - v1.5.1
+  uint8_t bottomRowY;  // 1 byte - Y position for bottom labels
+  bool showBpm;        // 1 byte - Show BPM on main screen
+  bool showAnalog;     // 1 byte - Show analog input values
+  bool showTopRow;     // 1 byte - Show top row inputs - v1.5.1
+  bool showBottomRow;  // 1 byte - Show bottom row inputs - v1.5.1
+  bool showStatus;     // 1 byte - Show BLE status line - v1.5.1
+  uint8_t titleAlign;  // 1 byte - 0=Left, 1=Center, 2=Right - v1.5.1
+  uint8_t statusAlign; // 1 byte - 0=Left, 1=Center, 2=Right - v1.5.1
+  uint8_t bpmAlign;    // 1 byte - 0=Left, 1=Center, 2=Right - v1.5.1
+  char topRowMap[32]; // 32 bytes - Input mapping for top row (e.g. "5,6,7,8") -
+                      // v1.5.1
+  char bottomRowMap[32]; // 32 bytes - Input mapping for bottom row (e.g.
+                         // "1,2,3,4") - v1.5.1
 };
 
 struct OledConfig {

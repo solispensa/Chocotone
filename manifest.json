@@ -1,6 +1,6 @@
 {
   "name": "Chocotone MIDI Controller",
-  "version": "1.4.0",
+  "version": "1.5.0-beta",
   "new_install_prompt_erase": true,
   "builds": [
     {

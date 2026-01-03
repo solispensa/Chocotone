@@ -478,7 +478,7 @@
             }
         }
     </style>
-    <script src="devices_database.js"></script>
+    <script src="web_tools/devices_database.js"></script>
 </head>
 
 <body>
@@ -680,12 +680,21 @@
                             labelSize: 1,
                             titleSize: 2,
                             statusSize: 1,
+                            bpmSize: 1,
                             topRowY: 0,
                             titleY: 14,
-                            statusY: 32,
+                            statusY: 44,
+                            bpmY: 32,
                             bottomRowY: 56,
                             showBpm: true,
-                            showAnalog: false
+                            showAnalog: false,
+                            showTopRow: true,
+                            showBottomRow: true,
+                            titleAlign: 1,
+                            statusAlign: 0,
+                            bpmAlign: 1,
+                            topRowMap: "5,6,7,8",
+                            bottomRowMap: "1,2,3,4"
                         },
                         menu: {
                             headerSize: 1,
@@ -983,31 +992,71 @@
 
             if (previewMode === 'main') {
                 // MAIN SCREEN controls
-                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56, showBpm: true, showAnalog: false };
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
                 var maxY = (oled.type === '128x32') ? 24 : 56;
                 var maxTitleY = (oled.type === '128x32') ? 24 : 50;
                 var maxStatusY = (oled.type === '128x32') ? 24 : 55;
-                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Main Screen Settings</div>';
-                html += '<div class="row" style="margin-bottom:4px">';
-                html += '<div class="field"><label style="font-size:10px">Label Size</label><input type="range" min="1" max="3" value="' + (main.labelSize || 1) + '" oninput="updOledScreen(\'main\',\'labelSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.labelSize || 1) + '</span></div>';
-                html += '<div class="field"><label style="font-size:10px">Title Size</label><input type="range" min="1" max="4" value="' + (main.titleSize || 2) + '" oninput="updOledScreen(\'main\',\'titleSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.titleSize || 2) + '</span></div>';
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Global Layout</div>';
+                // Grid for Top/Bottom Rows
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+
+                // Top Row Card
+                html += '<div style="background:#252525;padding:8px;border-radius:4px;border:1px solid #333;display:flex;flex-direction:column;gap:6px">';
+                html += '  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:2px">';
+                html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Top Row</label>';
+                html += '    <input type="checkbox" ' + (main.showTopRow !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showTopRow\',this.checked)" style="width:14px;height:14px">';
+                html += '  </div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Height Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.topRowY || 0) + '" oninput="updOledScreen(\'main\',\'topRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.topRowY || 0) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Map</label><input type="text" style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px 4px;border-radius:3px" value="' + (main.topRowMap || '5,6,7,8') + '" onchange="updOledScreen(\'main\',\'topRowMap\',this.value)" placeholder="5,6,7,8"></div>';
                 html += '</div>';
-                html += '<div class="row" style="margin-bottom:4px">';
-                html += '<div class="field"><label style="font-size:10px">Status Size</label><input type="range" min="1" max="3" value="' + (main.statusSize || 1) + '" oninput="updOledScreen(\'main\',\'statusSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (main.statusSize || 1) + '</span></div>';
-                html += '<div class="field"><label style="font-size:10px">Top Row Y</label><input type="range" min="0" max="' + maxY + '" value="' + (main.topRowY || 0) + '" oninput="updOledScreen(\'main\',\'topRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.topRowY || 0) + '</span></div>';
+
+                // Bottom Row Card
+                html += '<div style="background:#252525;padding:8px;border-radius:4px;border:1px solid #333;display:flex;flex-direction:column;gap:6px">';
+                html += '  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:2px">';
+                html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Bottom Row</label>';
+                html += '    <input type="checkbox" ' + (main.showBottomRow !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showBottomRow\',this.checked)" style="width:14px;height:14px">';
+                html += '  </div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Height Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.bottomRowY || 56) + '" oninput="updOledScreen(\'main\',\'bottomRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bottomRowY || 56) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Map</label><input type="text" style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px 4px;border-radius:3px" value="' + (main.bottomRowMap || '1,2,3,4') + '" onchange="updOledScreen(\'main\',\'bottomRowMap\',this.value)" placeholder="1,2,3,4"></div>';
                 html += '</div>';
-                html += '<div class="row" style="margin-bottom:4px">';
-                html += '<div class="field"><label style="font-size:10px">Title Y</label><input type="range" min="0" max="' + maxTitleY + '" value="' + (main.titleY || 14) + '" oninput="updOledScreen(\'main\',\'titleY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.titleY || 14) + '</span></div>';
-                html += '<div class="field"><label style="font-size:10px">Status Y</label><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.statusY || 32) + '" oninput="updOledScreen(\'main\',\'statusY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.statusY || 32) + '</span></div>';
+                html += '</div>'; // End Global Grid
+
+                // Elements Section
+                html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Screen Elements</div>';
+                html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:12px">';
+
+                // Title Card
+                html += '<div style="background:#252525;padding:8px;border-radius:4px;border:1px solid #333;display:flex;flex-direction:column;gap:6px">';
+                html += '  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:2px;min-height:21px">';
+                html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Title</label>';
+                html += '  </div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="4" value="' + (main.titleSize || 2) + '" oninput="updOledScreen(\'main\',\'titleSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.titleSize || 2) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxTitleY + '" value="' + (main.titleY || 14) + '" oninput="updOledScreen(\'main\',\'titleY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.titleY || 14) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'titleAlign\',parseInt(this.value))"><option value="0"' + ((main.titleAlign || 1) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.titleAlign || 1) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.titleAlign || 1) === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
-                html += '<div class="row" style="margin-bottom:4px">';
-                html += '<div class="field"><label style="font-size:10px">Bottom Row Y</label><input type="range" min="0" max="' + maxY + '" value="' + (main.bottomRowY || 56) + '" oninput="updOledScreen(\'main\',\'bottomRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:20px">' + (main.bottomRowY || 56) + '</span></div>';
+
+                // BPM Card
+                html += '<div style="background:#252525;padding:8px;border-radius:4px;border:1px solid #333;display:flex;flex-direction:column;gap:6px">';
+                html += '  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:2px">';
+                html += '    <label style="font-size:11px;font-weight:600;color:#ccc">BPM</label>';
+                html += '    <input type="checkbox" ' + (main.showBpm !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showBpm\',this.checked)" style="width:14px;height:14px">';
+                html += '  </div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="3" value="' + (main.bpmSize || 1) + '" oninput="updOledScreen(\'main\',\'bpmSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bpmSize || 1) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.bpmY !== undefined ? main.bpmY : 32) + '" oninput="updOledScreen(\'main\',\'bpmY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bpmY !== undefined ? main.bpmY : 32) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'bpmAlign\',parseInt(this.value))"><option value="0"' + ((main.bpmAlign || 1) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.bpmAlign || 1) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.bpmAlign || 1) === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
-                // Display options checkboxes
-                html += '<div class="row" style="margin-bottom:4px;margin-top:8px">';
-                html += '<div style="display:flex;align-items:center;gap:6px"><input type="checkbox"' + (main.showBpm !== false ? ' checked' : '') + ' onchange="updOledScreen(\'main\',\'showBpm\',this.checked)" style="width:14px;height:14px"><label style="font-size:10px">Show BPM</label></div>';
-                html += '<div style="display:flex;align-items:center;gap:6px;margin-left:16px"><input type="checkbox"' + (main.showAnalog ? ' checked' : '') + ' onchange="updOledScreen(\'main\',\'showAnalog\',this.checked)" style="width:14px;height:14px"><label style="font-size:10px">Show Analog</label></div>';
+
+                // Status Card
+                html += '<div style="background:#252525;padding:8px;border-radius:4px;border:1px solid #333;display:flex;flex-direction:column;gap:6px">';
+                html += '  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #333;padding-bottom:4px;margin-bottom:2px">';
+                html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Status</label>';
+                html += '    <input type="checkbox" ' + (main.showStatus !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showStatus\',this.checked)" style="width:14px;height:14px">';
+                html += '  </div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="3" value="' + (main.statusSize || 1) + '" oninput="updOledScreen(\'main\',\'statusSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.statusSize || 1) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.statusY || 44) + '" oninput="updOledScreen(\'main\',\'statusY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.statusY || 44) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'statusAlign\',parseInt(this.value))"><option value="0"' + ((main.statusAlign || 0) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.statusAlign || 0) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.statusAlign || 0) === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
+                html += '</div>'; // End Elements Grid
             } else if (previewMode === 'menu') {
                 // MENU SCREEN controls
                 var menu = screens.menu || { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
@@ -1044,7 +1093,7 @@
                 var overlay = screens.overlay || { textSize: 2 };
                 html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Button Overlay Settings</div>';
                 html += '<div class="row" style="margin-bottom:4px">';
-                html += '<div class="field"><label style="font-size:10px">Text Size</label><input type="range" min="1" max="4" value="' + (overlay.textSize || 2) + '" oninput="updOledScreen(\'overlay\',\'textSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (overlay.textSize || 2) + '</span></div>';
+                html += '<div class="field"><label style="font-size:10px">Text Size</label><input type="range" min="1" max="7" value="' + (overlay.textSize || 2) + '" oninput="updOledScreen(\'overlay\',\'textSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value"><span style="font-size:10px;width:16px">' + (overlay.textSize || 2) + '</span></div>';
                 html += '</div>';
             } else if (previewMode === 'loading') {
                 // LOADING - No controls (fixed layout)
@@ -1451,6 +1500,7 @@
             html += '<option value="CLIENT"' + (sys.bleMode === 'CLIENT' ? ' selected' : '') + '>Client</option>';
             html += '<option value="SERVER"' + (sys.bleMode === 'SERVER' ? ' selected' : '') + '>Server</option>';
             html += '<option value="DUAL"' + (sys.bleMode === 'DUAL' ? ' selected' : '') + '>Dual</option>';
+            html += '<option value="EDIT"' + (sys.bleMode === 'EDIT' ? ' selected' : '') + '>Edit Mode (Preview)</option>';
             html += '</select></div>';
             html += '</div>';
             html += '<div class="row">';
@@ -1791,7 +1841,7 @@
             if (!presetData.system.oled.screens[screen]) {
                 // Initialize with defaults based on screen type
                 if (screen === 'main') {
-                    presetData.system.oled.screens.main = { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56 };
+                    presetData.system.oled.screens.main = { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56, showBpm: true, showStatus: true, showTopRow: true, showBottomRow: true, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
                 } else if (screen === 'menu') {
                     presetData.system.oled.screens.menu = { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
                 } else if (screen === 'tap') {
@@ -1836,8 +1886,28 @@
             var canvas = document.getElementById('oledPreview');
             if (!canvas) return;
             var ctx = canvas.getContext('2d');
-            var oled = presetData.system.oled || { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 }, yPositions: { topRow: 0, bottomRow: 56 } };
-            var ts = oled.textSizes || { title: 2, subtitle: 1, label: 1, value: 2 };
+
+            // Get selected mode
+            var modeEl = document.getElementById('oledPreviewMode');
+            var mode = modeEl ? modeEl.value : 'main';
+
+            var oled = presetData.system.oled || { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 }, yPositions: { topRow: 0, bottomRow: 56 }, screens: {} };
+            if (!oled.screens) oled.screens = {};
+
+            // Base config from legacy defaults
+            var ts = JSON.parse(JSON.stringify(oled.textSizes || { title: 2, subtitle: 1, label: 1, value: 2 }));
+
+            // Merge screen-specific config if available
+            if (oled.screens && oled.screens[mode]) {
+                var screenCfg = oled.screens[mode];
+                for (var key in screenCfg) ts[key] = screenCfg[key];
+
+                // Polyfill new v1.5 names to legacy names used in renderer
+                if (ts.labelSize) ts.label = ts.labelSize;
+                if (ts.titleSize) ts.title = ts.titleSize;
+                if (ts.statusSize) { ts.status = ts.statusSize; ts.subtitle = ts.statusSize; }
+            }
+
             var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
             var is32 = oled.type === '128x32';
             var rotation = oled.rotation || 0;
@@ -1883,7 +1953,6 @@
             function drawCentered(text, y, size) {
                 var width = textWidth(text, size);
                 var x = Math.floor((w - width) / 2);
-                logDebug('drawCentered: "' + text + '" y=' + y + ' size=' + size + ' w=' + w + ' h=' + h + ' x=' + x);
                 drawText(text, x, y, size);
             }
             function drawFilledCircle(cx, cy, r) {
@@ -1983,18 +2052,28 @@
             var ts = {}; // Text sizes and Y positions for current mode
 
             if (previewMode === 'main') {
-                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 32, bottomRowY: 56, showBpm: true, showAnalog: false };
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
                 ts = {
                     label: main.labelSize || 1,
                     title: main.titleSize || 2,
                     status: main.statusSize || 1,
+                    bpmSize: main.bpmSize || 1,
                     subtitle: main.statusSize || 1,
                     top: main.topRowY || 0,
                     titleY: main.titleY || 14,
-                    statusY: main.statusY || 32,
+                    statusY: main.statusY || 44,
+                    bpmY: main.bpmY !== undefined ? main.bpmY : 32,
                     bottom: main.bottomRowY || 56,
                     showBpm: main.showBpm !== false,
-                    showAnalog: main.showAnalog === true
+                    showStatus: main.showStatus !== false,
+                    showAnalog: main.showAnalog === true,
+                    showTopRow: main.showTopRow !== false,
+                    showBottomRow: main.showBottomRow !== false,
+                    titleAlign: main.titleAlign !== undefined ? main.titleAlign : 1,
+                    statusAlign: main.statusAlign !== undefined ? main.statusAlign : 0,
+                    bpmAlign: main.bpmAlign !== undefined ? main.bpmAlign : 1,
+                    topRowMap: main.topRowMap || '5,6,7,8',
+                    bottomRowMap: main.bottomRowMap || '1,2,3,4'
                 };
             } else if (previewMode === 'menu') {
                 var menu = screens.menu || { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
@@ -2033,7 +2112,12 @@
             // If overlay state is active, show centered overlay and skip normal rendering
             if (oledOverlayState.active) {
                 logDebug('OLED Overlay: ' + oledOverlayState.label); // Debug
-                var overlaySize = 2; // Size 2 fits better
+                // Use configured overlay text size from screens.overlay
+                var overlayConfig = oled.screens && oled.screens.overlay ? oled.screens.overlay : { textSize: 2 };
+                var configSize = overlayConfig.textSize || 2;
+                // Preview uses size - 1 (min 1) for more realistic OLED appearance
+                // because the canvas is 2x scaled
+                var overlaySize = Math.max(1, configSize - 1);
                 var charH = 7 * overlaySize;
                 var y = Math.floor((h - charH) / 2);
                 drawCentered(oledOverlayState.label, y, overlaySize);
@@ -2244,36 +2328,92 @@
                 var buttonCount = presetData.system.buttonCount || 8;
                 var buttons = preset ? preset.buttons : [];
 
-                // Get all button labels
+                // Get all button labels (legacy fallback)
                 var allLabels = [];
                 for (var i = 0; i < buttonCount; i++) {
                     allLabels.push(buttons[i] ? buttons[i].name.substring(0, 4).toUpperCase() : 'B' + (i + 1));
                 }
+
+                // Helper function to parse row map and get labels
+                function parseRowMap(mapStr, buttons, analogInputs) {
+                    if (!mapStr || mapStr.trim() === '') return [];
+                    var items = mapStr.split(',').map(function (s) { return s.trim(); });
+                    var labels = [];
+                    for (var i = 0; i < items.length; i++) {
+                        var item = items[i].toUpperCase();
+                        if (item.indexOf('A') === 0 && item.length > 1) {
+                            // Analog input (e.g., A1, A2)
+                            var aIdx = parseInt(item.substring(1)) - 1;
+                            if (analogInputs && analogInputs[aIdx] && analogInputs[aIdx].enabled) {
+                                labels.push((analogInputs[aIdx].name || item).substring(0, 4).toUpperCase());
+                            } else {
+                                labels.push(item.substring(0, 4));
+                            }
+                        } else {
+                            // Button number (1-based)
+                            var bIdx = parseInt(item) - 1;
+                            if (buttons && buttons[bIdx]) {
+                                labels.push(buttons[bIdx].name.substring(0, 4).toUpperCase());
+                            } else if (!isNaN(bIdx) && bIdx >= 0) {
+                                labels.push('B' + (bIdx + 1));
+                            } else {
+                                labels.push(item.substring(0, 4));
+                            }
+                        }
+                    }
+                    return labels;
+                }
+
+                // Get mapped labels for top and bottom rows
+                var topRowLabels = parseRowMap(ts.topRowMap, buttons, presetData.analogInputs);
+                var bottomRowLabels = parseRowMap(ts.bottomRowMap, buttons, presetData.analogInputs);
 
                 if (isVertical) {
                     // VERTICAL ORIENTATION (90°/270°)
                     var lineHeight = ts.label * 8 + 2;
                     var y = ts.top || 0;
                     var maxChars = is32 ? 4 : 8;
-                    drawText(presetName.substring(0, maxChars), 1, y, ts.title || 1);
+
+                    // Title with alignment support
+                    var titleAlign = ts.titleAlign !== undefined ? ts.titleAlign : 1;
+                    if (titleAlign === 0) {
+                        drawText(presetName.substring(0, maxChars), 1, y, ts.title || 1);
+                    } else if (titleAlign === 2) {
+                        var tw = textWidth(presetName.substring(0, maxChars), ts.title || 1);
+                        drawText(presetName.substring(0, maxChars), w - tw - 1, y, ts.title || 1);
+                    } else {
+                        var tw = textWidth(presetName.substring(0, maxChars), ts.title || 1);
+                        drawText(presetName.substring(0, maxChars), (w - tw) / 2, y, ts.title || 1);
+                    }
                     y += (ts.title || 1) * 8 + 2;
+
+                    // BPM with bpmSize
                     if (ts.showBpm !== false) {
-                        drawText('120.0', 1, y, ts.status || 1); // BPM
-                        y += (ts.status || 1) * 8 + 2;
+                        var bpmSize = ts.bpmSize || 1;
+                        drawText('120.0', 1, y, bpmSize);
+                        y += bpmSize * 8 + 2;
                     }
                     if (ts.showAnalog) {
-                        // Show analog inputs in a1.127 format
                         var analogCount = presetData.system.analogInputCount || 2;
-                        var maxAnalogShow = is32 ? 2 : 4; // Limit based on space
+                        var maxAnalogShow = is32 ? 2 : 4;
                         for (var ai = 0; ai < Math.min(analogCount, maxAnalogShow) && y < h - 20; ai++) {
                             drawText('a' + (ai + 1) + '.' + (127 - ai * 30), 1, y, ts.status || 1);
                             y += (ts.status || 1) * 8 + 2;
                         }
                     }
-                    drawText('BL:CL', 1, y, ts.status || 1); // Status
-                    y += (ts.status || 1) * 8 + 4;
-                    for (var i = 0; i < allLabels.length && y < h - 8; i++) {
-                        drawText(allLabels[i].substring(0, maxChars), 1, y, ts.label || 1);
+                    // Status line (conditional on showStatus)
+                    if (String(ts.showStatus) !== 'false') {
+                        drawText('BL:CL', 1, y, ts.status || 1);
+                        y += (ts.status || 1) * 8 + 4;
+                    }
+
+                    // Button labels (vertical shows all in one column using mapped labels)
+                    var combinedLabels = [];
+                    if (ts.showTopRow !== false) combinedLabels = combinedLabels.concat(topRowLabels);
+                    if (ts.showBottomRow !== false) combinedLabels = combinedLabels.concat(bottomRowLabels);
+
+                    for (var i = 0; i < combinedLabels.length && y < h - 8; i++) {
+                        drawText(combinedLabels[i].substring(0, maxChars), 1, y, ts.label || 1);
                         y += lineHeight;
                     }
                 } else if (is32) {
@@ -2282,59 +2422,116 @@
                     var topRowStart = Math.floor(buttonCount / 2);
                     var colWidth = Math.floor(w / buttonsPerRow);
 
-                    // Top row
-                    for (var i = 0; i < buttonsPerRow && (topRowStart + i) < buttonCount; i++) {
-                        drawText(allLabels[topRowStart + i], i * colWidth, ts.top || 0, ts.label || 1);
+                    // Top row (conditional) - use mapped labels
+                    if (ts.showTopRow !== false && topRowLabels.length > 0) {
+                        var colWidth32 = w / topRowLabels.length;
+                        for (var i = 0; i < topRowLabels.length; i++) {
+                            drawText(topRowLabels[i], i * colWidth32, ts.top || 0, ts.label || 1);
+                        }
                     }
-                    // Center row
+
+                    // Center row - title with alignment
                     var centerY = ts.titleY || 11;
-                    drawText(presetName.substring(0, 6), 0, centerY, ts.title || 1);
-
-                    // Status / Analog Center
-                    var statusText = 'BL:CL';
-                    if (ts.showAnalog) {
-                        statusText = 'A1.127';
+                    var titleAlign = ts.titleAlign !== undefined ? ts.titleAlign : 1;
+                    var titleText = presetName.substring(0, 6);
+                    if (titleAlign === 0) {
+                        drawText(titleText, 0, centerY, ts.title || 1);
+                    } else if (titleAlign === 2) {
+                        var tw = textWidth(titleText, ts.title || 1);
+                        drawText(titleText, w - tw, centerY, ts.title || 1);
+                    } else {
+                        var tw = textWidth(titleText, ts.title || 1);
+                        drawText(titleText, (w - tw) / 2, centerY, ts.title || 1);
                     }
-                    var statusX = (w - textWidth(statusText, ts.status || 1)) / 2;
-                    // If BPM is hidden, status can take more space or shift right, but let's keep centered for now
-                    drawText(statusText, statusX, centerY, ts.status || 1);
 
+                    // BPM (uses bpmSize) - right aligned or aligned per config
                     if (ts.showBpm !== false) {
                         var bpmText = '120.0';
-                        drawText(bpmText, w - textWidth(bpmText, ts.status || 1) - 2, centerY, ts.status || 1);
+                        var bpmSize = ts.bpmSize || 1;
+                        var bpmAlign = ts.bpmAlign !== undefined ? ts.bpmAlign : 2; // Default right for 32
+                        if (bpmAlign === 0) {
+                            drawText(bpmText, 0, centerY, bpmSize);
+                        } else if (bpmAlign === 2) {
+                            drawText(bpmText, w - textWidth(bpmText, bpmSize) - 2, centerY, bpmSize);
+                        } else {
+                            var bw = textWidth(bpmText, bpmSize);
+                            drawText(bpmText, (w - bw) / 2, centerY, bpmSize);
+                        }
                     }
-                    // Bottom row
-                    for (var i = 0; i < buttonsPerRow && i < topRowStart; i++) {
-                        drawText(allLabels[i], i * colWidth, ts.bottom || 24, ts.label || 1);
+
+                    // Bottom row (conditional) - use mapped labels
+                    if (ts.showBottomRow !== false && bottomRowLabels.length > 0) {
+                        var colWidth32 = w / bottomRowLabels.length;
+                        for (var i = 0; i < bottomRowLabels.length; i++) {
+                            drawText(bottomRowLabels[i], i * colWidth32, ts.bottom || 24, ts.label || 1);
+                        }
                     }
                 } else {
                     // STANDARD 128x64 HORIZONTAL
                     var topRowY = ts.top !== undefined ? ts.top : 0;
                     var presetY = ts.titleY !== undefined ? ts.titleY : 14;
-                    var bpmY = ts.statusY !== undefined ? ts.statusY : 32;
-                    var bleY = (ts.statusY !== undefined ? ts.statusY : 32) + 12;
+                    var bpmY = ts.bpmY !== undefined ? ts.bpmY : 32;
+                    var bleY = (ts.statusY !== undefined ? ts.statusY : 44);
                     var bottomRowY = ts.bottom !== undefined ? ts.bottom : 56;
 
-                    var buttonsPerRow = Math.min(Math.ceil(buttonCount / 2), 5);
-                    var topRowStart = Math.floor(buttonCount / 2);
-                    var colWidth = Math.floor(w / buttonsPerRow);
+                    var colWidth = w / Math.max(topRowLabels.length, bottomRowLabels.length, 4);
 
-                    // Top row labels
-                    for (var i = 0; i < buttonsPerRow && (topRowStart + i) < buttonCount; i++) {
-                        drawText(allLabels[topRowStart + i], i * colWidth, topRowY, ts.label);
+                    // Top row labels (conditional on showTopRow)
+                    if (ts.showTopRow !== false && topRowLabels.length > 0) {
+                        for (var i = 0; i < topRowLabels.length; i++) {
+                            drawText(topRowLabels[i], i * colWidth, topRowY, ts.label);
+                        }
                     }
-                    // Bottom row labels
-                    for (var i = 0; i < buttonsPerRow && i < topRowStart; i++) {
-                        drawText(allLabels[i], i * colWidth, bottomRowY, ts.label);
+                    // Bottom row labels (conditional on showBottomRow)
+                    if (ts.showBottomRow !== false && bottomRowLabels.length > 0) {
+                        for (var i = 0; i < bottomRowLabels.length; i++) {
+                            drawText(bottomRowLabels[i], i * colWidth, bottomRowY, ts.label);
+                        }
                     }
-                    drawCentered(presetName, presetY, ts.title);
-                    if (ts.showBpm !== false) {
-                        drawCentered('BPM:120.0', bpmY, ts.status || ts.subtitle || 1);
-                    }
-                    if (ts.showAnalog) {
-                        drawCentered('A1:127 A2:64', bpmY + (ts.showBpm !== false ? 10 : 0), ts.status || ts.subtitle || 1);
+
+                    // Preset Name with alignment (0=Left, 1=Center, 2=Right)
+                    var presetAlign = ts.titleAlign !== undefined ? ts.titleAlign : 1;
+                    if (presetAlign === 0) {
+                        drawText(presetName, 0, presetY, ts.title);
+                    } else if (presetAlign === 2) {
+                        var pw = textWidth(presetName, ts.title);
+                        drawText(presetName, w - pw, presetY, ts.title);
                     } else {
-                        drawCentered('BLE:CLIENT SCAN', bleY, ts.status || ts.subtitle || 1);
+                        drawCentered(presetName, presetY, ts.title);
+                    }
+
+                    // BPM with separate size, Y position, and alignment
+                    if (ts.showBpm !== false) {
+                        var bpmText = '120.0 BPM';
+                        var bpmSize = ts.bpmSize || 1;
+                        var bpmAlign = ts.bpmAlign !== undefined ? ts.bpmAlign : 1;
+                        if (bpmAlign === 0) {
+                            drawText(bpmText, 0, bpmY, bpmSize);
+                        } else if (bpmAlign === 2) {
+                            var bpmW = textWidth(bpmText, bpmSize);
+                            drawText(bpmText, w - bpmW, bpmY, bpmSize);
+                        } else {
+                            drawCentered(bpmText, bpmY, bpmSize);
+                        }
+                    }
+
+                    // Status line with alignment (0=Left, 1=Center, 2=Right)
+                    if (String(ts.showStatus) !== 'false') {
+                        var statusSize = ts.status || ts.subtitle || 1;
+                        var statusAlign = ts.statusAlign !== undefined ? ts.statusAlign : 0;
+
+                        var bleMode = (presetData.system.bleMode || 'CLIENT');
+                        var bleSuffix = (bleMode === 'CLIENT' || bleMode === 'DUAL') ? ' Scanning' : '';
+                        var statusText = ts.showAnalog ? 'A1:127 A2:64' : ('BLE:' + bleMode + bleSuffix);
+
+                        if (statusAlign === 0) {
+                            drawText(statusText, 0, bleY, statusSize);
+                        } else if (statusAlign === 2) {
+                            var sw = textWidth(statusText, statusSize);
+                            drawText(statusText, w - sw, bleY, statusSize);
+                        } else {
+                            drawCentered(statusText, bleY, statusSize);
+                        }
                     }
                 }
             }

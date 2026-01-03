@@ -53,37 +53,60 @@ OledConfig oledConfig = {OLED_128X64, // type
                          0,           // rotation (0°)
                          // Main screen settings
                          {
-                             1,    // labelSize
-                             2,    // titleSize
-                             1,    // statusSize
-                             0,    // topRowY
-                             14,   // titleY
-                             32,   // statusY
-                             56,   // bottomRowY
-                             true, // showBpm
-                             false // showAnalog
+                             1,         // labelSize
+                             2,         // titleSize
+                             1,         // statusSize
+                             1,         // bpmSize (v1.5.1)
+                             0,         // topRowY
+                             14,        // titleY
+                             44,        // statusY
+                             32,        // bpmY (v1.5.1)
+                             56,        // bottomRowY
+                             true,      // showBpm
+                             false,     // showAnalog
+                             true,      // showTopRow (v1.5.1)
+                             true,      // showBottomRow (v1.5.1)
+                             true,      // showStatus (v1.5.1)
+                             1,         // titleAlign (1=Center)
+                             0,         // statusAlign (0=Left)
+                             1,         // bpmAlign (1=Center)
+                             "5,6,7,8", // topRowMap (v1.5.1)
+                             "1,2,3,4"  // bottomRowMap (v1.5.1)
                          },
                          // Menu screen settings
-                         {1,    // labelSize (itemSize)
-                          1,    // titleSize (headerSize)
-                          1,    // statusSize
-                          0,    // topRowY (headerY)
-                          14,   // titleY (itemStartY)
-                          0, 0, // unused
-                          false, false},
+                         {1,     // labelSize (itemSize)
+                          1,     // titleSize (headerSize)
+                          1,     // statusSize
+                          1,     // bpmSize
+                          0,     // topRowY (headerY)
+                          14,    // titleY (itemStartY)
+                          0,     // statusY
+                          0,     // bpmY
+                          0,     // bottomRowY
+                          false, // showBpm
+                          false, // showAnalog
+                          true,  // showTopRow
+                          true,  // showBottomRow
+                          true,  // showStatus
+                          0, 0, 0, "", ""},
                          // Tap tempo screen settings
-                         {1,  // labelSize
-                          3,  // titleSize (bpmSize)
-                          1,  // statusSize (patternSize)
-                          0,  // topRowY (labelTopY)
-                          16, // titleY (bpmY)
-                          46, // statusY (patternY)
-                          56, // bottomRowY (labelBottomY)
-                          true, false},
+                         {1,     // labelSize
+                          3,     // titleSize (bpmSize)
+                          1,     // statusSize (patternSize)
+                          1,     // bpmSize
+                          0,     // topRowY (labelTopY)
+                          16,    // titleY (bpmY)
+                          46,    // statusY (patternY)
+                          0,     // bpmY
+                          56,    // bottomRowY (labelBottomY)
+                          true,  // showBpm
+                          false, // showAnalog
+                          true, true, true, 0, 0, 0, "", ""},
                          // Overlay settings
                          {2, // labelSize
                           2, // titleSize (textSize)
-                          1, 0, 0, 0, 0, false, false}};
+                          1, 1, 0, 0, 0, 0, 0, false, false, true, true, true,
+                          0, 0, 0, "", ""}};
 
 // ============================================
 // GLOBAL SPECIAL ACTIONS

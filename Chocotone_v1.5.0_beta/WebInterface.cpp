@@ -1459,8 +1459,12 @@ void handleImportUploadData() {
             oledConfig.main.titleY = main["titleY"] | 14;
             oledConfig.main.statusY = main["statusY"] | 32;
             oledConfig.main.bottomRowY = main["bottomRowY"] | 56;
-            oledConfig.main.showBpm = main["showBpm"] | true;
+            oledConfig.main.showBpm =
+                main.containsKey("showBpm") ? main["showBpm"].as<bool>() : true;
             oledConfig.main.showAnalog = main["showAnalog"] | false;
+            oledConfig.main.showStatus = main.containsKey("showStatus")
+                                             ? main["showStatus"].as<bool>()
+                                             : true;
           }
 
           // Menu screen
@@ -2034,15 +2038,30 @@ String buildFullConfigJson() {
   json += "\"labelSize\":" + String(oledConfig.main.labelSize);
   json += ",\"titleSize\":" + String(oledConfig.main.titleSize);
   json += ",\"statusSize\":" + String(oledConfig.main.statusSize);
+  json += ",\"bpmSize\":" + String(oledConfig.main.bpmSize);
   json += ",\"topRowY\":" + String(oledConfig.main.topRowY);
   json += ",\"titleY\":" + String(oledConfig.main.titleY);
   json += ",\"statusY\":" + String(oledConfig.main.statusY);
+  json += ",\"bpmY\":" + String(oledConfig.main.bpmY);
   json += ",\"bottomRowY\":" + String(oledConfig.main.bottomRowY);
   json += ",\"showBpm\":";
   json += oledConfig.main.showBpm ? "true" : "false";
   json += ",\"showAnalog\":";
   json += oledConfig.main.showAnalog ? "true" : "false";
-  json += "}";
+  json += ",\"showStatus\":";
+  json += oledConfig.main.showStatus ? "true" : "false";
+  json += ",\"showTopRow\":";
+  json += oledConfig.main.showTopRow ? "true" : "false";
+  json += ",\"showBottomRow\":";
+  json += oledConfig.main.showBottomRow ? "true" : "false";
+  json += ",\"titleAlign\":" + String(oledConfig.main.titleAlign);
+  json += ",\"statusAlign\":" + String(oledConfig.main.statusAlign);
+  json += ",\"bpmAlign\":" + String(oledConfig.main.bpmAlign);
+  json += ",\"topRowMap\":\"";
+  json += escapeJson(oledConfig.main.topRowMap);
+  json += "\",\"bottomRowMap\":\"";
+  json += escapeJson(oledConfig.main.bottomRowMap);
+  json += "\"}";
 
   // Menu screen
   json += ",\"menu\":{";
@@ -2376,12 +2395,28 @@ bool applyConfigJson(JsonObject doc) {
           oledConfig.main.labelSize = m["labelSize"] | 1;
           oledConfig.main.titleSize = m["titleSize"] | 2;
           oledConfig.main.statusSize = m["statusSize"] | 1;
+          oledConfig.main.bpmSize = m["bpmSize"] | 1;
           oledConfig.main.topRowY = m["topRowY"] | 0;
           oledConfig.main.titleY = m["titleY"] | 14;
-          oledConfig.main.statusY = m["statusY"] | 32;
+          oledConfig.main.statusY = m["statusY"] | 44;
+          oledConfig.main.bpmY = m["bpmY"] | 32;
           oledConfig.main.bottomRowY = m["bottomRowY"] | 56;
           oledConfig.main.showBpm = m["showBpm"] | true;
           oledConfig.main.showAnalog = m["showAnalog"] | false;
+          oledConfig.main.showTopRow = m["showTopRow"] | true;
+          oledConfig.main.showBottomRow = m["showBottomRow"] | true;
+          oledConfig.main.titleAlign = m["titleAlign"] | 1;
+          oledConfig.main.statusAlign = m["statusAlign"] | 0;
+          oledConfig.main.bpmAlign = m["bpmAlign"] | 1;
+          if (m.containsKey("topRowMap")) {
+            strncpy(oledConfig.main.topRowMap, m["topRowMap"] | "5,6,7,8", 31);
+            oledConfig.main.topRowMap[31] = '\0';
+          }
+          if (m.containsKey("bottomRowMap")) {
+            strncpy(oledConfig.main.bottomRowMap, m["bottomRowMap"] | "1,2,3,4",
+                    31);
+            oledConfig.main.bottomRowMap[31] = '\0';
+          }
         }
         if (scs.containsKey("menu")) {
           JsonObject m = scs["menu"];
