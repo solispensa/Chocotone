@@ -4,6 +4,7 @@
 #include "Config.h"
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_ST7735.h>
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <ESP32Encoder.h>
@@ -187,12 +188,23 @@ struct SystemConfig {
   MultiplexerConfig multiplexer; // ~25 bytes
   bool debugAnalogIn;            // v1.5: Show raw ADC values on OLED
   uint8_t analogInputCount;      // v1.5: Number of enabled analog inputs (0-16)
+
+  // Display pins (v1.5 - configurable I2C/SPI pins for auto-conflict
+  // resolution)
+  uint8_t oledSdaPin; // I2C SDA (default: 21)
+  uint8_t oledSclPin; // I2C SCL (default: 22)
+  uint8_t tftCsPin;   // SPI CS (default: 15)
+  uint8_t tftDcPin;   // SPI DC (default: 2)
+  uint8_t tftRstPin;  // SPI RST (default: 4)
+  uint8_t tftMosiPin; // SPI MOSI (default: 23)
+  uint8_t tftSclkPin; // SPI SCLK (default: 18)
+  uint8_t tftLedPin;  // SPI LED/Backlight (default: 32)
 };
 
 // ============================================
 // OLED CONFIGURATION (v1.5 - 128x32 support)
 // ============================================
-enum OledType : uint8_t { OLED_128X64 = 0, OLED_128X32 = 1 };
+enum OledType : uint8_t { OLED_128X64 = 0, OLED_128X32 = 1, TFT_128X128 = 2 };
 
 struct OledScreenConfig {
   uint8_t labelSize;   // 1 byte - Text size for button labels (1-3)
@@ -216,6 +228,14 @@ struct OledScreenConfig {
                       // v1.5.1
   char bottomRowMap[32]; // 32 bytes - Input mapping for bottom row (e.g.
                          // "1,2,3,4") - v1.5.1
+
+  // TFT Color Strip Feature (v1.5.2)
+  bool showColorStrips; // 1 byte - Show colored bars matching button RGB (TFT
+                        // only)
+  uint8_t colorStripHeight; // 1 byte - Color strip thickness in pixels (1-10,
+                            // default 4)
+  uint8_t topRowAlign;      // 1 byte - 0=Left, 1=Center, 2=Right for top row
+  uint8_t bottomRowAlign;   // 1 byte - 0=Left, 1=Center, 2=Right for bottom row
 };
 
 struct OledConfig {
@@ -229,6 +249,12 @@ struct OledConfig {
 
 extern OledConfig oledConfig;
 
+// Color abstraction for different display types
+#define DISPLAY_WHITE                                                          \
+  (oledConfig.type == TFT_128X128 ? ST7735_WHITE : SSD1306_WHITE)
+#define DISPLAY_BLACK                                                          \
+  (oledConfig.type == TFT_128X128 ? ST7735_BLACK : SSD1306_BLACK)
+
 // ============================================
 // GLOBAL SPECIAL ACTIONS (per-button, across presets)
 // ============================================
@@ -241,8 +267,9 @@ struct GlobalSpecialAction {
 // GLOBAL OBJECTS
 // ============================================
 
-// Modified to pointer to allow dynamic height configuration (128x64 vs 128x32)
-extern Adafruit_SSD1306 *displayPtr;
+// Modified to pointer to allow dynamic height configuration (128x64 vs 128x32
+// vs 128x128)
+extern Adafruit_GFX *displayPtr;
 // PREVIOUS MACRO REMOVED due to collision with display() method
 // All code must now use displayPtr-> instead of display.
 extern Adafruit_NeoPixel strip;

@@ -16,6 +16,14 @@
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 
+// TFT SPI Pins (ST7735)
+#define TFT_CS 15
+#define TFT_RST 4
+#define TFT_DC 2    // A0
+#define TFT_MOSI 23 // SDA (Data)
+#define TFT_SCLK 18 // SCL (Clock)
+#define TFT_LED 32  // Backlight
+
 // v2.0 Dynamic Button Configuration
 #define MAX_BUTTONS 16                   // Maximum supported buttons
 #define DEFAULT_BUTTON_COUNT 8           // Default active buttons
@@ -28,10 +36,10 @@
 const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
     14, 27, 26, 25, 33, 32, 16, 17, 0, 0, 0, 0, 0, 0, 0, 0};
 
-// Default Encoder Pins
-#define DEFAULT_ENCODER_A 4
-#define DEFAULT_ENCODER_B 16
-#define DEFAULT_ENCODER_BTN 17
+// Default Encoder Pins (original design - will auto-resolve conflicts with TFT)
+#define DEFAULT_ENCODER_A 18
+#define DEFAULT_ENCODER_B 19
+#define DEFAULT_ENCODER_BTN 23
 
 // Default Settings
 // These are initial default values used on first boot.

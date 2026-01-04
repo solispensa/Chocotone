@@ -1438,10 +1438,14 @@ void handleImportUploadData() {
       if (sys.containsKey("oled")) {
         JsonObject oled = sys["oled"];
 
-        // OLED Type
         if (oled.containsKey("type")) {
           String typeStr = oled["type"].as<String>();
-          oledConfig.type = (typeStr == "128x32") ? OLED_128X32 : OLED_128X64;
+          if (typeStr == "128x32")
+            oledConfig.type = OLED_128X32;
+          else if (typeStr == "128x128" || typeStr == "TFT")
+            oledConfig.type = TFT_128X128;
+          else
+            oledConfig.type = OLED_128X64;
         }
         oledConfig.rotation = oled["rotation"] | 0;
 
@@ -1465,6 +1469,11 @@ void handleImportUploadData() {
             oledConfig.main.showStatus = main.containsKey("showStatus")
                                              ? main["showStatus"].as<bool>()
                                              : true;
+            // TFT Color Strip settings (v1.5.2)
+            oledConfig.main.showColorStrips = main["showColorStrips"] | false;
+            oledConfig.main.colorStripHeight = main["colorStripHeight"] | 4;
+            oledConfig.main.topRowAlign = main["topRowAlign"] | 0;
+            oledConfig.main.bottomRowAlign = main["bottomRowAlign"] | 0;
           }
 
           // Menu screen
@@ -2028,7 +2037,7 @@ String buildFullConfigJson() {
   // OLED Configuration (v1.5)
   json += ",\"oled\":{";
   json += "\"type\":";
-  json += String(oledConfig.type); // 0=128x64, 1=128x32
+  json += String((int)oledConfig.type); // 0=128x64, 1=128x32, 2=128x128
   json += ",\"rotation\":";
   json += String(oledConfig.rotation);
   json += ",\"screens\":{";
@@ -2061,7 +2070,13 @@ String buildFullConfigJson() {
   json += escapeJson(oledConfig.main.topRowMap);
   json += "\",\"bottomRowMap\":\"";
   json += escapeJson(oledConfig.main.bottomRowMap);
-  json += "\"}";
+  // TFT Color Strip settings (v1.5.2)
+  json += "\",\"showColorStrips\":";
+  json += oledConfig.main.showColorStrips ? "true" : "false";
+  json += ",\"colorStripHeight\":" + String(oledConfig.main.colorStripHeight);
+  json += ",\"topRowAlign\":" + String(oledConfig.main.topRowAlign);
+  json += ",\"bottomRowAlign\":" + String(oledConfig.main.bottomRowAlign);
+  json += "}";
 
   // Menu screen
   json += ",\"menu\":{";
@@ -2372,11 +2387,15 @@ bool applyConfigJson(JsonObject doc) {
       }
     }
 
-    // OLED Configuration
     if (sys.containsKey("oled")) {
       JsonObject oled = sys["oled"];
       String t = oled["type"] | "128x64";
-      oledConfig.type = (t == "128x32" || t == "1") ? OLED_128X32 : OLED_128X64;
+      if (t == "128x32" || t == "1")
+        oledConfig.type = OLED_128X32;
+      else if (t == "128x128" || t == "2")
+        oledConfig.type = TFT_128X128;
+      else
+        oledConfig.type = OLED_128X64;
 
       int r = oled["rotation"] | 0;
       if (r >= 270)
@@ -2419,6 +2438,11 @@ bool applyConfigJson(JsonObject doc) {
                     31);
             oledConfig.main.bottomRowMap[31] = '\0';
           }
+          // TFT Color Strip settings (v1.5.2)
+          oledConfig.main.showColorStrips = m["showColorStrips"] | false;
+          oledConfig.main.colorStripHeight = m["colorStripHeight"] | 4;
+          oledConfig.main.topRowAlign = m["topRowAlign"] | 0;
+          oledConfig.main.bottomRowAlign = m["bottomRowAlign"] | 0;
         }
         if (scs.containsKey("menu")) {
           JsonObject m = scs["menu"];
@@ -2441,9 +2465,9 @@ bool applyConfigJson(JsonObject doc) {
           JsonObject m = scs["overlay"];
           oledConfig.overlay.titleSize = m["textSize"] | 2;
         }
-      }
-    }
-  }
+      } // End screens
+    } // End oled
+  } // End sys
 
   // Analog Inputs
   JsonArray analogs = doc["analogInputs"];
@@ -2820,7 +2844,9 @@ void handleSerialConfig() {
 
         Serial.print(",\"oled\":{");
         Serial.print("\"type\":\"");
-        Serial.print(oledConfig.type == OLED_128X32 ? "128x32" : "128x64");
+        Serial.print(oledConfig.type == OLED_128X32   ? "128x32"
+                     : oledConfig.type == TFT_128X128 ? "128x128"
+                                                      : "128x64");
         Serial.print("\",\"rotation\":");
         Serial.print(oledConfig.rotation * 90);
         Serial.print(",\"screens\":{");

@@ -1,42 +1,93 @@
 # Wiring Diagram
 
-Visual pin connection guide for the ESP32 MIDI Controller.
+Visual pin connection guide for the Chocotone MIDI Controller.
 
 ## Quick Reference Table
 
-| Component | Component Pin | ESP32 GPIO | Wire Color Suggestion |
-|-----------|---------------|------------|----------------------|
-| **OLED Display** | | | |
-| | VCC | 3.3V | Red |
-| | GND | GND | Black |
-| | SCL | GPIO 22 | Yellow |
-| | SDA | GPIO 21 | Green |
+| Component | Component Pin | ESP32 GPIO | Notes |
+|-----------|---------------|------------|-------|
+| **OLED Display** | | | **I2C Mode (Default)** |
+| | VCC | 3.3V | |
+| | GND | GND | |
+| | SCL | GPIO 22 | |
+| | SDA | GPIO 21 | |
+| **TFT Display** | | | **SPI Mode (128x128)** |
+| | VCC | 3.3V | |
+| | GND | GND | |
+| | SCL (SCLK) | GPIO 18 | *Default Encoder A is 18 - Conflict* |
+| | SDA (MOSI) | GPIO 23 | *Default Encoder Btn is 23 - Conflict* |
+| | RES (RST) | GPIO 4 | |
+| | DC | GPIO 2 | *Default Button 6 is 2 - Conflict* |
+| | CS | GPIO 15 | *Default Button 5 is 15 - Conflict* |
+| | BLK (LED) | GPIO 32 | *Default Button 6 is 32 - Conflict* |
 | **Rotary Encoder** | | | |
-| | VCC/+ | 5V (VIN) or 3.3V | See encoder power note below |
-| | CLK (A) | GPIO 18 | White |
-| | DT (B) | GPIO 19 | Gray |
-| | SW (Button) | GPIO 23 | Blue |
-| | GND | GND | Black |
+| | VCC/+ | 3.3V / 5V | |
+| | GND | GND | |
+| | CLK (A) | GPIO 18 | **Conflict with TFT**. Use free pin (e.g., 25) |
+| | DT (B) | GPIO 19 | |
+| | SW (Btn) | GPIO 23 | **Conflict with TFT**. Use free pin (e.g., 26) |
 | **NeoPixel Strip** | | | |
-| | VCC | 5V | Red |
-| | GND | GND | Black |
-| | DIN | GPIO 5 | Orange |
-| **Button 1** | One side | GPIO 14 | - |
-| | Other side | GND | Black |
-| **Button 2** | One side | GPIO 27 | - |
-| | Other side | GND | Black |
-| **Button 3** | One side | GPIO 26 | - |
-| | Other side | GND | Black |
-| **Button 4** | One side | GPIO 25 | - |
-| | Other side | GND | Black |
-| **Button 5** | One side | GPIO 33 | - |
-| | Other side | GND | Black |
-| **Button 6** | One side | GPIO 32 | - |
-| | Other side | GND | Black |
-| **Button 7** | One side | GPIO 16 | - |
-| | Other side | GND | Black |
-| **Button 8** | One side | GPIO 17 | - |
-| | Other side | GND | Black |
+| | VCC | 5V | Buffer logic level if unstable |
+| | GND | GND | |
+| | DIN | GPIO 5 | |
+| **Analog Input** | | | **Expression Pedal / Pot** |
+| | VCC | 3.3V | |
+| | GND | GND | |
+| | Signal | GPIO 36/39 | Only use INPUT-ONLY pins (34-39) |
+
+## Display Wiring
+
+### Option A: I2C OLED (Default)
+Most common for 128x64 or 128x32 OLEDs.
+- **SDA**: GPIO 21
+- **SCL**: GPIO 22
+
+### Option B: SPI TFT (128x128)
+For color ST7735 displays. **Note:** This requires more pins and creates conflicts with the default encoder/button layout.
+- **MOSI (SDA)**: GPIO 23
+- **SCLK (SCK)**: GPIO 18
+- **CS**: GPIO 15
+- **DC (A0)**: GPIO 2
+- **RST**: GPIO 4
+- **LED (BLK)**: GPIO 32
+
+**⚠️ IMPORTANT: SPI Pin Conflicts**
+When using the TFT display, pins 18, 23, 15, 2, and 32 are occupied. You must move any overlapping components to other free pins:
+- **Encoder A (18)** -> Move to e.g., GPIO 25
+- **Encoder Btn (23)** -> Move to e.g., GPIO 26
+- **Button 6 (2)** -> Move to e.g., GPIO 13
+- **Button 5 (15)** -> Move to e.g., GPIO 12
+
+*The firmware will attempt to auto-resolve conflicts, but it is best to wire them to free pins manually.*
+
+## Analog Input Recommendation
+
+For adding an Expression Pedal or Potentiometer input (e.g., for Volume, Wah), follow this circuit:
+
+**Recommended Components:**
+- **Potentiometer:** 10kΩ Linear (B-Taper)
+- **Resistor:** 1kΩ (Series protection)
+
+**Wiring:**
+```
+       3.3V
+         │
+         │
+      ┌──┴──┐
+      │ Pot │ 10kΩ Linear (B)
+      │     │
+      └──┬──┘
+         │      1kΩ Resistor
+   Wiper ├───────[////]───────→ ESP32 Analog Pin (e.g., GPIO 36, 39)
+         │
+         │
+        GND
+```
+*The 1kΩ resistor protects the GPIO from high current if the pin is accidentally configured as output.*
+
+### Notes on Pins
+- **Use Input-Only Pins:** GPIO 34, 35, 36, 39 are best for Analog Inputs as they lack internal pull-ups and are input-only, reducing interference.
+- **Avoid:** GPIO 0, 2, 12, 15 (Strapping pins) for inputs if possible, or ensure they are not held low/high at boot.
 
 ## GPIO Pin Layout (ESP32-DevKitC)
 
@@ -45,191 +96,23 @@ Visual pin connection guide for the ESP32 MIDI Controller.
           ┌───────────────────────────────┐
           │                               │
       3V3 │●                            ●│ GND
-      EN  │●                            ●│ GPIO 23  ← Encoder Button
-GPIO 36   │●                            ●│ GPIO 22  ← OLED SCL
-GPIO 39   │●                            ●│ TXD0
-GPIO 34   │●← Button 7 (with pull-up)  ●│ RXD0
-GPIO 35   │●← Button 8 (with pull-up)  ●│ GPIO 21  ← OLED SDA
-GPIO 32   │●                            ●│ GND
-GPIO 33   │●                            ●│ GPIO 19  ← Encoder B
-GPIO 25   │●                            ●│ GPIO 18  ← Encoder A
-GPIO 26   │●                            ●│ GPIO 5   ← NeoPixel DIN
+      EN  │●                            ●│ GPIO 23  ← MOSI (TFT) / Enc Btn
+GPIO 36   │●← Analog In                 ●│ GPIO 22  ← OLED SCL
+GPIO 39   │●← Analog In                 ●│ TXD0
+GPIO 34   │●← Button 7 (Pull-up needed)●│ RXD0
+GPIO 35   │●← Button 8 (Pull-up needed)●│ GPIO 21  ← OLED SDA
+GPIO 32   │●← TFT LED / Btn 6          ●│ GND
+GPIO 33   │●← Button 5                 ●│ GPIO 19  ← Encoder B
+GPIO 25   │●                           ●│ GPIO 18  ← SCLK (TFT) / Enc A
+GPIO 26   │●                           ●│ GPIO 5   ← NeoPixel DIN
 GPIO 27   │●← Button 1                 ●│ GPIO 17
 GPIO 14   │●← Button 2                 ●│ GPIO 16
-GPIO 12   │●← Button 3                 ●│ GPIO 4
-      GND │●                            ●│ GPIO 0
-GPIO 13   │●← Button 4                 ●│ GPIO 2   ← Button 6
-     SHD  │●                            ●│ GPIO 15  ← Button 5
-     SCK  │●                            ●│ GND
+GPIO 12   │●← Button 3                 ●│ GPIO 4   ← TFT RST
+      GND │●                           ●│ GPIO 0
+GPIO 13   │●← Button 4                 ●│ GPIO 2   ← TFT DC
+     SHD  │●                           ●│ GPIO 15  ← TFT CS
+     SCK  │●                           ●│ GND
           │                               │
           │         [USB Port]            │
           └───────────────────────────────┘
 ```
-
-## Button Layout Recommendation
-
-Physical button arrangement (looking at controller from user perspective):
-
-```
-Top Row:
-┌────────┬────────┬────────┬────────┐
-│ BTN 5  │ BTN 6  │ BTN 7  │ BTN 8  │
-│ GPIO15 │ GPIO2  │ GPIO34*│ GPIO35*│
-│ LED 4  │ LED 5  │ LED 6  │ LED 7  │
-└────────┴────────┴────────┴────────┘
-
-Bottom Row:
-┌────────┬────────┬────────┬────────┐
-│ BTN 1  │ BTN 2  │ BTN 3  │ BTN 4  │
-│ GPIO27 │ GPIO14 │ GPIO12 │ GPIO13 │
-│ LED 0  │ LED 1  │ LED 2  │ LED 3  │
-└────────┴────────┴────────┴────────┘
-
-Center:
-        ┌─────────────┐
-        │    OLED     │
-        │   128x64    │
-        └─────────────┘
-              ◎  ← Rotary Encoder
-
-* Buttons 7 & 8 require 10kΩ external pull-up resistors
-```
-
-## Pull-up Resistor Configuration (GPIO 34 & 35)
-
-```
-For Button 7 (GPIO 34):
-                    3.3V
-                     │
-                    ┌┴┐
-                    │ │ 10kΩ
-                    └┬┘
-                     │
-       Button 7      ├─────→ GPIO 34
-         ┌───┐       │
-         │   ├───────┤
-         └───┘       │
-                     ├─────→ GND
-                     
-
-For Button 8 (GPIO 35):
-                    3.3V
-                     │
-                    ┌┴┐
-                    │ │ 10kΩ
-                    └┬┘
-                     │
-       Button 8      ├─────→ GPIO 35
-         ┌───┐       │
-         │   ├───────┤
-         └───┘       │
-                     ├─────→ GND
-```
-
-## NeoPixel LED Mapping
-
-LEDs are mapped to match button positions:
-
-```cpp
-const int ledMap[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-```
-
-Connect NeoPixels in order:
-- LED 0 → Button 1 (GPIO 27)
-- LED 1 → Button 2 (GPIO 14)
-- LED 2 → Button 3 (GPIO 12)
-- LED 3 → Button 4 (GPIO 13)
-- LED 4 → Button 5 (GPIO 15)
-- LED 5 → Button 6 (GPIO 2)
-- LED 6 → Button 7 (GPIO 34)
-- LED 7 → Button 8 (GPIO 35)
-
-## Power Distribution
-
-```
-USB 5V ──┬──→ ESP32 VIN (5V input)
-         │
-         ├──→ NeoPixel VCC (via power rail)
-         │
-         └──→ (Optional) External components
-
-ESP32 ───┬──→ 3.3V rail (for logic)
-         │
-         ├──→ OLED VCC
-         ├──→ Button 7 pull-up (10kΩ to GPIO 34)
-         └──→ Button 8 pull-up (10kΩ to GPIO 35)
-
-Common ──┴──→ GND rail (all grounds connected)
-```
-
-## Breadboard Layout Example
-
-```
-Row indicators:  + = Power rail, - = Ground rail
-
-+5V  ════════════════════════════════════════ Red rail
-GND  ════════════════════════════════════════ Black rail
-     ┌──────────────────────────────────────┐
-   a │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   b │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   c │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   d │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   e │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-     ──ESP32──┐                               
-   f │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   g │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   h │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   i │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-   j │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
-     └──────────────────────────────────────┘
-GND  ════════════════════════════════════════ Black rail
-3.3V ════════════════════════════════════════ Red rail
-```
-
-**Component Placement:**
-- ESP32: Center, spanning rows e-f
-- OLED: Upper left corner
-- Encoder: Upper right corner
-- Buttons: Two rows below ESP32
-- NeoPixels: Aligned with buttons
-
-## Testing Connections
-
-### Continuity Test (Multimeter)
-Before powering on:
-1. Check **no shorts** between 5V and GND
-2. Check **no shorts** between 3.3V and GND
-3. Verify all button connections to ground
-4. Confirm I2C connections (21, 22)
-
-### Power Test
-1. Connect USB only (no components)
-2. Verify **3.3V** on ESP32 3.3V pin
-3. Verify **5V** on ESP32 VIN pin
-4. Check current draw (<100mA with no LEDs)
-
-### Incremental Testing
-Add components one at a time:
-1. ESP32 only
-2. Add OLED → Verify display
-3. Add Encoder → Test rotation
-4. Add 1-2 buttons → Test presses
-5. Add remaining buttons
-6. Add NeoPixels last
-
-## Notes
-
-- **Keep I2C wires short** (<15cm) for reliability
-- **Twist I2C pairs** (SCL+GND, SDA+GND) to reduce noise
-- **Add decoupling caps** (0.1µF near ESP32, OLED)
-- **Use thicker wire** for power rails (22 AWG recommended)
-- **Color code wires** for easier debugging
-
-## Related Documentation
-
-- [Hardware Specifications](HARDWARE.md) - Component details and BOM
-- [Main README](../README.md) - Software setup and usage
-
----
-
-**Always double-check connections before applying power!**

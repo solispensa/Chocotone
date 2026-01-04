@@ -1,6 +1,34 @@
 #include "UI_Display.h"
 #include "AnalogInput.h"
+#include <SPI.h> // For TFT displays
 #include <Wire.h>
+
+// Color abstraction
+#define DISPLAY_WHITE                                                          \
+  (oledConfig.type == TFT_128X128 ? ST7735_WHITE : SSD1306_WHITE)
+#define DISPLAY_BLACK                                                          \
+  (oledConfig.type == TFT_128X128 ? ST7735_BLACK : SSD1306_BLACK)
+
+// Helper to flush display (OLED needs this, TFT doesn't or at least not the
+// same way)
+void flushDisplay() {
+  if (displayPtr == nullptr)
+    return;
+  if (oledConfig.type != TFT_128X128) {
+    static_cast<Adafruit_SSD1306 *>(displayPtr)->display();
+  }
+}
+
+// Helper to clear display buffer
+void clearDisplayBuffer() {
+  if (displayPtr == nullptr)
+    return;
+  if (oledConfig.type == TFT_128X128) {
+    displayPtr->fillScreen(ST7735_BLACK);
+  } else {
+    static_cast<Adafruit_SSD1306 *>(displayPtr)->clearDisplay();
+  }
+}
 
 // MIDI Note Names
 const char *MIDI_NOTE_NAMES[] = {"C",  "C#", "D",  "D#", "E",  "F",
@@ -158,7 +186,7 @@ void displayOLED() {
     }
   }
 
-  displayPtr->clearDisplay();
+  clearDisplayBuffer();
 
   // Get layout config from oledConfig (v1.5 - 128x32 support)
   uint8_t topRowY = oledConfig.main.topRowY;
@@ -240,14 +268,48 @@ void displayOLED() {
         // Horizontal layout: row of items
         int dynColWidth = w / itemCount;
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
-        char *token = strtok(tempMap, ",");
+
+        // For TFT color strips, need to re-parse to get button indices
+        char parseMap[34];
+        strncpy(parseMap, oledConfig.main.topRowMap, 33);
+        parseMap[33] = '\0';
+
+        // Use strtok_r (reentrant) to avoid interference between parsing loops
+        char *saveptr1 = NULL;
+        char *saveptr2 = NULL;
+        char *token = strtok_r(tempMap, ",", &saveptr1);
+        char *colorToken = strtok_r(parseMap, ",", &saveptr2);
         int i = 0;
         while (token != NULL) {
           char label[11];
           getInputLabel(label, sizeof(label), token, dynMaxChars);
           displayPtr->setCursor(i * dynColWidth, topRowY);
           displayPtr->print(label);
-          token = strtok(NULL, ",");
+
+          // Draw color strip below label for TFT when enabled
+          if (oledConfig.type == TFT_128X128 &&
+              oledConfig.main.showColorStrips && colorToken != NULL) {
+            // Parse button index to get RGB color
+            int btnIdx = atoi(colorToken) - 1;
+            if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
+              ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
+              if (btn.messageCount > 0) {
+                uint8_t *rgb = btn.messages[0].rgb;
+                // Manual RGB565 conversion: ((r>>3)<<11) | ((g>>2)<<5) | (b>>3)
+                uint16_t color = ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) |
+                                 (rgb[2] >> 3);
+                int stripY = topRowY + (labelSize * 8) + 1;
+                int stripH = oledConfig.main.colorStripHeight > 0
+                                 ? oledConfig.main.colorStripHeight
+                                 : 4;
+                displayPtr->fillRect(i * dynColWidth, stripY, dynColWidth - 2,
+                                     stripH, color);
+              }
+            }
+          }
+
+          token = strtok_r(NULL, ",", &saveptr1);
+          colorToken = colorToken ? strtok_r(NULL, ",", &saveptr2) : NULL;
           i++;
         }
       }
@@ -289,14 +351,48 @@ void displayOLED() {
         // Horizontal layout: row of items
         int dynColWidth = w / itemCount;
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
-        char *token = strtok(tempMap, ",");
+
+        // For TFT color strips, need to re-parse to get button indices
+        char parseMap[34];
+        strncpy(parseMap, oledConfig.main.bottomRowMap, 33);
+        parseMap[33] = '\0';
+
+        // Use strtok_r (reentrant) to avoid interference between parsing loops
+        char *saveptr1 = NULL;
+        char *saveptr2 = NULL;
+        char *token = strtok_r(tempMap, ",", &saveptr1);
+        char *colorToken = strtok_r(parseMap, ",", &saveptr2);
         int i = 0;
         while (token != NULL) {
           char label[11];
           getInputLabel(label, sizeof(label), token, dynMaxChars);
           displayPtr->setCursor(i * dynColWidth, bottomRowY);
           displayPtr->print(label);
-          token = strtok(NULL, ",");
+
+          // Draw color strip above label for TFT when enabled
+          if (oledConfig.type == TFT_128X128 &&
+              oledConfig.main.showColorStrips && colorToken != NULL) {
+            // Parse button index to get RGB color
+            int btnIdx = atoi(colorToken) - 1;
+            if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
+              ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
+              if (btn.messageCount > 0) {
+                uint8_t *rgb = btn.messages[0].rgb;
+                // Manual RGB565 conversion: ((r>>3)<<11) | ((g>>2)<<5) | (b>>3)
+                uint16_t color = ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) |
+                                 (rgb[2] >> 3);
+                int stripH = oledConfig.main.colorStripHeight > 0
+                                 ? oledConfig.main.colorStripHeight
+                                 : 4;
+                int stripY = bottomRowY - stripH - 1; // Strip grows upward
+                displayPtr->fillRect(i * dynColWidth, stripY, dynColWidth - 2,
+                                     stripH, color);
+              }
+            }
+          }
+
+          token = strtok_r(NULL, ",", &saveptr1);
+          colorToken = colorToken ? strtok_r(NULL, ",", &saveptr2) : NULL;
           i++;
         }
       }
@@ -330,7 +426,7 @@ void displayOLED() {
       displayPtr->setCursor(bpmX, midY + (titleSize * 8) + 2);
       displayPtr->print(bpmStr);
     }
-    displayPtr->display();
+    flushDisplay();
     return;
   }
 
@@ -456,12 +552,12 @@ void displayOLED() {
     }
   }
 
-  displayPtr->display();
+  flushDisplay();
 }
 
 void displayTapTempoMode() {
-  displayPtr->clearDisplay();
-  displayPtr->setTextColor(SSD1306_WHITE);
+  clearDisplayBuffer();
+  displayPtr->setTextColor(DISPLAY_WHITE);
 
   // Get layout config from oledConfig.tap
   uint8_t labelSize = oledConfig.tap.labelSize;
@@ -480,6 +576,15 @@ void displayTapTempoMode() {
       patternY = 20;
     if (bottomRowY > 24)
       bottomRowY = 24;
+  }
+
+  // For 128x128 TFT, scale up positions for larger display
+  if (oledConfig.type == TFT_128X128) {
+    topRowY = 10;
+    bpmY = 40;
+    patternY = 80;
+    bottomRowY = 110;
+    bpmSize = bpmSize < 4 ? 4 : bpmSize; // Larger BPM text for TFT
   }
 
   // Top row: NEXT (left) and LOCK indicator (right)
@@ -533,33 +638,35 @@ void displayTapTempoMode() {
     displayPtr->print("TAP");
   }
 
-  displayPtr->display();
+  flushDisplay();
 }
 
 void displayButtonName() {
-  displayPtr->clearDisplay();
+  clearDisplayBuffer();
 
   // Get layout config from oledConfig.overlay (unified with menu "Name Font
   // Size")
   uint8_t textSize = oledConfig.overlay.titleSize > 0
                          ? oledConfig.overlay.titleSize
                          : 2; // Default to 2 if not set
-  int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
+  int screenHeight = (oledConfig.type == TFT_128X128)   ? 128
+                     : (oledConfig.type == OLED_128X32) ? 32
+                                                        : 64;
 
   displayPtr->setTextSize(textSize);
-  displayPtr->setTextColor(SSD1306_WHITE);
+  displayPtr->setTextColor(DISPLAY_WHITE);
   int16_t x1, y1;
   uint16_t w, h;
   displayPtr->getTextBounds(buttonNameToShow, 0, 0, &x1, &y1, &w, &h);
   displayPtr->setCursor((SCREEN_WIDTH - w) / 2, (screenHeight - h) / 2);
   displayPtr->print(buttonNameToShow);
-  displayPtr->display();
+  flushDisplay();
   displayPtr->setTextSize(1);
 }
 
 void displayMenu() {
-  displayPtr->clearDisplay();
-  displayPtr->setTextColor(SSD1306_WHITE);
+  clearDisplayBuffer();
+  displayPtr->setTextColor(DISPLAY_WHITE);
 
   // Get layout config from oledConfig.menu
   uint8_t headerSize =
@@ -575,6 +682,13 @@ void displayMenu() {
   if (oledConfig.type == OLED_128X32) {
     itemStartY = 9; // Start just below header (header ends ~8px)
     lineHeight = 8; // 8px per line means items at Y=9, 17, 25 (all fit in 32px)
+  }
+
+  // Adjust for 128x128 TFT - more items visible, larger spacing
+  if (oledConfig.type == TFT_128X128) {
+    itemStartY = 16;     // Start below header with more padding
+    lineHeight = 12;     // Taller line height for better readability
+    maxVisibleItems = 9; // Show more items on larger screen
   }
 
   displayPtr->setTextSize(itemSize);
@@ -663,7 +777,7 @@ void displayMenu() {
       }
     }
   }
-  displayPtr->display();
+  flushDisplay();
 }
 
 // ============================================================================
@@ -673,11 +787,12 @@ void displayMenu() {
 // Press encoder button to exit back to menu
 // ============================================================================
 void displayAnalogDebug() {
-  displayPtr->clearDisplay();
-  displayPtr->setTextColor(SSD1306_WHITE);
+  clearDisplayBuffer();
+  displayPtr->setTextColor(DISPLAY_WHITE);
 
   bool is32 = (oledConfig.type == OLED_128X32);
-  int screenHeight = is32 ? 32 : 64;
+  bool is128 = (oledConfig.type == TFT_128X128);
+  int screenHeight = is128 ? 128 : (is32 ? 32 : 64);
 
   // Header
   displayPtr->setTextSize(1);
@@ -702,7 +817,7 @@ void displayAnalogDebug() {
     displayPtr->print("Enable Analog Inputs");
     displayPtr->setCursor(0, is32 ? 22 : 32);
     displayPtr->print("in your Config Profile");
-    displayPtr->display();
+    flushDisplay();
     return;
   }
 
@@ -747,7 +862,7 @@ void displayAnalogDebug() {
     }
   }
 
-  displayPtr->display();
+  flushDisplay();
 }
 
 void updateLeds() {
@@ -970,6 +1085,18 @@ void blinkTapButton(int buttonIndex) {
 // ============================================================================
 
 bool checkOledHealth() {
+  static bool oledHealthy = true;
+  static unsigned long lastOledCheck = 0;
+
+  // TFT displays use SPI, not I2C - always consider them healthy
+  if (oledConfig.type == TFT_128X128) {
+    return true;
+  }
+
+  if (displayPtr == nullptr) {
+    return false;
+  }
+
   // Check every 500ms to avoid overhead
   if (millis() - lastOledCheck < 500) {
     return oledHealthy;
@@ -998,17 +1125,29 @@ bool checkOledHealth() {
 }
 
 void recoverOled() {
-  Serial.println("Attempting OLED recovery...");
-
-  // Reset I2C bus
-  Wire.end();
-  delay(10);
-  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-  Wire.setClock(100000); // 100kHz for stability
-  delay(10);
+  Serial.println("Attempting display recovery...");
 
   // Try to reinitialize display
-  if (displayPtr->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  bool success = false;
+  if (oledConfig.type == TFT_128X128) {
+    // TFT uses SPI, not I2C - skip I2C recovery
+    // For TFT, we could potentially re-init the display, but typically SPI
+    // doesn't fail
+    success = true;
+  } else {
+    // Reset I2C bus for OLED displays
+    Wire.end();
+    delay(10);
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+    Wire.setClock(100000); // 100kHz for stability
+    delay(10);
+
+    // Reinitialize OLED
+    success = static_cast<Adafruit_SSD1306 *>(displayPtr)
+                  ->begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  }
+
+  if (success) {
     oledHealthy = true;
     Serial.println("OLED recovered successfully!");
     displayOLED(); // Redraw screen
@@ -1032,26 +1171,60 @@ void initDisplayHardware() {
     displayPtr = nullptr;
   }
 
-  // Create object with dynamic height based on config
-  // Note: SCREEN_HEIGHT from config.h is ignored here in favor of dynamic
-  // height
-  int h = (oledConfig.type == OLED_128X32) ? 32 : 64;
-  displayPtr = new Adafruit_SSD1306(SCREEN_WIDTH, h, &Wire, OLED_RESET);
+  if (oledConfig.type == TFT_128X128) {
+    // ST7735 TFT 128x128 Initialization - use configurable pins
+    Serial.println("Initializing TFT 128x128...");
+    Serial.printf("SPI Pins - CS:%d, DC:%d, RST:%d, MOSI:%d, SCLK:%d, LED:%d\n",
+                  systemConfig.tftCsPin, systemConfig.tftDcPin,
+                  systemConfig.tftRstPin, systemConfig.tftMosiPin,
+                  systemConfig.tftSclkPin, systemConfig.tftLedPin);
 
-  if (!displayPtr->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed (re-init)"));
-    // We can't do much if it fails.
-    return;
+    Adafruit_ST7735 *tft = new Adafruit_ST7735(
+        systemConfig.tftCsPin, systemConfig.tftDcPin, systemConfig.tftRstPin);
+
+    // Try different init methods - comment/uncomment as needed
+    Serial.println("Calling initR(INITR_144GREENTAB)...");
+    tft->initR(INITR_144GREENTAB); // 128x128 1.44" displays
+    // Alternative initializations to try if above doesn't work:
+    // tft->initR(INITR_BLACKTAB);   // Try this if GREENTAB doesn't work
+    // tft->initR(INITR_REDTAB);     // Or this
+
+    Serial.println("Setting rotation...");
+    // Apply rotation (Config uses 0, 90, 180, 270)
+    tft->setRotation(oledConfig.rotation / 90);
+
+    Serial.println("Clearing screen...");
+    tft->fillScreen(ST7735_BLACK);
+
+    // Setup Backlight - use configurable pin
+    Serial.println("Setting up backlight...");
+    pinMode(systemConfig.tftLedPin, OUTPUT);
+    digitalWrite(systemConfig.tftLedPin, HIGH); // Turn on backlight
+
+    displayPtr = tft;
+    Serial.println("TFT 128x128 Initialized Successfully!");
+  } else {
+    // SSD1306 OLED Initialization - use configurable I2C pins
+    int h = (oledConfig.type == OLED_128X32) ? 32 : 64;
+    Serial.printf("Initializing OLED %dx%d on I2C: SDA=%d, SCL=%d\n",
+                  SCREEN_WIDTH, h, systemConfig.oledSdaPin,
+                  systemConfig.oledSclPin);
+
+    Adafruit_SSD1306 *oled =
+        new Adafruit_SSD1306(SCREEN_WIDTH, h, &Wire, OLED_RESET);
+
+    if (!oled->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+      Serial.println(F("SSD1306 allocation failed (re-init)"));
+      return;
+    }
+
+    oled->setRotation(oledConfig.rotation / 90);
+    oled->clearDisplay();
+    oled->setTextColor(SSD1306_WHITE);
+    oled->display();
+
+    displayPtr = oled;
+    Serial.printf("OLED Initialized: %dx%d, rotation=%d\n", SCREEN_WIDTH, h,
+                  oledConfig.rotation);
   }
-
-  // Apply rotation (0=normal, 1=90°CW, 2=180°, 3=270°CW)
-  // Config uses degrees (0, 90, 180, 270)
-  displayPtr->setRotation(oledConfig.rotation / 90);
-
-  displayPtr->clearDisplay();
-  displayPtr->setTextColor(SSD1306_WHITE);
-  displayPtr->display();
-
-  Serial.printf("OLED Initialized: %dx%d, rotation=%d\n", SCREEN_WIDTH, h,
-                oledConfig.rotation);
 }

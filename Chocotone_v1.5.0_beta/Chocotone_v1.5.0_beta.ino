@@ -7,7 +7,128 @@
 #include "UI_Display.h"
 #include "WebInterface.h"
 #include <Arduino.h>
+#include <SPI.h> // For TFT displays
 #include <Wire.h>
+
+// ============================================================================
+// PIN CONFLICT RESOLUTION FOR TFT/OLED AUTO-SWITCHING
+// ============================================================================
+
+// Check if a pin is in an array
+bool isPinInArray(uint8_t pin, uint8_t *arr, int len) {
+  for (int i = 0; i < len; i++) {
+    if (arr[i] == pin)
+      return true;
+  }
+  return false;
+}
+
+// Find an available GPIO pin not in the avoid list
+uint8_t findAvailablePin(uint8_t *avoid, int avoidLen) {
+  // Safe GPIO pins for reassignment (excluding input-only for outputs)
+  uint8_t safePins[] = {12, 13, 14, 25, 26, 27, 33};
+
+  for (int i = 0; i < 7; i++) {
+    if (!isPinInArray(safePins[i], avoid, avoidLen)) {
+      return safePins[i];
+    }
+  }
+
+  // If all safe pins taken, try input-only pins (for buttons only)
+  uint8_t inputOnlyPins[] = {34, 35, 36, 39};
+  for (int i = 0; i < 4; i++) {
+    if (!isPinInArray(inputOnlyPins[i], avoid, avoidLen)) {
+      return inputOnlyPins[i];
+    }
+  }
+
+  return 0; // No available pin (should never happen)
+}
+
+// Find multiple available pins
+void findAvailablePins(uint8_t *out, int count, uint8_t *avoid, int avoidLen) {
+  uint8_t tempAvoid[30];
+  memcpy(tempAvoid, avoid, avoidLen * sizeof(uint8_t));
+  int tempLen = avoidLen;
+
+  for (int i = 0; i < count; i++) {
+    out[i] = findAvailablePin(tempAvoid, tempLen);
+    tempAvoid[tempLen++] = out[i]; // Add to avoid list for next search
+  }
+}
+
+// Resolve pin conflicts when TFT display is enabled
+void resolveDisplayPinConflicts() {
+  if (oledConfig.type != TFT_128X128) {
+    return; // No conflicts with I2C OLED
+  }
+
+  Serial.println("=== TFT Display Mode - Checking Pin Conflicts ===");
+
+  // Get TFT pins being used
+  uint8_t tftPins[] = {systemConfig.tftCsPin,   systemConfig.tftDcPin,
+                       systemConfig.tftRstPin,  systemConfig.tftMosiPin,
+                       systemConfig.tftSclkPin, systemConfig.tftLedPin};
+
+  bool conflictsFound = false;
+
+  // Check encoder conflicts
+  bool encoderAConflict = isPinInArray(systemConfig.encoderA, tftPins, 6);
+  bool encoderBConflict = isPinInArray(systemConfig.encoderB, tftPins, 6);
+  bool encoderBtnConflict = isPinInArray(systemConfig.encoderBtn, tftPins, 6);
+
+  if (encoderAConflict || encoderBConflict || encoderBtnConflict) {
+    Serial.println("⚠️  Encoder pin conflict detected with TFT!");
+    Serial.printf("   Current: A=%d, B=%d, BTN=%d\n", systemConfig.encoderA,
+                  systemConfig.encoderB, systemConfig.encoderBtn);
+
+    uint8_t newPins[3];
+    findAvailablePins(newPins, 3, tftPins, 6);
+    systemConfig.encoderA = newPins[0];
+    systemConfig.encoderB = newPins[1];
+    systemConfig.encoderBtn = newPins[2];
+
+    Serial.printf("✅ Auto-assigned encoder to: A=%d, B=%d, BTN=%d\n",
+                  newPins[0], newPins[1], newPins[2]);
+    conflictsFound = true;
+  }
+
+  // Check button conflicts
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    if (isPinInArray(systemConfig.buttonPins[i], tftPins, 6)) {
+      uint8_t oldPin = systemConfig.buttonPins[i];
+
+      // Build combined avoid list (TFT pins + already assigned buttons)
+      uint8_t avoid[20];
+      memcpy(avoid, tftPins, 6 * sizeof(uint8_t));
+      int avoidLen = 6;
+      for (int j = 0; j < i; j++) {
+        avoid[avoidLen++] = systemConfig.buttonPins[j];
+      }
+
+      systemConfig.buttonPins[i] = findAvailablePin(avoid, avoidLen);
+      Serial.printf("⚠️  Button #%d conflict: GPIO %d → %d\n", i + 1, oldPin,
+                    systemConfig.buttonPins[i]);
+      conflictsFound = true;
+    }
+  }
+
+  // Check LED pin conflict
+  if (isPinInArray(systemConfig.ledPin, tftPins, 6)) {
+    uint8_t oldPin = systemConfig.ledPin;
+    systemConfig.ledPin = findAvailablePin(tftPins, 6);
+    Serial.printf("⚠️  LED pin conflict: GPIO %d → %d\n", oldPin,
+                  systemConfig.ledPin);
+    conflictsFound = true;
+  }
+
+  if (conflictsFound) {
+    Serial.println("💾 Saving auto-resolved pin configuration...");
+    saveSystemSettings(); // Save the resolved configuration
+  } else {
+    Serial.println("✅ No pin conflicts detected");
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -19,16 +140,34 @@ void setup() {
   loadSystemSettings();
   yield(); // Feed watchdog after NVS operations
 
-  // Initialize Display hardware
-  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-  Wire.setClock(100000);
-  delay(50);
+  // Auto-resolve any pin conflicts between display and other peripherals
+  resolveDisplayPinConflicts();
+
+  // Initialize Display hardware communication
+  if (oledConfig.type == TFT_128X128) {
+    // TFT uses SPI - use configurable pins from systemConfig
+    SPI.begin(systemConfig.tftSclkPin, -1, systemConfig.tftMosiPin,
+              systemConfig.tftCsPin);
+    Serial.printf("SPI initialized for TFT: SCLK=%d, MOSI=%d, CS=%d\n",
+                  systemConfig.tftSclkPin, systemConfig.tftMosiPin,
+                  systemConfig.tftCsPin);
+  } else {
+    // OLED uses I2C - use configurable pins from systemConfig
+    Wire.begin(systemConfig.oledSdaPin, systemConfig.oledSclPin);
+    Wire.setClock(100000);
+    delay(50);
+    Serial.printf("I2C initialized for OLED: SDA=%d, SCL=%d\n",
+                  systemConfig.oledSdaPin, systemConfig.oledSclPin);
+  }
   initDisplayHardware();
 
   // === Chocotone v1.5 BETA Loading Screen ===
   int16_t x1, y1;
   uint16_t w, h;
-  bool is32 = (displayPtr->height() == 32);
+
+  // Properly detect display type using oledConfig instead of height()
+  bool is32 = (oledConfig.type == OLED_128X32);
+  bool is128 = (oledConfig.type == TFT_128X128);
 
   if (is32) {
     // 128x32 Compact Layout
@@ -37,6 +176,23 @@ void setup() {
     displayPtr->print(F("CHOCOTONE"));
     displayPtr->setCursor(94, 10);
     displayPtr->print(F("v1.5b"));
+  } else if (is128) {
+    // 128x128 TFT Layout - matching editor OLED preview
+    displayPtr->setTextSize(2);
+    displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((128 - w) / 2, 35);
+    displayPtr->print(F("CHOCOTONE"));
+
+    // Subtitle - uppercase "BY" to match preview
+    displayPtr->setTextSize(1);
+    displayPtr->getTextBounds("MIDI BY ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
+    displayPtr->setCursor((128 - w) / 2, 60);
+    displayPtr->print(F("MIDI BY ANDRE SOLIS"));
+
+    // Version text at bottom (dots drawn by loading section later)
+    displayPtr->setTextSize(1);
+    displayPtr->setCursor(72, 106);
+    displayPtr->print(F("V1.5B"));
   } else {
     // 128x64 Standard Layout
     // Title: "CHOCOTONE" - Size 2, Centered
@@ -52,34 +208,62 @@ void setup() {
     displayPtr->print(F("MIDI by ANDRE SOLIS"));
 
     // Version Badge - White rounded rect with black text
-    displayPtr->fillRoundRect(94, 47, 28, 10, 2, SSD1306_WHITE);
-    displayPtr->setTextColor(SSD1306_BLACK);
+    displayPtr->fillRoundRect(94, 47, 28, 10, 2, DISPLAY_WHITE);
+    displayPtr->setTextColor(DISPLAY_BLACK);
     displayPtr->setTextSize(1);
     displayPtr->setCursor(96, 48);
     displayPtr->print(F("v1.5b"));
-    displayPtr->setTextColor(SSD1306_WHITE); // Reset
+    displayPtr->setTextColor(DISPLAY_WHITE); // Reset
   }
 
-  // 8 Dots Grid (2 rows x 4 cols) - Initially hollow
-  // For 32px, we'll put them in a single row or skip for brevity?
-  // Let's put them in a row at the bottom for 32px
-  for (int row = 0; row < (is32 ? 1 : 2); row++) {
-    for (int col = 0; col < (is32 ? 8 : 4); col++) {
-      int x = is32 ? (4 + col * 12 + 2) : (4 + col * 8 + 2);
-      int y = is32 ? 22 : (45 + row * 8 + 2);
-      displayPtr->drawCircle(x, y, 2, SSD1306_WHITE);
+  // 8 Dots Grid - adapted for each display type
+  if (is32) {
+    // Single row for 32px
+    for (int col = 0; col < 8; col++) {
+      int x = 4 + col * 12 + 2;
+      int y = 22;
+      displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+    }
+  } else if (is128) {
+    // 4 loading dots for 128x128, matching the static dots before V1.5B
+    for (int col = 0; col < 4; col++) {
+      int x = 35 + col * 8; // Same as static dots
+      int y = 110;
+      displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+    }
+  } else {
+    // 2 rows x 4 cols for 64px
+    for (int row = 0; row < 2; row++) {
+      for (int col = 0; col < 4; col++) {
+        int x = 4 + col * 8 + 2;
+        int y = 45 + row * 8 + 2;
+        displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+      }
     }
   }
-  displayPtr->display();
+  flushDisplay();
 
-  // Helper lambda to fill a loading dot (0-7)
-  auto fillLoadingDot = [is32](int dotIndex) {
-    int row = is32 ? 0 : (dotIndex / 4);
-    int col = is32 ? dotIndex : (dotIndex % 4);
-    int x = is32 ? (4 + col * 12 + 2) : (4 + col * 8 + 2);
-    int y = is32 ? 22 : (45 + row * 8 + 2);
-    displayPtr->fillCircle(x, y, 2, SSD1306_WHITE);
-    displayPtr->display();
+  // Helper lambda to fill a loading dot (0-7 for OLED 64, 0-3 for TFT)
+  auto fillLoadingDot = [is32, is128](int dotIndex) {
+    if (is32) {
+      int x = 4 + dotIndex * 12 + 2;
+      int y = 22;
+      displayPtr->fillCircle(x, y, 2, DISPLAY_WHITE);
+    } else if (is128) {
+      // Only 4 dots for TFT, match static dot positions
+      if (dotIndex < 4) {
+        int x = 35 + dotIndex * 8;
+        int y = 110;
+        displayPtr->fillCircle(x, y, 2, DISPLAY_WHITE);
+      }
+    } else {
+      int row = dotIndex / 4;
+      int col = dotIndex % 4;
+      int x = 4 + col * 8 + 2;
+      int y = 45 + row * 8 + 2;
+      displayPtr->fillCircle(x, y, 2, DISPLAY_WHITE);
+    }
+    flushDisplay();
   };
 
   // Dot 0: Display initialized
@@ -99,20 +283,30 @@ void setup() {
   loadAnalogInputs();
   setupAnalogInputs();
 
-  // Initialize Encoder
-  encoder.attachHalfQuad(ENCODER_A_PIN, ENCODER_B_PIN);
+  // Initialize Encoder with resolved pins (may differ from ENCODER_*_PIN
+  // macros)
+  Serial.printf("Encoder Pins: A=%d, B=%d, BTN=%d\n", systemConfig.encoderA,
+                systemConfig.encoderB, systemConfig.encoderBtn);
+  encoder.attachHalfQuad(systemConfig.encoderA, systemConfig.encoderB);
   encoder.setCount(0);
   oldEncoderPosition = 0;
-  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(systemConfig.encoderBtn, INPUT_PULLUP);
   fillLoadingDot(3); // Dot 3: Encoder initialized
 
   // Initialize Buttons
   Serial.println("Initializing buttons...");
+  Serial.printf("Button count: %d\n", systemConfig.buttonCount);
   Serial.print("Button pins: ");
   for (int i = 0; i < systemConfig.buttonCount; i++) {
     Serial.printf("%d ", systemConfig.buttonPins[i]);
   }
   Serial.println();
+  Serial.printf("TFT Pins - CS:%d DC:%d RST:%d MOSI:%d SCLK:%d LED:%d\n",
+                TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_LED);
+  Serial.printf("Encoder Pins - A:%d B:%d BTN:%d\n", systemConfig.encoderA,
+                systemConfig.encoderB, systemConfig.encoderBtn);
+
+  Serial.println("Setting pinMode for each button...");
 
   for (int i = 0; i < systemConfig.buttonCount; i++) {
     int pin = systemConfig.buttonPins[i];
@@ -126,8 +320,16 @@ void setup() {
   }
   fillLoadingDot(4); // Dot 4: Buttons initialized
 
-  // Initialize LEDs
+  // Initialize LEDs with resolved pin (may differ from compile-time
+  // NEOPIXEL_PIN)
   Serial.println("Initializing LEDs...");
+  Serial.printf("LED Pin: %d (resolved from potential conflicts)\n",
+                systemConfig.ledPin);
+
+  // Reinitialize strip with the resolved pin
+  strip.updateType(NEO_GRB + NEO_KHZ800);
+  strip.updateLength(NUM_LEDS);
+  strip.setPin(systemConfig.ledPin);
   strip.begin();
   strip.show();
   strip.setBrightness(ledBrightnessOn);

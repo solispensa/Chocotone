@@ -23,4 +23,8 @@ void safeDisplayOLED();
 // Hardware Init
 void initDisplayHardware();
 
+// Display abstraction helpers
+void flushDisplay();
+void clearDisplayBuffer();
+
 #endif

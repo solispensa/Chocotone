@@ -5,7 +5,7 @@
 // GLOBAL OBJECTS
 // ============================================
 
-Adafruit_SSD1306 *displayPtr = nullptr;
+Adafruit_GFX *displayPtr = nullptr;
 Adafruit_NeoPixel strip(NUM_LEDS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 ESP32Encoder encoder;
 Preferences systemPrefs;
@@ -29,17 +29,29 @@ SystemConfig systemConfig = {
     DEFAULT_AP_SSID,                        // apSSID[24]
     DEFAULT_AP_PASS,                        // apPassword[16]
     DEFAULT_BUTTON_COUNT,                   // buttonCount
-    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0}, // buttonPins[10]
+    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0}, // buttonPins[10] (original)
     NEOPIXEL_PIN,                           // ledPin
-    DEFAULT_ENCODER_A,                      // encoderA
-    DEFAULT_ENCODER_B,                      // encoderB
-    DEFAULT_ENCODER_BTN,                    // encoderBtn
+    DEFAULT_ENCODER_A,                      // encoderA (18)
+    DEFAULT_ENCODER_B,                      // encoderB (19)
+    DEFAULT_ENCODER_BTN,                    // encoderBtn (23)
     false,                                  // wifiOnAtBoot
     BLE_CLIENT_ONLY,                        // bleMode
     1,                                      // ledsPerButton
     {0, 1, 2, 3, 7, 6, 5, 4, 8, 9},         // ledMap[10]
-    DEVICE_SPM, // targetDevice (default: SPM for backward compat)
-    1           // midiChannel (default: 1)
+    DEVICE_SPM,                             // targetDevice
+    1,                                      // midiChannel
+    {},                                     // multiplexer (zeroed)
+    false,                                  // debugAnalogIn
+    0,                                      // analogInputCount
+    // Display pins
+    21, // oledSdaPin
+    22, // oledSclPin
+    15, // tftCsPin
+    2,  // tftDcPin
+    4,  // tftRstPin
+    23, // tftMosiPin
+    18, // tftSclkPin
+    32  // tftLedPin
 };
 
 bool isWifiOn = false;

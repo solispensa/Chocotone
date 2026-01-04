@@ -651,7 +651,7 @@
                 apPassword: "12345678",
                 buttonCount: 8,
                 buttonPins: "14,27,26,25,33,32,16,17",
-                ledPin: 15,
+                ledPin: 5,
                 ledsPerButton: 1,
                 ledMap: "0,1,2,3,7,6,5,4,8,9",
                 encoderA: 18,
@@ -963,6 +963,7 @@
             html += '<div class="field"><label>Display Type</label><select onchange="updOled(\'type\',this.value)">';
             html += '<option value="128x64"' + (oled.type === '128x64' ? ' selected' : '') + '>128×64 I2C</option>';
             html += '<option value="128x32"' + (oled.type === '128x32' ? ' selected' : '') + '>128×32 I2C</option>';
+            html += '<option value="128x128"' + (oled.type === '128x128' ? ' selected' : '') + '>128×128 SPI TFT</option>';
             html += '</select></div>';
             html += '<div class="field"><label>Rotation</label><select onchange="updOled(\'rotation\',parseInt(this.value))">';
             html += '<option value="0"' + (oled.rotation === 0 ? ' selected' : '') + '>0°</option>';
@@ -993,10 +994,22 @@
             if (previewMode === 'main') {
                 // MAIN SCREEN controls
                 var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
-                var maxY = (oled.type === '128x32') ? 24 : 56;
-                var maxTitleY = (oled.type === '128x32') ? 24 : 50;
-                var maxStatusY = (oled.type === '128x32') ? 24 : 55;
+                var maxY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 56);
+                var maxTitleY = (oled.type === '128x128') ? 110 : ((oled.type === '128x32') ? 24 : 50);
+                var maxStatusY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 55);
                 html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Global Layout</div>';
+
+                // Color Strip Controls (TFT only)
+                if (oled.type === '128x128') {
+                    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a2a1a;padding:6px 8px;border-radius:4px;border:1px solid #2a4a2a">';
+                    html += '  <input type="checkbox" ' + (main.showColorStrips ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showColorStrips\',this.checked)" style="width:14px;height:14px">';
+                    html += '  <label style="font-size:10px;color:#8f8">Color Strips</label>';
+                    html += '  <span style="font-size:9px;color:#666;margin-left:8px">Thickness:</span>';
+                    html += '  <input type="range" min="1" max="10" value="' + (main.colorStripHeight || 4) + '" oninput="updOledScreen(\'main\',\'colorStripHeight\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="width:60px">';
+                    html += '  <span style="font-size:10px;width:18px;text-align:right;color:#8f8">' + (main.colorStripHeight || 4) + '</span>';
+                    html += '</div>';
+                }
+
                 // Grid for Top/Bottom Rows
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
 
@@ -1006,7 +1019,8 @@
                 html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Top Row</label>';
                 html += '    <input type="checkbox" ' + (main.showTopRow !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showTopRow\',this.checked)" style="width:14px;height:14px">';
                 html += '  </div>';
-                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Height Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.topRowY || 0) + '" oninput="updOledScreen(\'main\',\'topRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.topRowY || 0) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.topRowY || 0) + '" oninput="updOledScreen(\'main\',\'topRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.topRowY || 0) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align X</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'topRowAlign\',parseInt(this.value))"><option value="0"' + ((main.topRowAlign || 0) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.topRowAlign || 0) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.topRowAlign || 0) === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Map</label><input type="text" style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px 4px;border-radius:3px" value="' + (main.topRowMap || '5,6,7,8') + '" onchange="updOledScreen(\'main\',\'topRowMap\',this.value)" placeholder="5,6,7,8"></div>';
                 html += '</div>';
 
@@ -1016,7 +1030,8 @@
                 html += '    <label style="font-size:11px;font-weight:600;color:#ccc">Bottom Row</label>';
                 html += '    <input type="checkbox" ' + (main.showBottomRow !== false ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showBottomRow\',this.checked)" style="width:14px;height:14px">';
                 html += '  </div>';
-                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Height Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.bottomRowY || 56) + '" oninput="updOledScreen(\'main\',\'bottomRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bottomRowY || 56) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxY + '" value="' + (main.bottomRowY || 56) + '" oninput="updOledScreen(\'main\',\'bottomRowY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bottomRowY || 56) + '</span></div></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align X</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'bottomRowAlign\',parseInt(this.value))"><option value="0"' + ((main.bottomRowAlign || 0) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.bottomRowAlign || 0) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.bottomRowAlign || 0) === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Map</label><input type="text" style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px 4px;border-radius:3px" value="' + (main.bottomRowMap || '1,2,3,4') + '" onchange="updOledScreen(\'main\',\'bottomRowMap\',this.value)" placeholder="1,2,3,4"></div>';
                 html += '</div>';
                 html += '</div>'; // End Global Grid
@@ -1811,6 +1826,12 @@
                 presetData.system.oled = { type: '128x64', rotation: 0, textSizes: { title: 2, subtitle: 1, label: 1, value: 2 } };
             }
             presetData.system.oled[k] = v;
+
+            // Check for pin conflicts when switching to TFT display
+            if (k === 'type' && v === '128x128') {
+                resolveSpiPinConflicts();
+            }
+
             render();
         }
         function updOledText(k, v) {
@@ -1910,11 +1931,14 @@
 
             var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
             var is32 = oled.type === '128x32';
+            var is128 = oled.type === '128x128';
             var rotation = oled.rotation || 0;
             var isVertical = (rotation === 90 || rotation === 270);
-            // Swap dimensions for vertical orientation
-            var w = isVertical ? (is32 ? 32 : 64) : 128;
-            var h = isVertical ? 128 : (is32 ? 32 : 64);
+            // Dimensions
+            var baseW = 128;
+            var baseH = is128 ? 128 : (is32 ? 32 : 64);
+            var w = isVertical ? baseH : baseW;
+            var h = isVertical ? baseW : baseH;
             var scale = 2;
 
             canvas.width = w * scale;
@@ -2073,7 +2097,12 @@
                     statusAlign: main.statusAlign !== undefined ? main.statusAlign : 0,
                     bpmAlign: main.bpmAlign !== undefined ? main.bpmAlign : 1,
                     topRowMap: main.topRowMap || '5,6,7,8',
-                    bottomRowMap: main.bottomRowMap || '1,2,3,4'
+                    bottomRowMap: main.bottomRowMap || '1,2,3,4',
+                    // New properties for TFT color strips and row alignment
+                    showColorStrips: main.showColorStrips === true,
+                    colorStripHeight: main.colorStripHeight || 4,
+                    topRowAlign: main.topRowAlign || 0,
+                    bottomRowAlign: main.bottomRowAlign || 0
                 };
             } else if (previewMode === 'menu') {
                 var menu = screens.menu || { headerSize: 1, itemSize: 1, headerY: 0, itemStartY: 14 };
@@ -2141,8 +2170,17 @@
                     drawText('MENU', 0, ts.top || 0, ts.title);
                     drawText('>Save & Exit', 0, ts.itemStartY || 12, ts.label);
                     drawText(' Exit NoSave', 0, (ts.itemStartY || 12) + 10, ts.label);
+                } else if (is128) {
+                    // TFT 128x128 - more items visible, larger spacing (matches firmware)
+                    drawText('-- Menu CHOCOTONE --', 4, ts.top || 0, ts.title);
+                    var items = ['Save and Exit', 'Exit without Saving', 'WiFi LoadCfg (OFF)', 'BT SerialEdit (OFF)', 'LED Bright (On)', 'LED Bright (Dim)', 'Pad Debounce', 'Clear BLE Bonds', 'Reboot'];
+                    var startY = 16;  // Matches firmware itemStartY for TFT
+                    var itemHeight = 12; // Matches firmware lineHeight for TFT
+                    for (var i = 0; i < 9 && i < items.length; i++) {
+                        drawText((i === 0 ? '> ' : '  ') + items[i], 0, startY + (i * itemHeight), ts.label);
+                    }
                 } else {
-                    // Standard
+                    // Standard 128x64
                     drawText('-- Menu CHOCOTONE --', 4, ts.top || 0, ts.title);
                     var items = ['Save and Exit', 'Exit without Saving', 'WiFi LoadCfg (OFF)', 'BT SerialEdit (OFF)', 'LED Bright (On)'];
                     var startY = ts.itemStartY || 14;
@@ -2167,6 +2205,30 @@
                     drawCentered('120.0', ts.bpmY || 10, ts.title);
                     drawText('PRV', 0, ts.bottom || 24, ts.label);
                     drawText('TAP', 110, ts.bottom || 24, ts.label);
+                } else if (is128) {
+                    // TFT 128x128 - scaled positions matching firmware
+                    var topY = 10;    // Matches firmware topRowY for TFT
+                    var bpmYPos = 40;  // Matches firmware bpmY for TFT
+                    var patY = 80;     // Matches firmware patternY for TFT
+                    var botY = 110;    // Matches firmware bottomRowY for TFT
+                    var bpmSz = Math.max(4, ts.title); // Larger BPM text for TFT
+
+                    drawText('NEXT', 0, topY, ts.label);
+                    drawText('LOCKED', 80, topY, ts.label);
+
+                    // Larger BPM centered
+                    var bpm = "120.0";
+                    var bpmW = textWidth(bpm, bpmSz);
+                    drawText(bpm, (w - bpmW) / 2, bpmYPos, bpmSz);
+
+                    // Pattern row
+                    drawText('Pattern: 1/4', 0, patY, ts.pattern || ts.label);
+                    var ms = "500ms";
+                    drawText(ms, w - textWidth(ms, ts.pattern || ts.label) - 2, patY, ts.pattern || ts.label);
+
+                    // Bottom labels
+                    drawText('PREV', 0, botY, ts.label);
+                    drawText('TAP', 100, botY, ts.label);
                 } else {
                     // Standard 128x64
                     drawText('NEXT', 0, ts.top || 0, ts.label);
@@ -2190,134 +2252,60 @@
             } else if (previewMode === 'overlay') {
                 // === BUTTON OVERLAY PREVIEW ===
                 // Shows a large button name (e.g. "DRIVE") overlaying the screen
-                // Configured by "Title Size"
-
                 var label = "OVERLAY";
+                var configSize = ts.title || 2;
+                var overlaySize = Math.max(1, configSize - 1); // Compensate for 2x scale
 
                 if (isVertical) {
-                    drawCentered('BTN', h / 2 - 10, ts.title);
-                    drawCentered('NAME', h / 2 + 10, ts.title);
+                    var th = overlaySize * 8;
+                    drawCentered('BTN', h / 2 - th, overlaySize);
+                    drawCentered('NAME', h / 2 + 2, overlaySize);
                 } else {
-                    // Center vertically and horizontally
-                    // Y position can be tweaked by 'topRowY' if user wants? 
-                    // Or just centered. Let's start with centered but respect size.
-                    // Firmware creates a pop-up.
-
-                    var th = ts.title * 8; // approx height
+                    var th = overlaySize * 8;
                     var y = (h - th) / 2;
-                    drawCentered(label, y, ts.title);
+                    drawCentered(label, y, overlaySize);
                 }
 
             } else if (previewMode === 'loading') {
                 // === LOADING SCREEN PREVIEW ===
-                // Firmware: setup() in Chocotone.ino
-
                 if (isVertical) {
-                    if (is32) {
-                        // 128x32 Vertical (32px wide!) - Ultra Compact v4
-                        // Layout: dots / CHOCO / TONE / MIDI / by / Andre / Solis / [v1.5b] / dots
-                        var y = 2;
-
-                        // Top Dots (3)
-                        for (var i = 0; i < 3; i++) {
-                            drawFilledCircle(16, y + (i * 6), 1);
-                        }
-                        y += 24; // Gap after dots
-
-                        drawCentered('CHOCO', y, 1); y += 9;
-                        drawCentered('TONE', y, 1); y += 9;
-                        drawCentered('MIDI', y, 1); y += 9; // Added MIDI
-                        drawCentered('by', y, 1); y += 9;
-                        drawCentered('Andre', y, 1); y += 9;
-                        drawCentered('Solis', y, 1); y += 14;
-
-                        // "v1.5b" Badge
-                        drawFilledRoundRect(1, y, 30, 9, 2);
-                        drawInvertedText('v1.5b', 2, y + 1, 1); y += 14;
-
-                        // Bottom Dots (3)
-                        for (var i = 0; i < 3; i++) {
-                            drawFilledCircle(16, y + (i * 6), 1);
-                        }
-                    } else {
-                        // 128x64 Vertical (64px wide) - Standard Vertical v4
-                        // Same layout as 32px but centered at 32px
-                        var y = 2;
-                        var cx = w / 2; // Can be 32
-
-                        // Top Dots (3)
-                        for (var i = 0; i < 3; i++) {
-                            drawFilledCircle(cx, y + (i * 6), 1);
-                        }
-                        y += 24;
-
-                        drawCentered('CHOCO', y, 2); y += 18; // Size 2 fits in 64px width (5x10=50px)
-                        drawCentered('TONE', y, 2); y += 18;
-                        drawCentered('MIDI', y, 1); y += 10;
-                        drawCentered('by', y, 1); y += 9;
-                        drawCentered('Andre', y, 1); y += 9;
-                        drawCentered('Solis', y, 1); y += 14;
-
-                        // "v1.5b" Badge (Centered)
-                        // Rect w=30. x = cx - 15
-                        drawFilledRoundRect(cx - 15, y, 30, 9, 2);
-                        drawInvertedText('v1.5b', cx - 14, y + 1, 1); y += 14;
-
-                        // Bottom Dots (3)
-                        for (var i = 0; i < 3; i++) {
-                            drawFilledCircle(cx, y + (i * 6), 1);
-                        }
-                    }
+                    // ... (existing vertical logic is fine as it uses cx/y)
+                    var y = 2;
+                    var cx = w / 2;
+                    // Top Dots
+                    for (var i = 0; i < 3; i++) drawFilledCircle(cx, y + (i * 6), 1);
+                    y += 24;
+                    drawCentered('CHOCO', y, 2); y += 18;
+                    drawCentered('TONE', y, 2); y += 18;
+                    drawCentered('MIDI', y, 1); y += 10;
+                    drawCentered('by', y, 1); y += 9;
+                    drawCentered('Andre', y, 1); y += 9;
+                    drawCentered('Solis', y, 1); y += 14;
+                    drawFilledRoundRect(cx - 15, y, 30, 9, 2);
+                    drawInvertedText('v1.5b', cx - 14, y + 1, 1); y += 14;
+                    for (var i = 0; i < 3; i++) drawFilledCircle(cx, y + (i * 6), 1);
                 } else if (is32) {
-                    // Compact Loading
                     drawText('CHOCOTONE', 0, 10, 1);
                     drawText('v1.5b', 90, 10, 1);
                 } else {
-                    // STANDARD 128x64 (Exact Firmware Match)
-                    // Line 35: CHOCOTONE centered Y=10 Size 2
+                    // STANDARD HORIZONTAL (64 or 128)
+                    var centerY = (h / 2);
                     var title = "CHOCOTONE";
-                    drawText(title, (w - textWidth(title, 2)) / 2, 10, 2);
-
-                    // Line 41: MIDI by ANDRE SOLIS centered Y=30 Size 1
+                    drawCentered(title, centerY - 20, 2);
                     var sub = "MIDI by ANDRE SOLIS";
-                    drawText(sub, (w - textWidth(sub, 1)) / 2, 30, 1);
+                    drawCentered(sub, centerY, 1);
 
-                    // Line 45: Dots (x=4+c*8+2, y=45+r*8+2) -> radius 2
-                    // Rows 0-1, Cols 0-3
+                    // Dots
+                    var dotsY = centerY + 15;
                     for (var r = 0; r < 2; r++) {
                         for (var c = 0; c < 4; c++) {
-                            var dx = 6 + c * 8;
-                            var dy = 47 + r * 8;
+                            var dx = (w / 2 - 16) + c * 8;
+                            var dy = dotsY + r * 8;
                             drawCircle(dx, dy, 2);
-                            // Simulate loading: fill first row
                             if (r === 0) drawFilledCircle(dx, dy, 2);
                         }
                     }
-
-                    // Line 54: Badge Rect (94, 47, 28, 10)
-                    drawFilledRoundRect(94, 47, 28, 10, 2);
-                    // Line 57: v1.4 (96, 48) Black text on White
-                    // Need inverted text drawing or set color logic. 
-                    // drawInvertedText uses black on white rect. 
-                    // Let's manually draw black pixels or add color param.
-                    // Simplified: drawInvertedText handles rect + text.
-                    // But drawInvertedText draws rect based on text size.
-                    // Let's just draw the text "v1.4" using a specialized 'erase' mode if we had it.
-                    // For preview, let's just draw the rect (white) then draw text (black/clear).
-                    // Our drawChar sets pixels to true (white). To draw black, we need 'false'.
-                    // Added: hack to draw black text
-                    var ver = "v1.5b";
-                    var vx = 96; var vy = 48;
-                    // Invert area first? drawFilledRoundRect already sets to true (white).
-                    // We need to clear pixels for text.
-                    // Let's assume drawChar can take color? No. 
-                    // Let's re-implement drawCharInverted logic inline or modify drawChar?
-                    // Quick fix: drawInvertedText(ver, 96, 48, 1) - this draws the rect too!
-                    // drawInvertedText params: text, x, y, size.
-                    // Firmware uses fillRoundRect(94, 47, 28, 10) then text at 96,48.
-                    // drawInvertedText calculates background size: w=len*6*s + 4, h=7*s+2
-                    // "v1.4" len 4 -> w=24+4=28. h=9. Close enough to 28x10.
-                    drawInvertedText('v1.5b', 96, 48, 1);
+                    drawInvertedText('v1.5b', w - 32, dotsY + 1, 1);
                 }
             } else {
                 // === MAIN SCREEN PREVIEW (Default) ===
@@ -2362,6 +2350,46 @@
                         }
                     }
                     return labels;
+                }
+
+                // Enhanced version that also returns button RGB colors for color strip feature
+                function parseRowMapWithColors(mapStr, buttons, analogInputs) {
+                    if (!mapStr || mapStr.trim() === '') return { labels: [], colors: [] };
+                    var items = mapStr.split(',').map(function (s) { return s.trim(); });
+                    var labels = [];
+                    var colors = [];
+                    for (var i = 0; i < items.length; i++) {
+                        var item = items[i].toUpperCase();
+                        if (item.indexOf('A') === 0 && item.length > 1) {
+                            // Analog input - cyan color
+                            var aIdx = parseInt(item.substring(1)) - 1;
+                            if (analogInputs && analogInputs[aIdx] && analogInputs[aIdx].enabled) {
+                                labels.push((analogInputs[aIdx].name || item).substring(0, 4).toUpperCase());
+                            } else {
+                                labels.push(item.substring(0, 4));
+                            }
+                            colors.push('#00ffff'); // Cyan for analog inputs
+                        } else {
+                            // Button number (1-based)
+                            var bIdx = parseInt(item) - 1;
+                            if (buttons && buttons[bIdx]) {
+                                labels.push(buttons[bIdx].name.substring(0, 4).toUpperCase());
+                                // Get color from first message RGB
+                                var rgb = '#ffffff'; // default white
+                                if (buttons[bIdx].messages && buttons[bIdx].messages[0] && buttons[bIdx].messages[0].rgb) {
+                                    rgb = buttons[bIdx].messages[0].rgb;
+                                }
+                                colors.push(rgb);
+                            } else if (!isNaN(bIdx) && bIdx >= 0) {
+                                labels.push('B' + (bIdx + 1));
+                                colors.push('#ffffff');
+                            } else {
+                                labels.push(item.substring(0, 4));
+                                colors.push('#ffffff');
+                            }
+                        }
+                    }
+                    return { labels: labels, colors: colors };
                 }
 
                 // Get mapped labels for top and bottom rows
@@ -2476,16 +2504,42 @@
 
                     var colWidth = w / Math.max(topRowLabels.length, bottomRowLabels.length, 4);
 
+                    // Get color data for TFT color strips
+                    var topRowData = parseRowMapWithColors(ts.topRowMap, buttons, presetData.analogInputs);
+                    var bottomRowData = parseRowMapWithColors(ts.bottomRowMap, buttons, presetData.analogInputs);
+                    var topRowAlign = ts.topRowAlign || 0; // 0=Left, 1=Center, 2=Right
+                    var bottomRowAlign = ts.bottomRowAlign || 0;
+                    var labelHeight = (ts.label || 1) * 8;
+                    var stripHeight = ts.colorStripHeight || 4; // Height of color strip (configurable)
+
+                    // Calculate row width for alignment
+                    var topRowTotalWidth = topRowLabels.length * colWidth;
+                    var bottomRowTotalWidth = bottomRowLabels.length * colWidth;
+                    var topRowStartX = (topRowAlign === 1) ? (w - topRowTotalWidth) / 2 : (topRowAlign === 2) ? (w - topRowTotalWidth) : 0;
+                    var bottomRowStartX = (bottomRowAlign === 1) ? (w - bottomRowTotalWidth) / 2 : (bottomRowAlign === 2) ? (w - bottomRowTotalWidth) : 0;
+
                     // Top row labels (conditional on showTopRow)
                     if (ts.showTopRow !== false && topRowLabels.length > 0) {
                         for (var i = 0; i < topRowLabels.length; i++) {
-                            drawText(topRowLabels[i], i * colWidth, topRowY, ts.label);
+                            var xPos = topRowStartX + i * colWidth;
+                            drawText(topRowLabels[i], xPos, topRowY, ts.label);
+                            // Draw color strip BELOW label for top row (TFT only)
+                            if (ts.showColorStrips && is128 && topRowData.colors[i]) {
+                                ctx.fillStyle = topRowData.colors[i];
+                                ctx.fillRect(xPos * scale, (topRowY + labelHeight + 1) * scale, (colWidth - 2) * scale, stripHeight * scale);
+                            }
                         }
                     }
                     // Bottom row labels (conditional on showBottomRow)
                     if (ts.showBottomRow !== false && bottomRowLabels.length > 0) {
                         for (var i = 0; i < bottomRowLabels.length; i++) {
-                            drawText(bottomRowLabels[i], i * colWidth, bottomRowY, ts.label);
+                            var xPos = bottomRowStartX + i * colWidth;
+                            drawText(bottomRowLabels[i], xPos, bottomRowY, ts.label);
+                            // Draw color strip ABOVE label for bottom row (TFT only)
+                            if (ts.showColorStrips && is128 && bottomRowData.colors[i]) {
+                                ctx.fillStyle = bottomRowData.colors[i];
+                                ctx.fillRect(xPos * scale, (bottomRowY - stripHeight - 1) * scale, (colWidth - 2) * scale, stripHeight * scale);
+                            }
                         }
                     }
 
@@ -2540,6 +2594,62 @@
             var sys = presetData.system;
             if (warn) warn.style.display = ((sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 255) > 240) ? 'block' : 'none';
         }
+
+        // TFT SPI Pin Conflict Resolution
+        function resolveSpiPinConflicts() {
+            var sys = presetData.system;
+            var oledType = sys.oled ? sys.oled.type : '128x64';
+            if (oledType !== '128x128') return; // Only TFT uses SPI
+
+            // TFT SPI pins (default: CS=15, DC=2, RST=4, MOSI=23, SCLK=18, LED=32)
+            var tftPins = [15, 2, 4, 23, 18, 32];
+            var safePins = [12, 13, 14, 25, 26, 27, 33];
+            var warnings = [];
+
+            // Find available pin
+            function findAvailablePin() {
+                for (var i = 0; i < safePins.length; i++) {
+                    var pin = safePins[i];
+                    if (tftPins.indexOf(pin) === -1 &&
+                        pin !== sys.encoderA && pin !== sys.encoderB &&
+                        pin !== sys.encoderBtn && pin !== sys.ledPin) {
+                        return pin;
+                    }
+                }
+                return 33; // fallback
+            }
+
+            // Check encoder A
+            if (tftPins.indexOf(sys.encoderA) !== -1) {
+                var oldPin = sys.encoderA;
+                sys.encoderA = findAvailablePin();
+                warnings.push('Encoder A: GPIO ' + oldPin + ' → ' + sys.encoderA);
+            }
+            // Check encoder B  
+            if (tftPins.indexOf(sys.encoderB) !== -1) {
+                var oldPin = sys.encoderB;
+                sys.encoderB = findAvailablePin();
+                warnings.push('Encoder B: GPIO ' + oldPin + ' → ' + sys.encoderB);
+            }
+            // Check encoder BTN
+            if (tftPins.indexOf(sys.encoderBtn) !== -1) {
+                var oldPin = sys.encoderBtn;
+                sys.encoderBtn = findAvailablePin();
+                warnings.push('Encoder BTN: GPIO ' + oldPin + ' → ' + sys.encoderBtn);
+            }
+            // Check LED pin
+            if (tftPins.indexOf(sys.ledPin) !== -1) {
+                var oldPin = sys.ledPin;
+                sys.ledPin = findAvailablePin();
+                warnings.push('LED Pin: GPIO ' + oldPin + ' → ' + sys.ledPin);
+            }
+
+            if (warnings.length > 0) {
+                alert('⚠️ TFT SPI Pin Conflicts Detected!\n\nThe following pins conflict with TFT display and have been auto-reassigned:\n\n' + warnings.join('\n') + '\n\nTFT uses GPIO: 15 (CS), 18 (SCLK), 23 (MOSI), 2 (DC), 4 (RST), 32 (LED)');
+                render(); // Update UI with new values
+            }
+        }
+
         function updSys(k, v) { presetData.system[k] = v; }
         function updExp(idx, k, v) {
             if (!presetData.expressionPedals) return;
