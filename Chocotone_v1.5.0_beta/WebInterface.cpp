@@ -2405,6 +2405,8 @@ bool applyConfigJson(JsonObject doc) {
           oledConfig.main.showAnalog = m["showAnalog"] | false;
           oledConfig.main.showTopRow = m["showTopRow"] | true;
           oledConfig.main.showBottomRow = m["showBottomRow"] | true;
+          oledConfig.main.showStatus =
+              m.containsKey("showStatus") ? m["showStatus"].as<bool>() : true;
           oledConfig.main.titleAlign = m["titleAlign"] | 1;
           oledConfig.main.statusAlign = m["statusAlign"] | 0;
           oledConfig.main.bpmAlign = m["bpmAlign"] | 1;
