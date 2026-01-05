@@ -19,6 +19,8 @@ void getButtonSummary(char *b, size_t s, MidiCommandType type, int data1);
 bool checkOledHealth();
 void recoverOled();
 void safeDisplayOLED();
+void updateAnalogColorStrips(); // Partial update for analog loading bars (no
+                                // flicker)
 
 // Hardware Init
 void initDisplayHardware();

@@ -477,7 +477,7 @@ void loop() {
           }
         }
         if (needsRedraw) {
-          safeDisplayOLED();
+          updateAnalogColorStrips(); // Partial update - no flicker
         }
       }
     }

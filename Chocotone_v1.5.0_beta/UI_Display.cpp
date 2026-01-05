@@ -593,6 +593,113 @@ void displayOLED() {
   flushDisplay();
 }
 
+// Partial update for analog color strips only (no flicker)
+// Only redraws the color strip areas for analog inputs, not the entire screen
+void updateAnalogColorStrips() {
+  if (displayPtr == nullptr)
+    return;
+  if (oledConfig.type != TFT_128X128)
+    return;
+  if (!oledConfig.main.showColorStrips)
+    return;
+
+  // Get display dimensions
+  int w = 128, h = 128;
+  int labelSize = oledConfig.main.labelSize > 0 ? oledConfig.main.labelSize : 1;
+  int stripH = oledConfig.main.colorStripHeight > 0
+                   ? oledConfig.main.colorStripHeight
+                   : 4;
+  int topRowY = oledConfig.main.topRowY;
+  int bottomRowY = oledConfig.main.bottomRowY;
+
+  // Process top row
+  char tempMap[34];
+  strncpy(tempMap, oledConfig.main.topRowMap, 33);
+  tempMap[33] = '\0';
+  int itemCount = 0;
+  char *p = tempMap;
+  while (*p) {
+    if (*p == ',')
+      itemCount++;
+    p++;
+  }
+  if (strlen(tempMap) > 0)
+    itemCount++;
+
+  if (itemCount > 0) {
+    int dynColWidth = w / itemCount;
+    char *token = strtok(tempMap, ",");
+    int i = 0;
+    while (token != NULL) {
+      // Check if analog input
+      if (token[0] == 'A' || token[0] == 'a') {
+        int ainIdx = atoi(&token[1]) - 1;
+        if (ainIdx >= 0 && ainIdx < MAX_ANALOG_INPUTS &&
+            analogInputs[ainIdx].enabled) {
+          uint8_t *rgb = analogInputs[ainIdx].rgb;
+          uint16_t color =
+              ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
+          int stripY = topRowY + (labelSize * 8) + 1;
+          int maxStripW = dynColWidth - 2;
+          float percent = analogInputs[ainIdx].smoothedValue / 4095.0f;
+          int stripW = (int)(maxStripW * percent);
+          if (stripW < 1 && percent > 0.01f)
+            stripW = 1;
+          // Clear strip area first (black), then draw filled portion
+          displayPtr->fillRect(i * dynColWidth, stripY, maxStripW, stripH,
+                               ST7735_BLACK);
+          displayPtr->fillRect(i * dynColWidth, stripY, stripW, stripH, color);
+        }
+      }
+      token = strtok(NULL, ",");
+      i++;
+    }
+  }
+
+  // Process bottom row
+  strncpy(tempMap, oledConfig.main.bottomRowMap, 33);
+  tempMap[33] = '\0';
+  itemCount = 0;
+  p = tempMap;
+  while (*p) {
+    if (*p == ',')
+      itemCount++;
+    p++;
+  }
+  if (strlen(tempMap) > 0)
+    itemCount++;
+
+  if (itemCount > 0) {
+    int dynColWidth = w / itemCount;
+    char *token = strtok(tempMap, ",");
+    int i = 0;
+    while (token != NULL) {
+      // Check if analog input
+      if (token[0] == 'A' || token[0] == 'a') {
+        int ainIdx = atoi(&token[1]) - 1;
+        if (ainIdx >= 0 && ainIdx < MAX_ANALOG_INPUTS &&
+            analogInputs[ainIdx].enabled) {
+          uint8_t *rgb = analogInputs[ainIdx].rgb;
+          uint16_t color =
+              ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
+          int stripY = bottomRowY - stripH - 1;
+          int maxStripW = dynColWidth - 2;
+          float percent = analogInputs[ainIdx].smoothedValue / 4095.0f;
+          int stripW = (int)(maxStripW * percent);
+          if (stripW < 1 && percent > 0.01f)
+            stripW = 1;
+          // Clear strip area first (black), then draw filled portion
+          displayPtr->fillRect(i * dynColWidth, stripY, maxStripW, stripH,
+                               ST7735_BLACK);
+          displayPtr->fillRect(i * dynColWidth, stripY, stripW, stripH, color);
+        }
+      }
+      token = strtok(NULL, ",");
+      i++;
+    }
+  }
+}
+
 void displayTapTempoMode() {
   clearDisplayBuffer();
   displayPtr->setTextColor(DISPLAY_WHITE);
