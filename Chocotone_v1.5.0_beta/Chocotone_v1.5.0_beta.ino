@@ -455,6 +455,32 @@ void loop() {
 
     // Read expression pedals and send MIDI CC
     readAnalogInputs();
+
+    // Throttled display refresh for analog loading bars (TFT only)
+    // Check every 50ms if analog values changed significantly
+    static unsigned long lastAnalogDisplayUpdate = 0;
+    static float lastAnalogDisplayValues[MAX_ANALOG_INPUTS] = {0};
+    if (oledConfig.type == TFT_128X128 && oledConfig.main.showColorStrips) {
+      unsigned long now = millis();
+      if (now - lastAnalogDisplayUpdate >= 50) {
+        lastAnalogDisplayUpdate = now;
+        bool needsRedraw = false;
+        for (int i = 0;
+             i < MAX_ANALOG_INPUTS && i < systemConfig.analogInputCount; i++) {
+          if (analogInputs[i].enabled) {
+            float diff =
+                abs(analogInputs[i].smoothedValue - lastAnalogDisplayValues[i]);
+            if (diff > 122) { // ~3% change threshold (4095 * 0.03)
+              lastAnalogDisplayValues[i] = analogInputs[i].smoothedValue;
+              needsRedraw = true;
+            }
+          }
+        }
+        if (needsRedraw) {
+          safeDisplayOLED();
+        }
+      }
+    }
   }
 
   // Handle serial commands for offline editor config transfer
