@@ -1459,9 +1459,11 @@ void handleImportUploadData() {
             oledConfig.main.labelSize = main["labelSize"] | 1;
             oledConfig.main.titleSize = main["titleSize"] | 2;
             oledConfig.main.statusSize = main["statusSize"] | 1;
+            oledConfig.main.bpmSize = main["bpmSize"] | 1;
             oledConfig.main.topRowY = main["topRowY"] | 0;
             oledConfig.main.titleY = main["titleY"] | 14;
             oledConfig.main.statusY = main["statusY"] | 32;
+            oledConfig.main.bpmY = main["bpmY"] | 32;
             oledConfig.main.bottomRowY = main["bottomRowY"] | 56;
             oledConfig.main.showBpm =
                 main.containsKey("showBpm") ? main["showBpm"].as<bool>() : true;
@@ -1469,6 +1471,26 @@ void handleImportUploadData() {
             oledConfig.main.showStatus = main.containsKey("showStatus")
                                              ? main["showStatus"].as<bool>()
                                              : true;
+            oledConfig.main.showTopRow = main.containsKey("showTopRow")
+                                             ? main["showTopRow"].as<bool>()
+                                             : true;
+            oledConfig.main.showBottomRow =
+                main.containsKey("showBottomRow")
+                    ? main["showBottomRow"].as<bool>()
+                    : true;
+            oledConfig.main.titleAlign = main["titleAlign"] | 1;
+            oledConfig.main.statusAlign = main["statusAlign"] | 0;
+            oledConfig.main.bpmAlign = main["bpmAlign"] | 1;
+            // Row maps
+            if (main.containsKey("topRowMap")) {
+              strlcpy(oledConfig.main.topRowMap, main["topRowMap"] | "5,6,7,8",
+                      sizeof(oledConfig.main.topRowMap));
+            }
+            if (main.containsKey("bottomRowMap")) {
+              strlcpy(oledConfig.main.bottomRowMap,
+                      main["bottomRowMap"] | "1,2,3,4",
+                      sizeof(oledConfig.main.bottomRowMap));
+            }
             // TFT Color Strip settings (v1.5.2)
             oledConfig.main.showColorStrips = main["showColorStrips"] | false;
             oledConfig.main.colorStripHeight = main["colorStripHeight"] | 4;
@@ -2859,18 +2881,46 @@ void handleSerialConfig() {
         Serial.print(oledConfig.main.titleSize);
         Serial.print(",\"statusSize\":");
         Serial.print(oledConfig.main.statusSize);
+        Serial.print(",\"bpmSize\":");
+        Serial.print(oledConfig.main.bpmSize);
         Serial.print(",\"topRowY\":");
         Serial.print(oledConfig.main.topRowY);
         Serial.print(",\"titleY\":");
         Serial.print(oledConfig.main.titleY);
         Serial.print(",\"statusY\":");
         Serial.print(oledConfig.main.statusY);
+        Serial.print(",\"bpmY\":");
+        Serial.print(oledConfig.main.bpmY);
         Serial.print(",\"bottomRowY\":");
         Serial.print(oledConfig.main.bottomRowY);
         Serial.print(",\"showBpm\":");
         Serial.print(oledConfig.main.showBpm ? "true" : "false");
         Serial.print(",\"showAnalog\":");
         Serial.print(oledConfig.main.showAnalog ? "true" : "false");
+        Serial.print(",\"showStatus\":");
+        Serial.print(oledConfig.main.showStatus ? "true" : "false");
+        Serial.print(",\"showTopRow\":");
+        Serial.print(oledConfig.main.showTopRow ? "true" : "false");
+        Serial.print(",\"showBottomRow\":");
+        Serial.print(oledConfig.main.showBottomRow ? "true" : "false");
+        Serial.print(",\"titleAlign\":");
+        Serial.print(oledConfig.main.titleAlign);
+        Serial.print(",\"statusAlign\":");
+        Serial.print(oledConfig.main.statusAlign);
+        Serial.print(",\"bpmAlign\":");
+        Serial.print(oledConfig.main.bpmAlign);
+        Serial.print(",\"topRowMap\":\"");
+        Serial.print(oledConfig.main.topRowMap);
+        Serial.print("\",\"bottomRowMap\":\"");
+        Serial.print(oledConfig.main.bottomRowMap);
+        Serial.print("\",\"showColorStrips\":");
+        Serial.print(oledConfig.main.showColorStrips ? "true" : "false");
+        Serial.print(",\"colorStripHeight\":");
+        Serial.print(oledConfig.main.colorStripHeight);
+        Serial.print(",\"topRowAlign\":");
+        Serial.print(oledConfig.main.topRowAlign);
+        Serial.print(",\"bottomRowAlign\":");
+        Serial.print(oledConfig.main.bottomRowAlign);
 
         // Menu Screen
         Serial.print("},\"menu\":{");

@@ -688,13 +688,19 @@
                             bottomRowY: 56,
                             showBpm: true,
                             showAnalog: false,
+                            showStatus: true,
                             showTopRow: true,
                             showBottomRow: true,
                             titleAlign: 1,
                             statusAlign: 0,
                             bpmAlign: 1,
                             topRowMap: "5,6,7,8",
-                            bottomRowMap: "1,2,3,4"
+                            bottomRowMap: "1,2,3,4",
+                            // TFT Color Strip settings (v1.5.2)
+                            showColorStrips: false,
+                            colorStripHeight: 4,
+                            topRowAlign: 0,
+                            bottomRowAlign: 0
                         },
                         menu: {
                             headerSize: 1,
@@ -771,6 +777,27 @@
                             if (amsg.channel === undefined) amsg.channel = 1;
                         }
                     }
+                }
+            }
+            // Normalize OLED config (v1.5.2)
+            if (data.system && data.system.oled) {
+                var oled = data.system.oled;
+                // Convert numeric type to string format
+                if (typeof oled.type === 'number') {
+                    var typeMap = { 0: '128x64', 1: '128x32', 2: '128x128' };
+                    oled.type = typeMap[oled.type] || '128x64';
+                }
+                // Ensure screens.main has all required fields with defaults
+                if (oled.screens && oled.screens.main) {
+                    var m = oled.screens.main;
+                    if (m.showColorStrips === undefined) m.showColorStrips = false;
+                    if (m.colorStripHeight === undefined) m.colorStripHeight = 4;
+                    if (m.topRowAlign === undefined) m.topRowAlign = 0;
+                    if (m.bottomRowAlign === undefined) m.bottomRowAlign = 0;
+                    if (m.showStatus === undefined) m.showStatus = true;
+                    if (m.bpmSize === undefined) m.bpmSize = 1;
+                    if (m.bpmY === undefined) m.bpmY = 32;
+                    if (m.statusAlign === undefined) m.statusAlign = 0;
                 }
             }
             return data;
@@ -993,7 +1020,7 @@
 
             if (previewMode === 'main') {
                 // MAIN SCREEN controls
-                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showStatus: true, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4', showColorStrips: false, colorStripHeight: 4, topRowAlign: 0, bottomRowAlign: 0 };
                 var maxY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 56);
                 var maxTitleY = (oled.type === '128x128') ? 110 : ((oled.type === '128x32') ? 24 : 50);
                 var maxStatusY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 55);
@@ -2076,7 +2103,7 @@
             var ts = {}; // Text sizes and Y positions for current mode
 
             if (previewMode === 'main') {
-                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4' };
+                var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showStatus: true, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4', showColorStrips: false, colorStripHeight: 4, topRowAlign: 0, bottomRowAlign: 0 };
                 ts = {
                     label: main.labelSize || 1,
                     title: main.titleSize || 2,
@@ -3073,7 +3100,9 @@
                             presetData.currentPreset = data.currentPreset || 0;
                             selectedBtn = 0;
                             showSystem = false;
+                            console.log('Imported OLED config:', JSON.stringify(presetData.system.oled, null, 2));
                             render();
+                            setTimeout(renderOledPreview, 100); // Re-render OLED preview after DOM update
                             alert('Config loaded from device!');
                         } else {
                             alert('Invalid config: no presets found');
