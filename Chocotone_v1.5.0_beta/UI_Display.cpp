@@ -289,21 +289,40 @@ void displayOLED() {
           // Draw color strip below label for TFT when enabled
           if (oledConfig.type == TFT_128X128 &&
               oledConfig.main.showColorStrips && colorToken != NULL) {
-            // Parse button index to get RGB color
-            int btnIdx = atoi(colorToken) - 1;
-            if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
-              ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
-              if (btn.messageCount > 0) {
-                uint8_t *rgb = btn.messages[0].rgb;
-                // Manual RGB565 conversion: ((r>>3)<<11) | ((g>>2)<<5) | (b>>3)
+            int stripY = topRowY + (labelSize * 8) + 1;
+            int stripH = oledConfig.main.colorStripHeight > 0
+                             ? oledConfig.main.colorStripHeight
+                             : 4;
+            int maxStripW = dynColWidth - 2;
+
+            // Check if this is an analog input (starts with 'A')
+            if (colorToken[0] == 'A' || colorToken[0] == 'a') {
+              int ainIdx = atoi(&colorToken[1]) - 1;
+              if (ainIdx >= 0 && ainIdx < MAX_ANALOG_INPUTS &&
+                  analogInputs[ainIdx].enabled) {
+                uint8_t *rgb = analogInputs[ainIdx].rgb;
                 uint16_t color = ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) |
                                  (rgb[2] >> 3);
-                int stripY = topRowY + (labelSize * 8) + 1;
-                int stripH = oledConfig.main.colorStripHeight > 0
-                                 ? oledConfig.main.colorStripHeight
-                                 : 4;
-                displayPtr->fillRect(i * dynColWidth, stripY, dynColWidth - 2,
-                                     stripH, color);
+                // Calculate fill width as loading bar (based on reading %)
+                float percent = analogInputs[ainIdx].smoothedValue / 4095.0f;
+                int stripW = (int)(maxStripW * percent);
+                if (stripW < 1 && percent > 0.01f)
+                  stripW = 1; // Min 1px if active
+                displayPtr->fillRect(i * dynColWidth, stripY, stripW, stripH,
+                                     color);
+              }
+            } else {
+              // Button - full-width strip
+              int btnIdx = atoi(colorToken) - 1;
+              if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
+                ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
+                if (btn.messageCount > 0) {
+                  uint8_t *rgb = btn.messages[0].rgb;
+                  uint16_t color = ((rgb[0] >> 3) << 11) |
+                                   ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
+                  displayPtr->fillRect(i * dynColWidth, stripY, maxStripW,
+                                       stripH, color);
+                }
               }
             }
           }
@@ -372,21 +391,40 @@ void displayOLED() {
           // Draw color strip above label for TFT when enabled
           if (oledConfig.type == TFT_128X128 &&
               oledConfig.main.showColorStrips && colorToken != NULL) {
-            // Parse button index to get RGB color
-            int btnIdx = atoi(colorToken) - 1;
-            if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
-              ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
-              if (btn.messageCount > 0) {
-                uint8_t *rgb = btn.messages[0].rgb;
-                // Manual RGB565 conversion: ((r>>3)<<11) | ((g>>2)<<5) | (b>>3)
+            int stripH = oledConfig.main.colorStripHeight > 0
+                             ? oledConfig.main.colorStripHeight
+                             : 4;
+            int stripY = bottomRowY - stripH - 1; // Strip grows upward
+            int maxStripW = dynColWidth - 2;
+
+            // Check if this is an analog input (starts with 'A')
+            if (colorToken[0] == 'A' || colorToken[0] == 'a') {
+              int ainIdx = atoi(&colorToken[1]) - 1;
+              if (ainIdx >= 0 && ainIdx < MAX_ANALOG_INPUTS &&
+                  analogInputs[ainIdx].enabled) {
+                uint8_t *rgb = analogInputs[ainIdx].rgb;
                 uint16_t color = ((rgb[0] >> 3) << 11) | ((rgb[1] >> 2) << 5) |
                                  (rgb[2] >> 3);
-                int stripH = oledConfig.main.colorStripHeight > 0
-                                 ? oledConfig.main.colorStripHeight
-                                 : 4;
-                int stripY = bottomRowY - stripH - 1; // Strip grows upward
-                displayPtr->fillRect(i * dynColWidth, stripY, dynColWidth - 2,
-                                     stripH, color);
+                // Calculate fill width as loading bar (based on reading %)
+                float percent = analogInputs[ainIdx].smoothedValue / 4095.0f;
+                int stripW = (int)(maxStripW * percent);
+                if (stripW < 1 && percent > 0.01f)
+                  stripW = 1; // Min 1px if active
+                displayPtr->fillRect(i * dynColWidth, stripY, stripW, stripH,
+                                     color);
+              }
+            } else {
+              // Button - full-width strip
+              int btnIdx = atoi(colorToken) - 1;
+              if (btnIdx >= 0 && btnIdx < MAX_BUTTONS) {
+                ButtonConfig &btn = buttonConfigs[currentPreset][btnIdx];
+                if (btn.messageCount > 0) {
+                  uint8_t *rgb = btn.messages[0].rgb;
+                  uint16_t color = ((rgb[0] >> 3) << 11) |
+                                   ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
+                  displayPtr->fillRect(i * dynColWidth, stripY, maxStripW,
+                                       stripH, color);
+                }
               }
             }
           }

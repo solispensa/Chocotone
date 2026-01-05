@@ -2381,21 +2381,28 @@
 
                 // Enhanced version that also returns button RGB colors for color strip feature
                 function parseRowMapWithColors(mapStr, buttons, analogInputs) {
-                    if (!mapStr || mapStr.trim() === '') return { labels: [], colors: [] };
+                    if (!mapStr || mapStr.trim() === '') return { labels: [], colors: [], percents: [], isAnalog: [] };
                     var items = mapStr.split(',').map(function (s) { return s.trim(); });
                     var labels = [];
                     var colors = [];
+                    var percents = []; // For analog loading bar effect
+                    var isAnalog = []; // Track which items are analog inputs
                     for (var i = 0; i < items.length; i++) {
                         var item = items[i].toUpperCase();
                         if (item.indexOf('A') === 0 && item.length > 1) {
-                            // Analog input - cyan color
+                            // Analog input - use configured RGB color
                             var aIdx = parseInt(item.substring(1)) - 1;
                             if (analogInputs && analogInputs[aIdx] && analogInputs[aIdx].enabled) {
                                 labels.push((analogInputs[aIdx].name || item).substring(0, 4).toUpperCase());
+                                // Use analog input's RGB color, fallback to cyan
+                                colors.push(analogInputs[aIdx].rgb || '#00ffff');
                             } else {
                                 labels.push(item.substring(0, 4));
+                                colors.push('#00ffff');
                             }
-                            colors.push('#00ffff'); // Cyan for analog inputs
+                            // Analog inputs show as loading bar - simulate 50% for preview
+                            percents.push(0.5);
+                            isAnalog.push(true);
                         } else {
                             // Button number (1-based)
                             var bIdx = parseInt(item) - 1;
@@ -2414,9 +2421,12 @@
                                 labels.push(item.substring(0, 4));
                                 colors.push('#ffffff');
                             }
+                            // Buttons show full-width strip (100%)
+                            percents.push(1.0);
+                            isAnalog.push(false);
                         }
                     }
-                    return { labels: labels, colors: colors };
+                    return { labels: labels, colors: colors, percents: percents, isAnalog: isAnalog };
                 }
 
                 // Get mapped labels for top and bottom rows
@@ -2553,7 +2563,8 @@
                             // Draw color strip BELOW label for top row (TFT only)
                             if (ts.showColorStrips && is128 && topRowData.colors[i]) {
                                 ctx.fillStyle = topRowData.colors[i];
-                                ctx.fillRect(xPos * scale, (topRowY + labelHeight + 1) * scale, (colWidth - 2) * scale, stripHeight * scale);
+                                var stripW = (colWidth - 2) * (topRowData.percents[i] || 1.0);
+                                ctx.fillRect(xPos * scale, (topRowY + labelHeight + 1) * scale, stripW * scale, stripHeight * scale);
                             }
                         }
                     }
@@ -2565,7 +2576,8 @@
                             // Draw color strip ABOVE label for bottom row (TFT only)
                             if (ts.showColorStrips && is128 && bottomRowData.colors[i]) {
                                 ctx.fillStyle = bottomRowData.colors[i];
-                                ctx.fillRect(xPos * scale, (bottomRowY - stripHeight - 1) * scale, (colWidth - 2) * scale, stripHeight * scale);
+                                var stripW = (colWidth - 2) * (bottomRowData.percents[i] || 1.0);
+                                ctx.fillRect(xPos * scale, (bottomRowY - stripHeight - 1) * scale, stripW * scale, stripHeight * scale);
                             }
                         }
                     }
