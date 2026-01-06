@@ -3105,43 +3105,20 @@ void handleSerialConfig() {
         Serial.printf("Parsing %d bytes of config...\n", uploadBufferLen);
         Serial.printf("Free heap before parse: %d\n", ESP.getFreeHeap());
 
-        // ArduinoJson v7: Use SpiRamJsonDocument if PSRAM available, else heap
-        // Need ~2x JSON size for parsing
-        size_t docSize = uploadBufferLen * 2 + 4096;
-
-        // Try to use PSRAM if available and heap is low
-        JsonDocument *docPtr = nullptr;
-        bool usePsram = false;
-
-#ifdef BOARD_HAS_PSRAM
-        if (ESP.getFreePsram() > docSize) {
-          docPtr = new (ps_malloc(sizeof(JsonDocument))) JsonDocument();
-          usePsram = true;
-          Serial.println("Using PSRAM for JSON parsing");
-        }
-#endif
-
-        if (!docPtr) {
-          // Check if we have enough heap
-          if (ESP.getFreeHeap() < docSize) {
-            Serial.printf("JSON_ERROR:NoMemory (need %d, have %d)\n", docSize,
-                          ESP.getFreeHeap());
-            serialBuffer = "";
-            return;
-          }
-          docPtr = new JsonDocument();
-        }
-
-        DeserializationError error =
-            deserializeJson(*docPtr, uploadBuffer, uploadBufferLen);
+        // Use zero-copy in-place parsing - ArduinoJson modifies buffer directly
+        // This dramatically reduces memory usage (no string duplication)
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, uploadBuffer);
+        // Note: uploadBuffer is now modified and cannot be reused as-is
 
         Serial.printf("Free heap after parse: %d\n", ESP.getFreeHeap());
+        Serial.printf("JSON doc memory: %d bytes\n", doc.memoryUsage());
 
         if (error) {
           Serial.print("JSON_ERROR:");
           Serial.println(error.c_str());
         } else {
-          applyConfigJson(docPtr->as<JsonObject>());
+          applyConfigJson(doc.as<JsonObject>());
 
           savePresets();
           saveSystemSettings();
@@ -3155,9 +3132,7 @@ void handleSerialConfig() {
           Serial.println("SAVE_OK");
           Serial.println("Config saved successfully!");
         }
-
-        // Clean up
-        delete docPtr;
+        // doc goes out of scope, memory freed automatically
       }
       // Clear buffer after any command processed
       serialBuffer = "";
@@ -3751,42 +3726,20 @@ void handleBtSerialConfig() {
         Serial.printf("BT: Free heap before parse: %d\n", ESP.getFreeHeap());
         yield(); // Feed watchdog before parsing
 
-        // ArduinoJson v7: Use PSRAM if available, else heap
-        size_t docSize = uploadBufferLen * 2 + 4096;
-
-        JsonDocument *docPtr = nullptr;
-
-#ifdef BOARD_HAS_PSRAM
-        if (ESP.getFreePsram() > docSize) {
-          docPtr = new (ps_malloc(sizeof(JsonDocument))) JsonDocument();
-          Serial.println("BT: Using PSRAM for JSON parsing");
-        }
-#endif
-
-        if (!docPtr) {
-          if (ESP.getFreeHeap() < docSize) {
-            SerialBT.printf("JSON_ERROR:NoMemory (need %d, have %d)\n", docSize,
-                            ESP.getFreeHeap());
-            Serial.printf("BT: JSON_ERROR:NoMemory (need %d, have %d)\n",
-                          docSize, ESP.getFreeHeap());
-            btSerialBuffer = "";
-            return;
-          }
-          docPtr = new JsonDocument();
-        }
-
-        DeserializationError error =
-            deserializeJson(*docPtr, uploadBuffer, uploadBufferLen);
+        // Use zero-copy in-place parsing - ArduinoJson modifies buffer directly
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, uploadBuffer);
         yield(); // Feed watchdog after parsing
 
         Serial.printf("BT: Free heap after parse: %d\n", ESP.getFreeHeap());
+        Serial.printf("BT: JSON doc memory: %d bytes\n", doc.memoryUsage());
 
         if (error) {
           SerialBT.print("JSON_ERROR:");
           SerialBT.println(error.c_str());
           Serial.printf("BT: JSON error: %s\n", error.c_str());
         } else {
-          applyConfigJson(docPtr->as<JsonObject>());
+          applyConfigJson(doc.as<JsonObject>());
 
           savePresets();
           saveSystemSettings();
@@ -3801,8 +3754,7 @@ void handleBtSerialConfig() {
           SerialBT.println("SAVE_OK");
           Serial.println("BT: Config saved successfully!");
         }
-
-        delete docPtr;
+        // doc goes out of scope, memory freed automatically
       }
       btSerialBuffer = "";
     } else {
