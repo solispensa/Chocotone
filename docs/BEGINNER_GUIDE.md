@@ -199,7 +199,17 @@ The editor lets you:
 
 ## 🔗 Connecting to Your Amp/Pedal
 
-Chocotone connects via **Bluetooth MIDI**. Here's how:
+Chocotone connects via **Bluetooth MIDI** and supports three connection modes:
+
+### BLE Modes Explained
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **CLIENT** | Chocotone connects TO your device | Controlling amps/pedals (e.g., Sonicake Pocket Master, Hotone Ampero) |
+| **SERVER** | Other devices connect TO Chocotone | DAWs, mobile apps, or computers connecting to your controller |
+| **DUAL** | Both modes active simultaneously | Control your pedal AND send MIDI to your DAW at the same time |
+
+### Connecting to a Pedal/Amp (CLIENT Mode - Default)
 
 1. Turn on your Bluetooth MIDI device (e.g., Sonicake Pocket Master)
 2. Make sure it's in pairing mode
@@ -207,6 +217,23 @@ Chocotone connects via **Bluetooth MIDI**. Here's how:
 4. When connected, you'll see **"SPM:Y"** on the display
 
 Now press buttons on your Chocotone — they'll control your amp!
+
+### Connecting to DAW/Apps (SERVER Mode)
+
+1. Change BLE mode: **Long-press encoder** → Menu → **BLE Mode** → Select **SERVER**
+2. Save and exit (Chocotone will reboot)
+3. On your computer/phone, look for **"Chocotone"** in MIDI devices
+4. Connect from your DAW or app
+5. When connected, you'll see **"DAW:Y"** on the display
+
+### Using Both (DUAL Mode)
+
+1. Change BLE mode to **DUAL** from the menu
+2. Save and exit (Chocotone will reboot)
+3. Chocotone will connect to your pedal AND accept DAW connections
+4. Perfect for live performance with backing tracks!
+
+> 💡 **Tip**: Most users should start with **CLIENT** mode (default). Switch to DUAL if you need to control both your amp and a DAW.
 
 ---
 
