@@ -62,7 +62,7 @@ GPIO 22   → OLED SCL (clock)
 GPIO 18   → Encoder CLK
 GPIO 19   → Encoder DT
 GPIO 23   → Encoder Button
-GPIO 15   → NeoPixel Data
+GPIO 5    → NeoPixel Data
 GPIO 14   → Button 1
 GPIO 27   → Button 2
 GPIO 26   → Button 3
@@ -105,7 +105,7 @@ Repeat for all 8 buttons (or however many you want, 4-10 supported).
 The LED strip has 3 wires:
 1. **5V/VCC** (red) → Connect to ESP32 **VIN** or **5V** pin
 2. **GND** (black/white) → Connect to ESP32 **GND**
-3. **DIN** (green) → Connect to ESP32 **GPIO 15**
+3. **DIN** (green) → Connect to ESP32 **GPIO 5**
 
 > ⚠️ **Important**: Make sure to connect to **DIN** (data in), not DOUT!
 
@@ -174,28 +174,26 @@ You should see:
 - Button labels
 - Connection status
 
-### 2. Enable WiFi Configuration
+### 2. Open the Chocotone Editor
 
-1. **Long-press** the encoder button (hold for 2 seconds)
-2. You'll enter the **Menu**
-3. Rotate to find **"Wi-Fi Config"**
-4. **Short-press** to enable WiFi
+1. Keep your ESP32 **connected via USB** to your computer
+2. Open the **[Chocotone Editor](https://solispensa.github.io/Chocotone/chocotone_midi_editor.html)** in Chrome, Edge, or Brave
+3. Click **Connect USB** and select your ESP32 from the list
+4. Click **Read Config** to load the current configuration
 
-### 3. Connect to Chocotone WiFi
+### 3. Configure Your Controller
 
-1. On your phone/computer, look for WiFi network: **CHOCOTONE**
-2. Connect with password: **12345678**
-3. Open a browser and go to: **http://192.168.4.1**
-
-### 4. Configure Your Controller
-
-The web interface lets you:
+The editor lets you:
 - **Rename buttons** (e.g., "DRIVE", "DELAY", "CHORUS")
 - **Set MIDI messages** for each button
 - **Change LED colors**
 - **Adjust settings**
 
-Click **Save** when done!
+### 4. Save Your Configuration
+
+1. Click **Write Config** to send changes to your Chocotone
+2. Your controller will save and reboot automatically
+3. Done! Your configuration is now stored on the device
 
 ---
 

@@ -113,7 +113,7 @@ OLED SCL           | GPIO 22   | I2C Clock
 Encoder A          | GPIO 18   | 
 Encoder B          | GPIO 19   | 
 Encoder Button     | GPIO 23   | INPUT_PULLUP
-NeoPixel Data      | GPIO 15   | Configurable via web
+NeoPixel Data      | GPIO 5    | Configurable via web
 Button 1           | GPIO 14   | INPUT_PULLUP
 Button 2           | GPIO 27   | INPUT_PULLUP
 Button 3           | GPIO 26   | INPUT_PULLUP
@@ -293,7 +293,7 @@ The controller supports **three BLE modes** (configurable via OLED menu or web i
 - Check button configuration in web interface
 
 ### LEDs not working
-- Verify NeoPixel data pin connection (GPIO 15 default, configurable)
+- Verify NeoPixel data pin connection (GPIO 5 default, configurable)
 - Ensure adequate 5V power supply
 - Check LED brightness settings in menu
 

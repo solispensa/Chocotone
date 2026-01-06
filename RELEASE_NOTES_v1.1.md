@@ -81,7 +81,7 @@ This release focuses on stability improvements, OLED display refinements, and BL
 ### Hardware Support
 - **MCU**: ESP32 (tested on NodeMCU32s)
 - **Buttons**: 8 buttons (GPIO: 32,33,25,26,27,14,12,13)
-- **LEDs**: WS2812B RGB strip (GPIO 15)
+- **LEDs**: WS2812B RGB strip (GPIO 5)
 - **Display**: SH1106 OLED (I2C)
 - **Power**: USB or battery (rechargeable)
 
