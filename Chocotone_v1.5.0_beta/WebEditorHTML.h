@@ -1091,7 +1091,19 @@ if (typeof window !== 'undefined') {
                 encoderA: 18,
                 encoderB: 19,
                 encoderBtn: 23,
-                bleMode: "CLIENT"
+                bleMode: "CLIENT",
+                globalSpecialActions: [
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: true, partner: 0, type: "PRESET_DOWN", label: "" },
+                    { enabled: true, partner: 6, type: "WIFI_TOGGLE", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: true, partner: 3, type: "PRESET_UP", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" }
+                ]
             }
         };
 
@@ -1509,8 +1521,94 @@ if (typeof window !== 'undefined') {
             html += '<div class="field"><label>Enc Btn</label><input type="number" min="0" max="39" value="' + sys.encoderBtn + '" onchange="updSys(\'encoderBtn\',parseInt(this.value))"></div>';
             html += '</div></div>';
 
+            // Global Special Actions Card
+            html += renderGlobalSpecialActions();
+
+            // Save Changes Button (also for system config)
+            html += '<div class="actions" style="margin-top:16px; justify-content:center">';
+            html += '<button class="btn success" onclick="saveChanges()">Save Changes</button>';
+            html += '</div>';
+
             html += '</div>';
             return html;
+        }
+
+        // Global Special Actions types (subset of midiTypes for combo actions)
+        var globalActionTypes = ['OFF', 'PRESET_UP', 'PRESET_DOWN', 'WIFI_TOGGLE', 'CLEAR_BLE_BONDS', 'MENU_TOGGLE'];
+
+        function renderGlobalSpecialActions() {
+            var sys = presetData.system;
+            // Ensure globalSpecialActions array exists
+            if (!sys.globalSpecialActions) {
+                sys.globalSpecialActions = [];
+                for (var i = 0; i < 16; i++) {
+                    sys.globalSpecialActions.push({ enabled: false, partner: -1, type: 'OFF', label: '' });
+                }
+            }
+            // Extend array if needed (for button count changes)
+            while (sys.globalSpecialActions.length < sys.buttonCount) {
+                sys.globalSpecialActions.push({ enabled: false, partner: -1, type: 'OFF', label: '' });
+            }
+
+            var html = '<div class="msg-box"><div class="msg-title">Global Special Actions (COMBO)</div>';
+            html += '<div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:12px">These combo actions work across ALL presets. Press two buttons together to trigger.</div>';
+
+            // Button grid for quick selection
+            var cols = Math.ceil(sys.buttonCount / 2);
+            html += '<div class="btn-grid" style="grid-template-columns: repeat(' + cols + ', 1fr); margin-bottom: 16px">';
+            var half = Math.ceil(sys.buttonCount / 2);
+            var order = [];
+            for (var i = half; i < sys.buttonCount; i++) order.push(i);
+            for (var i = 0; i < half; i++) order.push(i);
+            for (var idx = 0; idx < order.length; idx++) {
+                var b = order[idx];
+                if (b >= sys.globalSpecialActions.length) continue;
+                var gsa = sys.globalSpecialActions[b];
+                var isActive = gsa && gsa.enabled;
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" style="padding:6px 2px">';
+                html += '<div class="num">BTN ' + (b + 1) + '</div>';
+                html += '<div class="name" style="font-size:0.7rem">' + (gsa.type !== 'OFF' ? gsa.type.replace('_', ' ') : '-') + '</div>';
+                if (isActive && gsa.partner >= 0) {
+                    html += '<div class="info">+BTN ' + (gsa.partner + 1) + '</div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+
+            // Detail editor for each button
+            for (var b = 0; b < sys.buttonCount; b++) {
+                var gsa = sys.globalSpecialActions[b] || { enabled: false, partner: -1, type: 'OFF', label: '' };
+                html += '<div style="background:var(--inp);border:1px solid var(--brd);border-radius:6px;padding:10px;margin-bottom:8px">';
+                html += '<div class="row" style="align-items:center">';
+                html += '<div class="field" style="max-width:70px"><label style="width:auto;margin-right:4px">BTN ' + (b + 1) + '</label><input type="checkbox"' + (gsa.enabled ? ' checked' : '') + ' onchange="updGlobalAction(' + b + ',\'enabled\',this.checked)"></div>';
+                html += '<div class="field' + (!gsa.enabled ? ' disabled' : '') + '"><label>Partner</label><select onchange="updGlobalAction(' + b + ',\'partner\',parseInt(this.value))">';
+                html += '<option value="-1"' + (gsa.partner < 0 ? ' selected' : '') + '>None</option>';
+                for (var p = 0; p < sys.buttonCount; p++) {
+                    if (p !== b) html += '<option value="' + p + '"' + (gsa.partner === p ? ' selected' : '') + '>BTN ' + (p + 1) + '</option>';
+                }
+                html += '</select></div>';
+                html += '<div class="field' + (!gsa.enabled ? ' disabled' : '') + '"><label>Type</label><select onchange="updGlobalAction(' + b + ',\'type\',this.value)">';
+                for (var t = 0; t < globalActionTypes.length; t++) {
+                    var typ = globalActionTypes[t];
+                    html += '<option value="' + typ + '"' + (gsa.type === typ ? ' selected' : '') + '>' + typ.replace('_', ' ') + '</option>';
+                }
+                html += '</select></div>';
+                html += '<div class="field' + (!gsa.enabled ? ' disabled' : '') + '" style="max-width:80px"><label>Label</label><input type="text" maxlength="5" value="' + (gsa.label || '') + '" onchange="updGlobalAction(' + b + ',\'label\',this.value)"></div>';
+                html += '</div></div>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function updGlobalAction(btnIdx, key, value) {
+            var sys = presetData.system;
+            if (!sys.globalSpecialActions) sys.globalSpecialActions = [];
+            while (sys.globalSpecialActions.length <= btnIdx) {
+                sys.globalSpecialActions.push({ enabled: false, partner: -1, type: 'OFF', label: '' });
+            }
+            sys.globalSpecialActions[btnIdx][key] = value;
+            if (key === 'enabled' || key === 'partner' || key === 'type') render();
         }
 
         function typeOpts(sel) { return midiTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t + '</option>'; }).join(''); }

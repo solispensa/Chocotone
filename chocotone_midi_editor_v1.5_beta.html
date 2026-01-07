@@ -721,7 +721,19 @@
                             textSize: 2
                         }
                     }
-                }
+                },
+                globalSpecialActions: [
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { enabled: false, partner: -1, type: "OFF", label: "" }
+                ]
             },
             // Analog Inputs (0-16)
             analogInputs: []
@@ -1234,7 +1246,7 @@
             // ========== RIGHT COLUMN ==========
             html += '<div class="col-right">';
 
-            // --- MAIN CONTENT (Button Detail, Analog Detail, or System Config) ------------
+            // --- MAIN CONTENT (Button Detail, Analog Detail, Global Actions, or System Config) ------------
             if (showSystem) {
                 html += renderSystemConfig();
             } else if (selectedAnalogInput >= 0 && presetData.analogInputs && presetData.analogInputs[selectedAnalogInput]) {
@@ -1248,11 +1260,18 @@
             html += '<div class="section-title">Import / Export</div>';
             html += '<textarea class="json-area" id="jsonArea" placeholder="Paste JSON here..."></textarea>';
             html += '<input type="file" id="fileInput" accept=".json" style="display:none" onchange="openFile(this)">';
+            html += '<div class="row" style="margin-bottom:10px">';
+            html += '<div class="field"><label>Device IP</label><input type="text" id="deviceIp" value="192.168.4.1" style="font-family:monospace;font-size:0.85rem"></div>';
+            html += '</div>';
             html += '<div class="actions" style="margin-top:10px">';
-            html += '<button class="btn success" onclick="exportJSON()">Export</button>';
-            html += '<button class="btn secondary" onclick="importJSON()">Import</button>';
+            html += '<button class="btn success" onclick="exportJSON()" title="Update JSON Area">Update JSON</button>';
+            html += '<button class="btn secondary" onclick="importJSON()" title="Load from JSON Area">Load JSON</button>';
             html += '<button class="btn primary" onclick="document.getElementById(\'fileInput\').click()">Open File</button>';
             html += '<button class="btn warning" onclick="downloadJSON()">Download</button>';
+            html += '</div>';
+            html += '<div class="actions" style="margin-top:10px">';
+            html += '<button class="btn primary" onclick="fetchFromDevice()" style="background:#0ea5e9">Fetch (WiFi)</button>';
+            html += '<button class="btn primary" onclick="pushToDevice()" style="background:#f43f5e">Push (WiFi)</button>';
             html += '</div></div>';
 
             // --- Serial Log ------------------------------------------------
@@ -1293,6 +1312,21 @@
             var msgs = btn.messages || [];
             for (var i = 0; i < msgs.length; i++) html += renderActionCard(msgs[i], i);
 
+            // --- GLOBAL ACTIONS SECTION ---
+            var gsa = presetData.system.globalSpecialActions || [];
+            var globalAction = gsa[idx] || { enabled: false, partner: -1, type: 'OFF', label: '' };
+
+            html += '<div class="section-title" style="margin-top:20px; border-bottom:1px solid #a78bfa; padding-bottom:4px; color:#a78bfa">';
+            html += '🔥 Global Actions';
+            html += '<button class="btn sm" style="margin-left:auto;background:' + (globalAction.enabled ? '#a78bfa' : '#3f3f46') + '" onclick="toggleGlobalAction(' + idx + ')">' + (globalAction.enabled ? 'ON' : 'OFF') + '</button>';
+            html += '</div>';
+
+            if (globalAction.enabled) {
+                html += renderActionCard(globalAction, idx, true);
+            } else {
+                html += '<div style="color:#666;font-size:11px;padding:10px;text-align:center">Click ON to enable a global combo action for this button</div>';
+            }
+
             // Save Changes Button
             html += '<div class="actions" style="margin-top:16px; justify-content:center">';
             html += '<button class="btn success" onclick="saveChanges()">Save Changes</button>';
@@ -1302,79 +1336,81 @@
             return html;
         }
 
-        function renderActionCard(msg, i) {
-            var html = '<div class="msg-box">';
+        function renderActionCard(msg, i, isGlobal) {
+            var html = '<div class="msg-box"' + (isGlobal ? ' style="border-color:#a78bfa"' : '') + '>';
             // Header with action number and buttons
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">';
-            html += '<span style="font-weight:600;color:var(--acc);font-size:0.85rem">Action ' + (i + 1) + '</span>';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid ' + (isGlobal ? '#a78bfa' : '#333') + ';padding-bottom:6px">';
+            html += '<span style="font-weight:600;color:' + (isGlobal ? '#a78bfa' : 'var(--acc)') + ';font-size:0.85rem">Action ' + (i + 1) + '</span>';
             html += '<div style="display:flex;gap:6px">';
-            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="copyAction(' + i + ')" title="Copy">📋</button>';
-            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="pasteAction(' + i + ')" title="Paste">📄</button>';
-            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#ef4444" onclick="delMsg(' + i + ')" title="Delete">×</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="' + (isGlobal ? 'copyGlobalAction' : 'copyAction') + '(' + i + ')" title="Copy">📋</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#3f3f46" onclick="' + (isGlobal ? 'pasteGlobalAction' : 'pasteAction') + '(' + i + ')" title="Paste">📄</button>';
+            html += '<button class="btn sm" style="padding:4px 8px;font-size:0.7rem;background:#ef4444" onclick="' + (isGlobal ? 'deleteGlobalAction' : 'delMsg') + '(' + i + ')" title="Delete">×</button>';
             html += '</div>';
             html += '</div>';
 
             // Action Type + Label (for ALL action types)
-            html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:var(--acc)">Type</label><select style="font-weight:600" onchange="updMsg(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
+            var updFn = isGlobal ? 'updGlobalAction' : 'updMsg';
+            html += '<div class="field" style="margin-bottom:8px"><label style="font-weight:600;color:' + (isGlobal ? '#a78bfa' : 'var(--acc)') + '">Type</label><select style="font-weight:600" onchange="' + updFn + '(' + i + ',\'action\',this.value)">' + actionOpts(msg.action) + '</select></div>';
             html += '<div class="row" style="margin-bottom:8px">';
-            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="updMsg(' + i + ',\'label\',this.value)"></div>';
+            html += '<div class="field"><label>Label</label><input type="text" maxlength="6" value="' + (msg.label || '') + '" placeholder="' + getAutoLabel(msg) + '" onchange="' + updFn + '(' + i + ',\'label\',this.value)"></div>';
             html += '</div>';
 
             // Conditional fields
             if (msg.action === 'COMBO') {
                 html += '<div class="row">';
-                html += '<div class="field"><label>Partner</label><select onchange="updMsg(' + i + ',\'partner\',parseInt(this.value))">';
+                html += '<div class="field"><label>Partner</label><select onchange="' + updFn + '(' + i + ',\'partner\',parseInt(this.value))">';
                 var cnt = presetData.system.buttonCount;
+                var currentBtnIdx = isGlobal ? i : selectedBtn;
                 for (let b = 0; b < cnt; b++) {
-                    if (b !== selectedBtn) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
+                    if (b !== currentBtnIdx) html += '<option value="' + b + '"' + (msg.partner === b ? ' selected' : '') + '>BTN ' + (b + 1) + '</option>';
                 }
                 html += '</select></div>';
                 html += '</div>';
             }
             else if (msg.action === 'LONG_PRESS' || msg.action === '2ND_LONG_PRESS') {
                 html += '<div class="row">';
-                html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="updMsg(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label>Hold ms</label><input type="number" min="200" max="3000" step="100" value="' + (msg.holdMs || 500) + '" onchange="' + updFn + '(' + i + ',\'holdMs\',parseInt(this.value))"></div>';
                 html += '</div>';
             }
 
             // MIDI Content - Only show for actual MIDI commands
-            var isMidiCommand = MIDI_COMMANDS.indexOf(msg.type) >= 0;
             var isInternalNoFields = ['MENU_TOGGLE', 'MENU_UP', 'MENU_DOWN', 'MENU_ENTER', 'WIFI_TOGGLE', 'CLEAR_BLE_BONDS', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4'].indexOf(msg.type) >= 0;
 
             html += '<div class="row">';
-            html += '<div class="field"><label>Type</label><select onchange="updMsg(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
+            html += '<div class="field"><label>Type</label><select onchange="' + updFn + '(' + i + ',\'type\',this.value)">' + typeOpts(msg.type) + '</select></div>';
 
             if (!isInternalNoFields) {
-                html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="updMsg(' + i + ',\'channel\',parseInt(this.value))"></div>';
+                html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="' + updFn + '(' + i + ',\'channel\',parseInt(this.value))"></div>';
                 // D1/D2 hidden for TAP_TEMPO
                 if (msg.type !== 'TAP_TEMPO') {
                     // D1 as CC Picker dropdown for CC type
                     if (msg.type === 'CC') {
-                        html += '<div class="field"><label>CC</label><select onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                        html += '<div class="field"><label>CC</label><select onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
                     } else {
-                        html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updMsg(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                        html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))"></div>';
                     }
-                    html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="updMsg(' + i + ',\'data2\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="' + updFn + '(' + i + ',\'data2\',parseInt(this.value))"></div>';
                 }
             }
-            html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="updMsg(' + i + ',\'rgb\',this.value)"></div>';
+            html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="' + updFn + '(' + i + ',\'rgb\',this.value)"></div>';
             html += '</div>';
 
             if (msg.type === 'TAP_TEMPO') {
                 html += '<div class="row" style="margin-top:8px">';
-                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="updMsg(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
-                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="updMsg(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
-                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="updMsg(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &lt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmPrev || 0) + 1) + '" onchange="' + updFn + '(' + i + ',\'rhythmPrev\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Rhythm &gt;</label><input type="number" min="1" max="10" value="' + ((msg.rhythmNext || 4) + 1) + '" onchange="' + updFn + '(' + i + ',\'rhythmNext\',parseInt(this.value)-1)"></div>';
+                html += '<div class="field"><label style="font-size:10px">Lock Btn</label><input type="number" min="1" max="10" value="' + ((msg.tapLock || 7) + 1) + '" onchange="' + updFn + '(' + i + ',\'tapLock\',parseInt(this.value)-1)"></div>';
                 html += '</div>';
             }
 
             // SysEx hex input field with picker
             if (msg.type === 'SYSEX') {
+                var sysexPresetFn = isGlobal ? 'applyGlobalSysexPreset' : 'applySysexPreset';
                 html += '<div class="row" style="margin-top:8px">';
-                html += '<div class="field" style="flex:1"><label>SysEx Preset</label><select style="font-size:11px" onchange="applySysexPreset(' + i + ',this.value)">' + getSysexPickerOptions() + '</select></div>';
+                html += '<div class="field" style="flex:1"><label>SysEx Preset</label><select style="font-size:11px" onchange="' + sysexPresetFn + '(' + i + ',this.value)">' + getSysexPickerOptions() + '</select></div>';
                 html += '</div>';
                 html += '<div class="row" style="margin-top:6px">';
-                html += '<div class="field" style="flex:1"><label>SysEx Hex (manual edit)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="updMsg(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
+                html += '<div class="field" style="flex:1"><label>SysEx Hex (manual edit)</label><input type="text" style="font-family:monospace;font-size:11px" placeholder="f0...f7" value="' + (msg.sysex || '') + '" onchange="' + updFn + '(' + i + ',\'sysex\',this.value.toLowerCase().replace(/[^0-9a-f]/g,\'\'))"></div>';
                 html += '</div>';
             }
 
@@ -1645,6 +1681,14 @@
             html += '</div>';
             html += '</div>';
 
+            // Global Special Actions (Combo per button)
+            html += renderGlobalSpecialActions();
+
+            // Save System Changes Button
+            html += '<div class="actions" style="margin-top:16px; justify-content:center">';
+            html += '<button class="btn success" onclick="saveChanges()">Save System Changes</button>';
+            html += '</div>';
+
             html += '</div>';
             return html;
         }
@@ -1696,6 +1740,14 @@
         }
         function actionOpts(sel) { return actionTypes.map(function (t) { return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + t.replace('_', ' ') + '</option>'; }).join(''); }
 
+        function selGlobal() {
+            showGlobalActions = true;
+            selectedBtn = -1;
+            selectedAnalogInput = -1;
+            showSystem = false;
+            render();
+        }
+
         function chgPreset(v) {
             presetData.currentPreset = parseInt(v);
             selectedBtn = 0;
@@ -1742,20 +1794,18 @@
             render();
         }
 
-        // Clipboard for action copy/paste
+        // Clipboard for action copy/paste (unified for normal and global)
         var actionClipboard = null;
 
         function copyAction(idx) {
-            var p = presetData.currentPreset;
-            var msg = presetData.presets[p].buttons[selectedBtn].messages[idx];
-            actionClipboard = JSON.parse(JSON.stringify(msg)); // Deep copy
-            alert('Action ' + (idx + 1) + ' copied!');
+            var msg = presetData.presets[presetData.currentPreset].buttons[selectedBtn].messages[idx];
+            actionClipboard = JSON.parse(JSON.stringify(msg));
+            alert('Action copied');
         }
 
         function pasteAction(idx) {
-            if (!actionClipboard) { alert('Nothing to paste. Copy an action first.'); return; }
-            var p = presetData.currentPreset;
-            presetData.presets[p].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
+            if (!actionClipboard) return alert('Copy an action first');
+            presetData.presets[presetData.currentPreset].buttons[selectedBtn].messages[idx] = JSON.parse(JSON.stringify(actionClipboard));
             render();
         }
         // chgPreset is now defined earlier in the file with full BLE support
@@ -2690,6 +2740,72 @@
         }
 
         function updSys(k, v) { presetData.system[k] = v; }
+
+        function updGlobalAction(idx, key, value) {
+            if (!presetData.system.globalSpecialActions) {
+                presetData.system.globalSpecialActions = [];
+            }
+            while (presetData.system.globalSpecialActions.length <= idx) {
+                presetData.system.globalSpecialActions.push({ enabled: false, partner: -1, type: 'OFF', label: '', action: 'COMBO' });
+            }
+
+            // Handle 'action' field from regular cards being pasted/set
+            if (key === 'action') {
+                // If it's a global action, 'action' MUST be 'COMBO' in the firmware sense, 
+                // but we let the user select between PRESS/COMBO etc in the UI? 
+                // Actually, Global actions ARE combos by definition in this device.
+                // However, for consistency with regular cards, we store it.
+            }
+
+            presetData.system.globalSpecialActions[idx][key] = value;
+            if (key === 'type' || key === 'enabled' || key === 'action') render();
+        }
+
+        function toggleGlobalAction(idx) {
+            if (!presetData.system.globalSpecialActions) {
+                presetData.system.globalSpecialActions = [];
+            }
+            while (presetData.system.globalSpecialActions.length <= idx) {
+                presetData.system.globalSpecialActions.push({ enabled: false, partner: -1, type: 'OFF', label: '', action: 'COMBO' });
+            }
+            presetData.system.globalSpecialActions[idx].enabled = !presetData.system.globalSpecialActions[idx].enabled;
+            // Ensure global actions always have 'COMBO' action type if not set
+            if (!presetData.system.globalSpecialActions[idx].action) presetData.system.globalSpecialActions[idx].action = 'COMBO';
+            render();
+        }
+
+        function applyGlobalSysexPreset(idx, val) {
+            var hex = SYSEX_PRESETS[val];
+            if (hex) updGlobalAction(idx, 'sysex', hex);
+        }
+
+        // Clipboard for global actions
+        // var globalActionClipboard = null; // This is now unified with actionClipboard
+
+        function copyGlobalAction(idx) {
+            var action = presetData.system.globalSpecialActions[idx];
+            actionClipboard = JSON.parse(JSON.stringify(action));
+            alert('Global action copied from Button ' + (idx + 1));
+        }
+
+        function pasteGlobalAction(idx) {
+            if (!actionClipboard) {
+                alert('Nothing to paste. Copy an action first.');
+                return;
+            }
+            var clip = JSON.parse(JSON.stringify(actionClipboard));
+            // When pasting into global, enable it and ensure partner is managed
+            clip.enabled = true;
+            if (clip.partner === undefined) clip.partner = -1;
+            presetData.system.globalSpecialActions[idx] = clip;
+            render();
+        }
+
+        function deleteGlobalAction(idx) {
+            presetData.system.globalSpecialActions[idx] = { enabled: false, partner: -1, type: 'OFF', label: '', action: 'COMBO' };
+            render();
+        }
+
         function updExp(idx, k, v) {
             if (!presetData.expressionPedals) return;
             presetData.expressionPedals[idx][k] = v;
@@ -2777,6 +2893,59 @@
             };
             reader.readAsText(file);
             input.value = ''; // Reset for future opens
+        }
+
+        async function fetchFromDevice() {
+            var ip = document.getElementById('deviceIp').value || '192.168.4.1';
+            var url = 'http://' + ip + '/export';
+            var statusEl = document.getElementById('serialLog');
+            if (statusEl) statusEl.value = 'Fetching from ' + ip + '...\n' + statusEl.value;
+
+            try {
+                var res = await fetch(url);
+                if (!res.ok) throw new Error('Status ' + res.status);
+                var data = await res.json();
+                if (data.presets) {
+                    presetData = data;
+                    selectedBtn = 0;
+                    showSystem = false;
+                    render();
+                    if (statusEl) statusEl.value = 'Fetch SUCCESS\n' + statusEl.value;
+                    alert('Configuration fetched successfully from ' + ip);
+                } else {
+                    alert('Invalid configuration received');
+                }
+            } catch (e) {
+                if (statusEl) statusEl.value = 'Fetch FAILED: ' + e.message + '\n' + statusEl.value;
+                alert('Fetch failed: ' + e.message + '\n\nMake sure your computer is connected to Chocotone WiFi and CORS is supported by the device.');
+            }
+        }
+
+        async function pushToDevice() {
+            var ip = document.getElementById('deviceIp').value || '192.168.4.1';
+            var url = 'http://' + ip + '/import';
+            var json = JSON.stringify(presetData);
+            var blob = new Blob([json], { type: 'application/json' });
+            var fd = new FormData();
+            fd.append('config', blob, 'config.json');
+
+            var statusEl = document.getElementById('serialLog');
+            if (statusEl) statusEl.value = 'Pushing to ' + ip + '...\n' + statusEl.value;
+
+            try {
+                var res = await fetch(url, { method: 'POST', body: fd });
+                var text = await res.text();
+                if (res.ok) {
+                    if (statusEl) statusEl.value = 'Push SUCCESS: ' + text + '\n' + statusEl.value;
+                    alert('Success: ' + text + '\n\nDevice will reboot.');
+                } else {
+                    if (statusEl) statusEl.value = 'Push ERROR: ' + text + '\n' + statusEl.value;
+                    alert('Error: ' + text);
+                }
+            } catch (e) {
+                if (statusEl) statusEl.value = 'Push FAILED: ' + e.message + '\n' + statusEl.value;
+                alert('Push failed: ' + e.message + '\n\nMake sure your computer is connected to Chocotone WiFi.');
+            }
         }
 
         // Send preset change to connected device

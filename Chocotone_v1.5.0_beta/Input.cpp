@@ -9,9 +9,31 @@
 // Temp variable to track if BLE mode was changed (requires reboot)
 static bool bleModeChanged = false;
 
-// ============================================
-// ACTION MESSAGE DISPATCH
-// ============================================
+// Forward declaration
+void executeActionMessage(const ActionMessage &msg);
+
+// Helper: Fire a global action with OLED feedback
+void fireGlobalAction(const ActionMessage &msg, int btnIdx) {
+  // Show label
+  if (msg.label[0] != '\0') {
+    strncpy(buttonNameToShow, msg.label, 20);
+  } else if (msg.type == PRESET_DOWN) {
+    strncpy(buttonNameToShow, "<", 20);
+  } else if (msg.type == PRESET_UP) {
+    strncpy(buttonNameToShow, ">", 20);
+  } else if (msg.type == WIFI_TOGGLE) {
+    strncpy(buttonNameToShow, "WiFi", 20);
+  } else {
+    // Fallback to button name if no label
+    snprintf(buttonNameToShow, 20, "%s+",
+             buttonConfigs[currentPreset][btnIdx].name);
+  }
+  buttonNameToShow[20] = '\0';
+  buttonNameDisplayUntil = millis() + 1000;
+  safeDisplayOLED();
+
+  executeActionMessage(msg);
+}
 
 // Execute a single action message (MIDI or internal command)
 void executeActionMessage(const ActionMessage &msg) {
@@ -286,31 +308,32 @@ void loop_presetMode() {
           }
           updateLeds();
 
-          // ===== CHECK COMBO FIRST (using global special actions) =====
+          // ===== CHECK GLOBAL ACTION FIRST =====
           bool comboFired = false;
 
           if (globalSpecialActions[i].hasCombo) {
-            int8_t partner = globalSpecialActions[i].comboAction.combo.partner;
+            const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
+            int8_t partner = comboMsg.combo.partner;
 
             if (partner >= 0 && partner < systemConfig.buttonCount) {
-              // Wait up to 40ms for partner
+              // COMBO MODE: Wait for partner
               unsigned long waitStart = millis();
               while (!buttonPinActive[partner] && (millis() - waitStart < 40)) {
+                // ... (partner checking logic)
                 if (digitalRead(systemConfig.buttonPins[partner]) == LOW) {
                   buttonPinActive[partner] = true;
                   lastButtonPressTime_pads[partner] = millis();
-
+                  // Update partner LED state if needed
                   ButtonConfig &partnerConfig =
                       buttonConfigs[currentPreset][partner];
+                  PresetLedMode presetMode = presetLedModes[currentPreset];
                   if (presetMode == PRESET_LED_SELECTION ||
                       (presetMode == PRESET_LED_HYBRID &&
                        partnerConfig.inSelectionGroup)) {
                     presetSelectionState[currentPreset] = partner;
                   } else if (partnerConfig.ledMode == LED_TOGGLE) {
-                    // For SPM sync presets, don't toggle here
-                    if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                    if (presetSyncMode[currentPreset] == SYNC_NONE)
                       ledToggleState[partner] = !ledToggleState[partner];
-                    }
                   }
                   updateLeds();
                 }
@@ -320,30 +343,16 @@ void loop_presetMode() {
 
               if (buttonPinActive[partner] && !buttonComboChecked[partner]) {
                 // Fire combo!
-                const ActionMessage &comboMsg =
-                    globalSpecialActions[i].comboAction;
-
-                // Show label
-                if (comboMsg.label[0] != '\0') {
-                  strncpy(buttonNameToShow, comboMsg.label, 20);
-                } else if (comboMsg.type == PRESET_DOWN) {
-                  strncpy(buttonNameToShow, "<", 20);
-                } else if (comboMsg.type == PRESET_UP) {
-                  strncpy(buttonNameToShow, ">", 20);
-                } else if (comboMsg.type == WIFI_TOGGLE) {
-                  strncpy(buttonNameToShow, "WiFi", 20);
-                } else {
-                  snprintf(buttonNameToShow, 20, "%s+", config.name);
-                }
-                buttonNameToShow[20] = '\0';
-                buttonNameDisplayUntil = millis() + 1000;
-                safeDisplayOLED();
-
-                executeActionMessage(comboMsg);
+                fireGlobalAction(comboMsg, i);
                 buttonComboChecked[i] = true;
                 buttonComboChecked[partner] = true;
                 comboFired = true;
               }
+            } else if (partner == -1) {
+              // OVERRIDE MODE: Fire immediately (Global Override)
+              fireGlobalAction(comboMsg, i);
+              buttonComboChecked[i] = true;
+              comboFired = true;
             }
           }
 
@@ -354,26 +363,7 @@ void loop_presetMode() {
                   globalSpecialActions[p].hasCombo &&
                   globalSpecialActions[p].comboAction.combo.partner == i) {
 
-                const ActionMessage &comboMsg =
-                    globalSpecialActions[p].comboAction;
-
-                if (comboMsg.label[0] != '\0') {
-                  strncpy(buttonNameToShow, comboMsg.label, 20);
-                } else if (comboMsg.type == PRESET_DOWN) {
-                  strncpy(buttonNameToShow, "<", 20);
-                } else if (comboMsg.type == PRESET_UP) {
-                  strncpy(buttonNameToShow, ">", 20);
-                } else if (comboMsg.type == WIFI_TOGGLE) {
-                  strncpy(buttonNameToShow, "WiFi", 20);
-                } else {
-                  snprintf(buttonNameToShow, 20, "%s+",
-                           buttonConfigs[currentPreset][p].name);
-                }
-                buttonNameToShow[20] = '\0';
-                buttonNameDisplayUntil = millis() + 1000;
-                safeDisplayOLED();
-
-                executeActionMessage(comboMsg);
+                fireGlobalAction(globalSpecialActions[p].comboAction, p);
                 buttonComboChecked[p] = true;
                 comboFired = true;
                 updateLeds();

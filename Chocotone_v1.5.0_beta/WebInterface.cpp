@@ -5,6 +5,7 @@
 #include "Storage.h"
 #include "UI_Display.h"
 #include <ArduinoJson.h>
+#include <WebServer.h> // Ensure WebServer is included
 
 // Bluetooth Serial (SPP) for wireless editor connection
 BluetoothSerial SerialBT;
@@ -967,6 +968,7 @@ void rebootESP(String message) {
 }
 
 void handleExport() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Content-Disposition",
                     "attachment; filename=\"midi_presets_v2.json\"");
   server.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -1142,7 +1144,53 @@ void handleExport() {
   sys += "\"encoderB\":" + String(systemConfig.encoderB) + ",";
   sys += "\"encoderBtn\":" + String(systemConfig.encoderBtn) + ",";
   sys += "\"debugAnalogIn\":" +
-         String(systemConfig.debugAnalogIn ? "true" : "false") + "}";
+         String(systemConfig.debugAnalogIn ? "true" : "false") + ",";
+
+  // Add globalSpecialActions array
+  sys += "\"globalSpecialActions\":[";
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    if (i > 0)
+      sys += ",";
+    const GlobalSpecialAction &gsa = globalSpecialActions[i];
+    const ActionMessage &msg = gsa.comboAction;
+
+    sys += "{\"enabled\":";
+    sys += gsa.hasCombo ? "true" : "false";
+    sys += ",\"partner\":";
+    sys += String(msg.combo.partner);
+    sys += ",\"type\":\"" + String(getCommandTypeString(msg.type)) + "\",";
+    sys += "\"channel\":" + String(msg.channel) + ",";
+    sys += "\"data1\":" + String(msg.data1) + ",";
+    sys += "\"data2\":" + String(msg.data2) + ",";
+
+    char hexColor[8];
+    rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+    sys += "\"rgb\":\"" + String(hexColor) + "\",";
+
+    sys += "\"label\":\"";
+    char labelBuf[6] = {0};
+    strncpy(labelBuf, msg.label, 5);
+    sys += String(labelBuf) + "\"";
+
+    if (msg.type == TAP_TEMPO) {
+      sys += ",\"rhythmPrev\":" + String(msg.tapTempo.rhythmPrev);
+      sys += ",\"rhythmNext\":" + String(msg.tapTempo.rhythmNext);
+      sys += ",\"tapLock\":" + String(msg.tapTempo.tapLock);
+    }
+
+    if (msg.type == SYSEX && msg.sysex.length > 0) {
+      String sysexHex = "";
+      for (int s = 0; s < msg.sysex.length; s++) {
+        char hx[3];
+        snprintf(hx, sizeof(hx), "%02x", msg.sysex.data[s]);
+        sysexHex += hx;
+      }
+      sys += ",\"sysex\":\"" + sysexHex + "\"";
+    }
+
+    sys += "}";
+  }
+  sys += "]}";
   server.sendContent(sys);
 
   // End Root Object
@@ -1192,6 +1240,7 @@ static char uploadError[128] = "";  // Error message for browser
 
 // Response handler - called when upload is complete
 void handleImportUploadResponse() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   Serial.println("Upload complete, sending response");
 
   if (strlen(uploadError) > 0) {
@@ -1531,6 +1580,47 @@ void handleImportUploadData() {
                       oledConfig.type, oledConfig.rotation);
       }
 
+      // Parse Global Special Actions (Combos)
+      if (sys.containsKey("globalSpecialActions")) {
+        JsonArray gsaArr = sys["globalSpecialActions"];
+        Serial.printf("Parsing %d global special actions...\n", gsaArr.size());
+        for (int i = 0; i < gsaArr.size() && i < systemConfig.buttonCount;
+             i++) {
+          JsonObject gsaObj = gsaArr[i];
+          GlobalSpecialAction &gsa = globalSpecialActions[i];
+          ActionMessage &msg = gsa.comboAction;
+
+          gsa.hasCombo = gsaObj["enabled"] | false;
+          msg.action = ACTION_COMBO;
+          msg.combo.partner = gsaObj["partner"] | -1;
+          msg.type = parseCommandType(gsaObj["type"] | "OFF");
+          msg.channel = gsaObj["channel"] | 1;
+          msg.data1 = gsaObj["data1"] | 0;
+          msg.data2 = gsaObj["data2"] | 0;
+          hexToRgb(gsaObj["rgb"] | "#bb86fc", msg.rgb);
+
+          const char *label = gsaObj["label"] | "";
+          strncpy(msg.label, label, 5);
+          msg.label[5] = '\0';
+
+          if (msg.type == TAP_TEMPO) {
+            msg.tapTempo.rhythmPrev = gsaObj["rhythmPrev"] | 0;
+            msg.tapTempo.rhythmNext = gsaObj["rhythmNext"] | 4;
+            msg.tapTempo.tapLock = gsaObj["tapLock"] | 7;
+          }
+
+          if (msg.type == SYSEX) {
+            const char *hex = gsaObj["sysex"] | "";
+            size_t len = strlen(hex);
+            msg.sysex.length = 0;
+            for (size_t s = 0; s + 1 < len && msg.sysex.length < 48; s += 2) {
+              char h[3] = {hex[s], hex[s + 1], 0};
+              msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
+            }
+          }
+        }
+      }
+
       Serial.printf("Before saveSystemSettings - Free heap: %d\n",
                     ESP.getFreeHeap());
       saveSystemSettings();
@@ -1707,6 +1797,12 @@ void setup_web_server() {
   server.on("/saveSystem", HTTP_POST, handleSaveSystem);
   server.on("/export", HTTP_GET, handleExport);
   server.on("/import", HTTP_GET, handleImport);
+  server.on("/import", HTTP_OPTIONS, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+    server.send(200);
+  });
   // Register multipart upload handler: (path, method, responseHandler,
   // uploadHandler)
   server.on("/import", HTTP_POST, handleImportUploadResponse,
@@ -2123,7 +2219,26 @@ String buildFullConfigJson() {
   // Overlay screen
   json += ",\"overlay\":{";
   json += "\"textSize\":" + String(oledConfig.overlay.titleSize);
-  json += "}";
+  json += "}"; // Close overlay
+
+  // Global Special Actions (v1.5.1 - move inside system)
+  json += ",\"globalSpecialActions\":[";
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    if (i > 0)
+      json += ",";
+    json += "{\"enabled\":";
+    json += globalSpecialActions[i].hasCombo ? "true" : "false";
+    json += ",\"partner\":";
+    json += String(globalSpecialActions[i].comboAction.combo.partner);
+    json += ",\"type\":\"";
+    json += getCommandTypeString(globalSpecialActions[i].comboAction.type);
+    json += "\",\"label\":\"";
+    char labelBuf[6] = {0};
+    strncpy(labelBuf, globalSpecialActions[i].comboAction.label, 5);
+    json += escapeJson(labelBuf);
+    json += "\"}";
+  }
+  json += "]";
 
   json += "}}}"; // Close screens, oled, system
 
@@ -2490,6 +2605,25 @@ bool applyConfigJson(JsonObject doc) {
         }
       } // End screens
     } // End oled
+
+    // Global Special Actions (v1.5.1)
+    if (sys.containsKey("globalSpecialActions")) {
+      JsonArray gsaArr = sys["globalSpecialActions"];
+      for (int i = 0; i < (int)gsaArr.size() && i < MAX_BUTTONS; i++) {
+        JsonObject gsaObj = gsaArr[i];
+        globalSpecialActions[i].hasCombo = gsaObj["enabled"] | false;
+        globalSpecialActions[i].comboAction.combo.partner =
+            gsaObj["partner"] | -1;
+        globalSpecialActions[i].comboAction.type =
+            parseCommandType(gsaObj["type"] | "OFF");
+        globalSpecialActions[i].comboAction.action = ACTION_COMBO;
+        if (gsaObj.containsKey("label")) {
+          strncpy(globalSpecialActions[i].comboAction.label,
+                  gsaObj["label"] | "", 5);
+          globalSpecialActions[i].comboAction.label[5] = '\0';
+        }
+      }
+    }
   } // End sys
 
   // Analog Inputs
