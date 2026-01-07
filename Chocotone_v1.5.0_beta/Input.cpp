@@ -349,168 +349,222 @@ void loop_presetMode() {
                 buttonComboChecked[partner] = true;
                 comboFired = true;
               }
-            }
-          } else if (globalSpecialActions[i].partner == -1) {
-            // OVERRIDE MODE: Check for DOUBLE_TAP or toggle types
-            ActionType triggerType = ACTION_PRESS;
-            bool isDoubleTap = (now - lastButtonReleaseTime_pads[i] < 300);
-            if (isDoubleTap && (comboMsg.action == ACTION_DOUBLE_TAP)) {
-              triggerType = ACTION_DOUBLE_TAP;
-              Serial.printf("BTN %d: Global Double Tap detected\n", i);
-            } else if (buttonConfigs[currentPreset][i].isAlternate) {
-              triggerType = ACTION_2ND_PRESS;
-            }
-
-            // Fire if it matches the current event OR its alternate/fallback
-            if (comboMsg.action == triggerType ||
-                ((triggerType == ACTION_PRESS ||
-                  triggerType == ACTION_2ND_PRESS) &&
-                 comboMsg.action == ACTION_COMBO) ||
-                (triggerType == ACTION_2ND_PRESS &&
-                 comboMsg.action == ACTION_PRESS)) {
-              fireGlobalAction(comboMsg, i);
-
-              // Toggle alternate state if global action has 2ND_PRESS
-              if (comboMsg.action == ACTION_2ND_PRESS ||
-                  (triggerType == ACTION_PRESS &&
-                   hasAction(buttonConfigs[currentPreset][i],
-                             ACTION_2ND_PRESS))) {
-                // Note: we use the regular button's toggle state for
-                // convenience
-                buttonConfigs[currentPreset][i].isAlternate =
-                    !buttonConfigs[currentPreset][i].isAlternate;
-                ledToggleState[i] = buttonConfigs[currentPreset][i].isAlternate;
+            } else if (globalSpecialActions[i].partner == -1) {
+              // OVERRIDE MODE: Check for DOUBLE_TAP or toggle types
+              ActionType triggerType = ACTION_PRESS;
+              bool isDoubleTap = (now - lastButtonReleaseTime_pads[i] < 300);
+              if (isDoubleTap && (comboMsg.action == ACTION_DOUBLE_TAP)) {
+                triggerType = ACTION_DOUBLE_TAP;
+                Serial.printf("BTN %d: Global Double Tap detected\n", i);
+              } else if (buttonConfigs[currentPreset][i].isAlternate) {
+                triggerType = ACTION_2ND_PRESS;
               }
 
-              // Only block local button logic if the override actually fired
-              buttonComboChecked[i] = true;
-              comboFired = true;
-            }
-          }
-        }
-        // Check reverse combo (partner has combo pointing to us)
-        if (!comboFired) {
-          for (int p = 0; p < systemConfig.buttonCount; p++) {
-            if (p != i && buttonPinActive[p] && !buttonComboChecked[p] &&
-                globalSpecialActions[p].hasCombo &&
-                globalSpecialActions[p].partner == i) {
+              // Fire if it matches the current event OR its alternate/fallback
+              if (comboMsg.action == triggerType ||
+                  ((triggerType == ACTION_PRESS ||
+                    triggerType == ACTION_2ND_PRESS) &&
+                   comboMsg.action == ACTION_COMBO) ||
+                  (triggerType == ACTION_2ND_PRESS &&
+                   comboMsg.action == ACTION_PRESS)) {
+                fireGlobalAction(comboMsg, i);
 
-              fireGlobalAction(globalSpecialActions[p].comboAction, p);
-              buttonComboChecked[p] = true;
-              comboFired = true;
-              updateLeds();
-              break;
-            }
-          }
-        }
-
-        // ===== TAP TEMPO CONTROLS (when in tap mode) =====
-        if (!comboFired && inTapTempoMode) {
-          bool isTapControl = false;
-
-          for (int tapBtn = 0; tapBtn < systemConfig.buttonCount; tapBtn++) {
-            ActionMessage *tapAction =
-                findAction(buttonConfigs[currentPreset][tapBtn], ACTION_PRESS);
-            if (tapAction && tapAction->type == TAP_TEMPO) {
-              // RHYTHM PREV
-              if (tapAction->tapTempo.rhythmPrev == i) {
-                rhythmPattern = (rhythmPattern - 1 + 4) % 4;
-                saveSystemSettings();
-                float delayMs =
-                    (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
-                sendDelayTime(constrain((int)delayMs, 0, 1000));
-                strncpy(buttonNameToShow, rhythmNames[rhythmPattern], 20);
-                buttonNameDisplayUntil = millis() + 1000;
-                if (!tapModeLocked)
-                  tapModeTimeout = millis() + 3000;
-                safeDisplayOLED();
-                isTapControl = true;
-                break;
-              }
-              // RHYTHM NEXT
-              if (tapAction->tapTempo.rhythmNext == i) {
-                rhythmPattern = (rhythmPattern + 1) % 4;
-                saveSystemSettings();
-                float delayMs =
-                    (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
-                sendDelayTime(constrain((int)delayMs, 0, 1000));
-                strncpy(buttonNameToShow, rhythmNames[rhythmPattern], 20);
-                buttonNameDisplayUntil = millis() + 1000;
-                if (!tapModeLocked)
-                  tapModeTimeout = millis() + 3000;
-                safeDisplayOLED();
-                isTapControl = true;
-                break;
-              }
-              // TAP LOCK
-              if (tapAction->tapTempo.tapLock == i) {
-                tapModeLocked = !tapModeLocked;
-                if (tapModeLocked) {
-                  strncpy(buttonNameToShow, "LOCKED", 20);
-                  buttonNameDisplayUntil = millis() + 1000;
-                } else {
-                  inTapTempoMode = false;
-                  buttonNameDisplayUntil = 0;
+                // Toggle alternate state if global action has 2ND_PRESS
+                if (comboMsg.action == ACTION_2ND_PRESS ||
+                    (triggerType == ACTION_PRESS &&
+                     hasAction(buttonConfigs[currentPreset][i],
+                               ACTION_2ND_PRESS))) {
+                  // Note: we use the regular button's toggle state for
+                  // convenience
+                  buttonConfigs[currentPreset][i].isAlternate =
+                      !buttonConfigs[currentPreset][i].isAlternate;
+                  ledToggleState[i] =
+                      buttonConfigs[currentPreset][i].isAlternate;
                 }
-                safeDisplayOLED();
-                isTapControl = true;
+
+                // Only block local button logic if the override actually fired
+                buttonComboChecked[i] = true;
+                comboFired = true;
+              }
+            }
+          }
+          // Check reverse combo (partner has combo pointing to us)
+          if (!comboFired) {
+            for (int p = 0; p < systemConfig.buttonCount; p++) {
+              if (p != i && buttonPinActive[p] && !buttonComboChecked[p] &&
+                  globalSpecialActions[p].hasCombo &&
+                  globalSpecialActions[p].partner == i) {
+
+                fireGlobalAction(globalSpecialActions[p].comboAction, p);
+                buttonComboChecked[p] = true;
+                comboFired = true;
+                updateLeds();
                 break;
               }
             }
           }
 
-          if (isTapControl)
-            continue; // Skip normal button handling
-        }
+          // ===== TAP TEMPO CONTROLS (when in tap mode) =====
+          if (!comboFired && inTapTempoMode) {
+            bool isTapControl = false;
 
-        // ===== NORMAL BUTTON PRESS (no combo, no tap control) =====
-        if (!comboFired) {
-          // Check for Double Tap for regular buttons
-          ActionMessage *doubleTapAction =
-              findAction(config, ACTION_DOUBLE_TAP);
-          if (doubleTapAction && (now - lastButtonReleaseTime_pads[i] < 300)) {
-            Serial.printf("BTN %d: Double Tap detected\n", i);
-            executeActionMessage(*doubleTapAction);
-            // Block regular press
-            buttonComboChecked[i] = true;
-            updateLeds();
-            continue;
-          }
-
-          // Find the appropriate action based on toggle state
-          ActionMessage *action = nullptr;
-
-          Serial.printf("BTN %d: isAlternate=%d, has2nd=%d\n", i,
-                        config.isAlternate,
-                        hasAction(config, ACTION_2ND_PRESS));
-
-          if (config.isAlternate) {
-            // Toggle mode - alternate between PRESS and 2ND_PRESS
-            action = findAction(config, ACTION_2ND_PRESS);
-          } else {
-            action = findAction(config, ACTION_PRESS);
-          }
-
-          // Fallback to PRESS if no 2ND_PRESS found
-          if (!action) {
-            action = findAction(config, ACTION_PRESS);
-          }
-
-          if (action) {
-            Serial.printf("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
-                          action->type, action->data1, action->data2);
-
-            // Display action label if set, otherwise use button name
-            if (action->label[0] != '\0') {
-              strncpy(buttonNameToShow, action->label, 20);
-            } else {
-              strncpy(buttonNameToShow, config.name, 20);
+            for (int tapBtn = 0; tapBtn < systemConfig.buttonCount; tapBtn++) {
+              ActionMessage *tapAction = findAction(
+                  buttonConfigs[currentPreset][tapBtn], ACTION_PRESS);
+              if (tapAction && tapAction->type == TAP_TEMPO) {
+                // RHYTHM PREV
+                if (tapAction->tapTempo.rhythmPrev == i) {
+                  rhythmPattern = (rhythmPattern - 1 + 4) % 4;
+                  saveSystemSettings();
+                  float delayMs =
+                      (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
+                  sendDelayTime(constrain((int)delayMs, 0, 1000));
+                  strncpy(buttonNameToShow, rhythmNames[rhythmPattern], 20);
+                  buttonNameDisplayUntil = millis() + 1000;
+                  if (!tapModeLocked)
+                    tapModeTimeout = millis() + 3000;
+                  safeDisplayOLED();
+                  isTapControl = true;
+                  break;
+                }
+                // RHYTHM NEXT
+                if (tapAction->tapTempo.rhythmNext == i) {
+                  rhythmPattern = (rhythmPattern + 1) % 4;
+                  saveSystemSettings();
+                  float delayMs =
+                      (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
+                  sendDelayTime(constrain((int)delayMs, 0, 1000));
+                  strncpy(buttonNameToShow, rhythmNames[rhythmPattern], 20);
+                  buttonNameDisplayUntil = millis() + 1000;
+                  if (!tapModeLocked)
+                    tapModeTimeout = millis() + 3000;
+                  safeDisplayOLED();
+                  isTapControl = true;
+                  break;
+                }
+                // TAP LOCK
+                if (tapAction->tapTempo.tapLock == i) {
+                  tapModeLocked = !tapModeLocked;
+                  if (tapModeLocked) {
+                    strncpy(buttonNameToShow, "LOCKED", 20);
+                    buttonNameDisplayUntil = millis() + 1000;
+                  } else {
+                    inTapTempoMode = false;
+                    buttonNameDisplayUntil = 0;
+                  }
+                  safeDisplayOLED();
+                  isTapControl = true;
+                  break;
+                }
+              }
             }
-            buttonNameToShow[20] = '\0';
-            buttonNameDisplayUntil = millis() + 1000;
-            safeDisplayOLED();
 
-            // Check if button has LONG_PRESS - if so, defer PRESS to release
+            if (isTapControl)
+              continue; // Skip normal button handling
+          }
+
+          // ===== NORMAL BUTTON PRESS (no combo, no tap control) =====
+          if (!comboFired) {
+            // Check for Double Tap for regular buttons
+            ActionMessage *doubleTapAction =
+                findAction(config, ACTION_DOUBLE_TAP);
+            if (doubleTapAction &&
+                (now - lastButtonReleaseTime_pads[i] < 300)) {
+              Serial.printf("BTN %d: Double Tap detected\n", i);
+              executeActionMessage(*doubleTapAction);
+              // Block regular press
+              buttonComboChecked[i] = true;
+              updateLeds();
+              continue;
+            }
+
+            // Find the appropriate action based on toggle state
+            ActionMessage *action = nullptr;
+
+            Serial.printf("BTN %d: isAlternate=%d, has2nd=%d\n", i,
+                          config.isAlternate,
+                          hasAction(config, ACTION_2ND_PRESS));
+
+            if (config.isAlternate) {
+              // Toggle mode - alternate between PRESS and 2ND_PRESS
+              action = findAction(config, ACTION_2ND_PRESS);
+            } else {
+              action = findAction(config, ACTION_PRESS);
+            }
+
+            // Fallback to PRESS if no 2ND_PRESS found
+            if (!action) {
+              action = findAction(config, ACTION_PRESS);
+            }
+
+            if (action) {
+              Serial.printf("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
+                            action->type, action->data1, action->data2);
+
+              // Display action label if set, otherwise use button name
+              if (action->label[0] != '\0') {
+                strncpy(buttonNameToShow, action->label, 20);
+              } else {
+                strncpy(buttonNameToShow, config.name, 20);
+              }
+              buttonNameToShow[20] = '\0';
+              buttonNameDisplayUntil = millis() + 1000;
+              safeDisplayOLED();
+
+              // Check if button has LONG_PRESS - if so, defer PRESS to release
+              ActionType longPressType = config.isAlternate
+                                             ? ACTION_2ND_LONG_PRESS
+                                             : ACTION_LONG_PRESS;
+              ActionMessage *longPress = findAction(config, longPressType);
+              if (!longPress) {
+                longPress = findAction(config, ACTION_LONG_PRESS);
+              }
+
+              if (longPress) {
+                // Has long press configured - DON'T fire PRESS now
+                // It will fire on release if held time < holdMs threshold
+                Serial.printf("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
+              } else if (action->type == TAP_TEMPO) {
+                handleTapTempo(i);
+              } else {
+                // No LONG_PRESS configured - fire PRESS immediately
+                executeActionMessage(*action);
+
+                // GP5 Sync: Request state after any button action to keep LEDs
+                // synced
+                if (presetSyncMode[currentPreset] == SYNC_GP5 &&
+                    clientConnected) {
+                  delay(100); // Give GP5 time to process the command
+                  requestPresetState();
+                }
+
+                // Toggle alternate state if button has 2ND_PRESS
+                if (hasAction(config, ACTION_2ND_PRESS)) {
+                  config.isAlternate = !config.isAlternate;
+                  // Also update LED state to match (for SPM sync presets that
+                  // skip early toggle)
+                  ledToggleState[i] = config.isAlternate;
+                  Serial.printf("BTN %d: toggled isAlternate to %d, LED=%d\n",
+                                i, config.isAlternate, ledToggleState[i]);
+                  updateLeds();
+                }
+              }
+            } else {
+              Serial.printf("BTN %d: NO ACTION FOUND!\n", i);
+            }
+          }
+        }
+      } else {
+        // ===== BUTTON RELEASE =====
+        buttonPinActive[i] = false;
+        lastButtonReleaseTime_pads[i] = millis();
+
+        if (!buttonComboChecked[i]) {
+          ButtonConfig &config = buttonConfigs[currentPreset][i];
+
+          // ===== DEFERRED PRESS (for buttons with LONG_PRESS) =====
+          // If button has LONG_PRESS but it didn't fire, fire PRESS now
+          if (!buttonHoldFired[i]) {
             ActionType longPressType =
                 config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
             ActionMessage *longPress = findAction(config, longPressType);
@@ -519,218 +573,168 @@ void loop_presetMode() {
             }
 
             if (longPress) {
-              // Has long press configured - DON'T fire PRESS now
-              // It will fire on release if held time < holdMs threshold
-              Serial.printf("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
-            } else if (action->type == TAP_TEMPO) {
-              handleTapTempo(i);
-            } else {
-              // No LONG_PRESS configured - fire PRESS immediately
-              executeActionMessage(*action);
-
-              // GP5 Sync: Request state after any button action to keep LEDs
-              // synced
-              if (presetSyncMode[currentPreset] == SYNC_GP5 &&
-                  clientConnected) {
-                delay(100); // Give GP5 time to process the command
-                requestPresetState();
+              // Button has LONG_PRESS configured but it didn't fire
+              // This means we need to fire the deferred PRESS now
+              ActionMessage *pressAction =
+                  config.isAlternate ? findAction(config, ACTION_2ND_PRESS)
+                                     : findAction(config, ACTION_PRESS);
+              if (!pressAction) {
+                pressAction = findAction(config, ACTION_PRESS);
               }
 
-              // Toggle alternate state if button has 2ND_PRESS
-              if (hasAction(config, ACTION_2ND_PRESS)) {
-                config.isAlternate = !config.isAlternate;
-                // Also update LED state to match (for SPM sync presets that
-                // skip early toggle)
-                ledToggleState[i] = config.isAlternate;
-                Serial.printf("BTN %d: toggled isAlternate to %d, LED=%d\n", i,
-                              config.isAlternate, ledToggleState[i]);
-                updateLeds();
+              if (pressAction && pressAction->type != TAP_TEMPO) {
+                Serial.printf("BTN %d: Firing deferred PRESS on release\n", i);
+                executeActionMessage(*pressAction);
+
+                // GP5 Sync: Request state after any button action
+                if (presetSyncMode[currentPreset] == SYNC_GP5 &&
+                    clientConnected) {
+                  delay(100);
+                  requestPresetState();
+                }
+
+                // Toggle alternate state if button has 2ND_PRESS
+                if (hasAction(config, ACTION_2ND_PRESS)) {
+                  config.isAlternate = !config.isAlternate;
+                  ledToggleState[i] = config.isAlternate;
+                  Serial.printf("BTN %d: toggled isAlternate to %d\n", i,
+                                config.isAlternate);
+                }
+              } else if (pressAction && pressAction->type == TAP_TEMPO) {
+                // Handle deferred TAP_TEMPO
+                handleTapTempo(i);
               }
             }
-          } else {
-            Serial.printf("BTN %d: NO ACTION FOUND!\n", i);
+          }
+
+          // Check for RELEASE or 2ND_RELEASE action based on isAlternate state
+          ActionType releaseType =
+              config.isAlternate ? ACTION_2ND_RELEASE : ACTION_RELEASE;
+          ActionMessage *releaseAction = findAction(config, releaseType);
+          if (!releaseAction) {
+            // Fallback: try the regular RELEASE action if 2ND_RELEASE not found
+            releaseAction = findAction(config, ACTION_RELEASE);
+          }
+          if (releaseAction) {
+            executeActionMessage(*releaseAction);
+          }
+
+          // Handle NOTE_MOMENTARY note off
+          ActionMessage *pressAction = findAction(config, ACTION_PRESS);
+          if (pressAction && pressAction->type == NOTE_MOMENTARY) {
+            sendMidiNoteOff(pressAction->channel, pressAction->data1, 0);
+          }
+        } else {
+          // Check for Global Override RELEASE or 2ND_RELEASE
+          if (globalSpecialActions[i].hasCombo &&
+              globalSpecialActions[i].partner == -1) {
+            const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
+            ActionType releaseType = buttonConfigs[currentPreset][i].isAlternate
+                                         ? ACTION_2ND_RELEASE
+                                         : ACTION_RELEASE;
+
+            if (comboMsg.action == releaseType ||
+                (releaseType == ACTION_2ND_RELEASE &&
+                 comboMsg.action == ACTION_RELEASE)) {
+              fireGlobalAction(comboMsg, i);
+            }
           }
         }
+
+        buttonComboChecked[i] = false;
+        buttonHoldFired[i] = false;
+        buttonConsumed[i] =
+            false; // Allow button to trigger again after release
+        updateLeds();
       }
-    } else {
-      // ===== BUTTON RELEASE =====
-      buttonPinActive[i] = false;
-      lastButtonReleaseTime_pads[i] = millis();
+    }
 
-      if (!buttonComboChecked[i]) {
-        ButtonConfig &config = buttonConfigs[currentPreset][i];
+    // ===== CHECK FOR LONG_PRESS OR 2ND_LONG_PRESS ACTION =====
+    if (buttonPinActive[i] && !buttonHoldFired[i]) {
+      // Check for Global Override ACTION_LONG_PRESS or 2ND_LONG_PRESS
+      if (globalSpecialActions[i].hasCombo &&
+          globalSpecialActions[i].partner == -1) {
+        const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
+        ActionType holdType = buttonConfigs[currentPreset][i].isAlternate
+                                  ? ACTION_2ND_LONG_PRESS
+                                  : ACTION_LONG_PRESS;
 
-        // ===== DEFERRED PRESS (for buttons with LONG_PRESS) =====
-        // If button has LONG_PRESS but it didn't fire, fire PRESS now
-        if (!buttonHoldFired[i]) {
-          ActionType longPressType =
-              config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
-          ActionMessage *longPress = findAction(config, longPressType);
-          if (!longPress) {
-            longPress = findAction(config, ACTION_LONG_PRESS);
-          }
-
-          if (longPress) {
-            // Button has LONG_PRESS configured but it didn't fire
-            // This means we need to fire the deferred PRESS now
-            ActionMessage *pressAction =
-                config.isAlternate ? findAction(config, ACTION_2ND_PRESS)
-                                   : findAction(config, ACTION_PRESS);
-            if (!pressAction) {
-              pressAction = findAction(config, ACTION_PRESS);
-            }
-
-            if (pressAction && pressAction->type != TAP_TEMPO) {
-              Serial.printf("BTN %d: Firing deferred PRESS on release\n", i);
-              executeActionMessage(*pressAction);
-
-              // GP5 Sync: Request state after any button action
-              if (presetSyncMode[currentPreset] == SYNC_GP5 &&
-                  clientConnected) {
-                delay(100);
-                requestPresetState();
-              }
-
-              // Toggle alternate state if button has 2ND_PRESS
-              if (hasAction(config, ACTION_2ND_PRESS)) {
-                config.isAlternate = !config.isAlternate;
-                ledToggleState[i] = config.isAlternate;
-                Serial.printf("BTN %d: toggled isAlternate to %d\n", i,
-                              config.isAlternate);
-              }
-            } else if (pressAction && pressAction->type == TAP_TEMPO) {
-              // Handle deferred TAP_TEMPO
-              handleTapTempo(i);
-            }
-          }
-        }
-
-        // Check for RELEASE or 2ND_RELEASE action based on isAlternate state
-        ActionType releaseType =
-            config.isAlternate ? ACTION_2ND_RELEASE : ACTION_RELEASE;
-        ActionMessage *releaseAction = findAction(config, releaseType);
-        if (!releaseAction) {
-          // Fallback: try the regular RELEASE action if 2ND_RELEASE not found
-          releaseAction = findAction(config, ACTION_RELEASE);
-        }
-        if (releaseAction) {
-          executeActionMessage(*releaseAction);
-        }
-
-        // Handle NOTE_MOMENTARY note off
-        ActionMessage *pressAction = findAction(config, ACTION_PRESS);
-        if (pressAction && pressAction->type == NOTE_MOMENTARY) {
-          sendMidiNoteOff(pressAction->channel, pressAction->data1, 0);
-        }
-      } else {
-        // Check for Global Override RELEASE or 2ND_RELEASE
-        if (globalSpecialActions[i].hasCombo &&
-            globalSpecialActions[i].partner == -1) {
-          const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
-          ActionType releaseType = buttonConfigs[currentPreset][i].isAlternate
-                                       ? ACTION_2ND_RELEASE
-                                       : ACTION_RELEASE;
-
-          if (comboMsg.action == releaseType ||
-              (releaseType == ACTION_2ND_RELEASE &&
-               comboMsg.action == ACTION_RELEASE)) {
+        if (comboMsg.action == holdType ||
+            (holdType == ACTION_2ND_LONG_PRESS &&
+             comboMsg.action == ACTION_LONG_PRESS)) {
+          unsigned long elapsed = millis() - buttonHoldStartTime[i];
+          uint16_t threshold =
+              comboMsg.longPress.holdMs > 0 ? comboMsg.longPress.holdMs : 700;
+          if (elapsed >= threshold) {
             fireGlobalAction(comboMsg, i);
+            buttonHoldFired[i] = true;
+            Serial.printf("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
+                          comboMsg.action);
+            updateLeds();
           }
         }
-      }
-
-      buttonComboChecked[i] = false;
-      buttonHoldFired[i] = false;
-      buttonConsumed[i] = false; // Allow button to trigger again after release
-      updateLeds();
-    }
-  }
-
-  // ===== CHECK FOR LONG_PRESS OR 2ND_LONG_PRESS ACTION =====
-  if (buttonPinActive[i] && !buttonHoldFired[i]) {
-    // Check for Global Override ACTION_LONG_PRESS or 2ND_LONG_PRESS
-    if (globalSpecialActions[i].hasCombo &&
-        globalSpecialActions[i].partner == -1) {
-      const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
-      ActionType holdType = buttonConfigs[currentPreset][i].isAlternate
-                                ? ACTION_2ND_LONG_PRESS
-                                : ACTION_LONG_PRESS;
-
-      if (comboMsg.action == holdType ||
-          (holdType == ACTION_2ND_LONG_PRESS &&
-           comboMsg.action == ACTION_LONG_PRESS)) {
-        unsigned long elapsed = millis() - buttonHoldStartTime[i];
-        uint16_t threshold =
-            comboMsg.longPress.holdMs > 0 ? comboMsg.longPress.holdMs : 700;
-        if (elapsed >= threshold) {
-          fireGlobalAction(comboMsg, i);
-          buttonHoldFired[i] = true;
-          Serial.printf("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
-                        comboMsg.action);
-          updateLeds();
+      } else if (!buttonComboChecked[i]) {
+        // Normal button hold check
+        ButtonConfig &config = buttonConfigs[currentPreset][i];
+        // Check for 2ND_LONG_PRESS if in alternate state, otherwise LONG_PRESS
+        ActionType longPressType =
+            config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
+        ActionMessage *longPress = findAction(config, longPressType);
+        if (!longPress) {
+          // Fallback: try regular LONG_PRESS if 2ND_LONG_PRESS not found
+          longPress = findAction(config, ACTION_LONG_PRESS);
         }
-      }
-    } else if (!buttonComboChecked[i]) {
-      // Normal button hold check
-      ButtonConfig &config = buttonConfigs[currentPreset][i];
-      // Check for 2ND_LONG_PRESS if in alternate state, otherwise LONG_PRESS
-      ActionType longPressType =
-          config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
-      ActionMessage *longPress = findAction(config, longPressType);
-      if (!longPress) {
-        // Fallback: try regular LONG_PRESS if 2ND_LONG_PRESS not found
-        longPress = findAction(config, ACTION_LONG_PRESS);
-      }
 
-      if (longPress) {
-        unsigned long elapsed = millis() - buttonHoldStartTime[i];
-        uint16_t threshold =
-            longPress->longPress.holdMs > 0 ? longPress->longPress.holdMs : 700;
+        if (longPress) {
+          unsigned long elapsed = millis() - buttonHoldStartTime[i];
+          uint16_t threshold = longPress->longPress.holdMs > 0
+                                   ? longPress->longPress.holdMs
+                                   : 700;
 
-        if (elapsed >= threshold) {
-          // Fire long press action - show label if available
-          if (longPress->label[0] != '\0') {
-            strncpy(buttonNameToShow, longPress->label, 20);
-          } else {
-            // Try to get a meaningful name from the command type
-            switch (longPress->type) {
-            case PRESET_UP:
-              strncpy(buttonNameToShow, "PRESET+", 20);
-              break;
-            case PRESET_DOWN:
-              strncpy(buttonNameToShow, "PRESET-", 20);
-              break;
-            case WIFI_TOGGLE:
-              strncpy(buttonNameToShow, "WiFi", 20);
-              break;
-            case CLEAR_BLE_BONDS:
-              strncpy(buttonNameToShow, "BLE CLR", 20);
-              break;
-            default:
-              strncpy(buttonNameToShow, "HOLD", 20);
-              break;
+          if (elapsed >= threshold) {
+            // Fire long press action - show label if available
+            if (longPress->label[0] != '\0') {
+              strncpy(buttonNameToShow, longPress->label, 20);
+            } else {
+              // Try to get a meaningful name from the command type
+              switch (longPress->type) {
+              case PRESET_UP:
+                strncpy(buttonNameToShow, "PRESET+", 20);
+                break;
+              case PRESET_DOWN:
+                strncpy(buttonNameToShow, "PRESET-", 20);
+                break;
+              case WIFI_TOGGLE:
+                strncpy(buttonNameToShow, "WiFi", 20);
+                break;
+              case CLEAR_BLE_BONDS:
+                strncpy(buttonNameToShow, "BLE CLR", 20);
+                break;
+              default:
+                strncpy(buttonNameToShow, "HOLD", 20);
+                break;
+              }
             }
+            buttonNameToShow[20] = '\0';
+            buttonNameDisplayUntil = millis() + 1000;
+            safeDisplayOLED();
+
+            executeActionMessage(*longPress);
+
+            // GP5 Sync: Request state after any button action
+            if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
+              delay(100);
+              requestPresetState();
+            }
+
+            buttonHoldFired[i] = true;
+            Serial.printf("BTN %d LONG_PRESS fired\n", i);
+            updateLeds();
           }
-          buttonNameToShow[20] = '\0';
-          buttonNameDisplayUntil = millis() + 1000;
-          safeDisplayOLED();
-
-          executeActionMessage(*longPress);
-
-          // GP5 Sync: Request state after any button action
-          if (presetSyncMode[currentPreset] == SYNC_GP5 && clientConnected) {
-            delay(100);
-            requestPresetState();
-          }
-
-          buttonHoldFired[i] = true;
-          Serial.printf("BTN %d LONG_PRESS fired\n", i);
-          updateLeds();
         }
       }
     }
   }
-}
 }
 
 // ============================================
