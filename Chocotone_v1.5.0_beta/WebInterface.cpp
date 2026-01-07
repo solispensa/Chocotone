@@ -1614,7 +1614,7 @@ void handleImportUploadData() {
 
           gsa.hasCombo = gsaObj["enabled"] | false;
           msg.action = parseActionType(gsaObj["action"] | "PRESS");
-          msg.combo.partner = gsaObj["partner"] | -1;
+          gsa.partner = gsaObj["partner"] | -1;
           msg.type = parseCommandType(gsaObj["type"] | "OFF");
           msg.channel = gsaObj["channel"] | 1;
           msg.data1 = gsaObj["data1"] | 0;
@@ -2643,8 +2643,7 @@ bool applyConfigJson(JsonObject doc) {
       for (int i = 0; i < (int)gsaArr.size() && i < MAX_BUTTONS; i++) {
         JsonObject gsaObj = gsaArr[i];
         globalSpecialActions[i].hasCombo = gsaObj["enabled"] | false;
-        globalSpecialActions[i].comboAction.combo.partner =
-            gsaObj["partner"] | -1;
+        globalSpecialActions[i].partner = gsaObj["partner"] | -1;
         globalSpecialActions[i].comboAction.type =
             parseCommandType(gsaObj["type"] | "OFF");
         globalSpecialActions[i].comboAction.action =
@@ -3250,7 +3249,7 @@ void handleSerialConfig() {
           Serial.print(",\"action\":\"");
           Serial.print(getActionTypeString(msg.action));
           Serial.print("\",\"partner\":");
-          Serial.print(msg.combo.partner);
+          Serial.print(gsa.partner);
 
           Serial.print(",\"type\":\"");
           Serial.print(getCommandTypeString(msg.type));
@@ -3918,7 +3917,7 @@ void handleBtSerialConfig() {
           SerialBT.print(",\"action\":\"");
           SerialBT.print(getActionTypeString(msg.action));
           SerialBT.print("\",\"partner\":");
-          SerialBT.print(msg.combo.partner);
+          SerialBT.print(gsa.partner);
 
           SerialBT.print(",\"type\":\"");
           SerialBT.print(getCommandTypeString(msg.type));

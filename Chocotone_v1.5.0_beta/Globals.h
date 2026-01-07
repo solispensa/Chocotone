@@ -261,6 +261,8 @@ extern OledConfig oledConfig;
 struct GlobalSpecialAction {
   ActionMessage comboAction; // Global combo override
   bool hasCombo;             // Whether global combo is active
+  int8_t partner; // Partner button (-1 = none/override). Separate from
+                  // ActionMessage to avoid union overlap.
 };
 
 // ============================================
