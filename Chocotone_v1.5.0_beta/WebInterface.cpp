@@ -2794,12 +2794,22 @@ void finalizeConfigUpload() {
 // SERIAL CONFIG HANDLER - For offline_editor_v2.html via USB Serial
 // ============================================================================
 static String serialBuffer = "";
+static unsigned long lastEditorActivityTime = 0;
+
+bool isEditorConnected() {
+  if (lastEditorActivityTime == 0)
+    return false;
+  return (millis() - lastEditorActivityTime < 30000); // 30 second timeout
+}
+
+void refreshEditorActivity() { lastEditorActivityTime = millis(); }
 
 void handleSerialConfig() {
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n') {
       serialBuffer.trim();
+      refreshEditorActivity(); // Any command refreshes activity
 
       // SET_PRESET - Change active preset from editor
       if (serialBuffer.startsWith("SET_PRESET:")) {
@@ -3454,6 +3464,7 @@ void handleBtSerialConfig() {
     char c = SerialBT.read();
     if (c == '\n') {
       btSerialBuffer.trim();
+      refreshEditorActivity(); // Any BT command refreshes activity
 
       // GET_CONFIG - Send config as JSON
       if (btSerialBuffer == "GET_CONFIG") {

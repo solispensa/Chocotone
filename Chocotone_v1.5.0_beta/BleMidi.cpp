@@ -155,6 +155,7 @@ class ConfigCharacteristicCallbacks : public BLECharacteristicCallbacks {
     auto value = pCharacteristic->getValue();
     if (value.length() > 0) {
       Serial.printf("BLE Config: Received %d bytes\n", (int)value.length());
+      refreshEditorActivity(); // BLE Config write is editor activity
 
       // Append to buffer and process complete lines
       bleConfigBuffer += value;
@@ -1231,6 +1232,13 @@ void handleBleConnection() {
   // connected)
   bool shouldPauseScan =
       (systemConfig.bleMode == BLE_DUAL_MODE && serverConnected);
+
+  // New logic: Pause scanning if editor is active, but ONLY if not already
+  // connected to MIDI client This lets us prioritize editor tasks while keeping
+  // MIDI alive
+  if (!clientConnected && isEditorConnected()) {
+    shouldPauseScan = true;
+  }
   if (!clientConnected && !doConnect && !bleConfigMode && !shouldPauseScan &&
       (millis() - lastScanAttempt > RESCAN_INTERVAL)) {
     Serial.println("→ Scanning for SPM (BLE Client auto-connect)...");
