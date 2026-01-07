@@ -228,6 +228,7 @@ void handleTapTempo(int buttonIndex) {
 // ============================================
 
 void loop_presetMode() {
+  unsigned long now = millis();
   // Check for tap mode timeout (only if not locked)
   if (inTapTempoMode && !tapModeLocked && millis() > tapModeTimeout) {
     inTapTempoMode = false;
