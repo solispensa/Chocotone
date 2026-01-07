@@ -381,10 +381,11 @@ void loop_presetMode() {
                   ledToggleState[i] =
                       buttonConfigs[currentPreset][i].isAlternate;
                 }
+
+                // Only block local button logic if the override actually fired
+                buttonComboChecked[i] = true;
+                comboFired = true;
               }
-              // Always block local button logic for overrides
-              buttonComboChecked[i] = true;
-              comboFired = true;
             }
           }
           // Check reverse combo (partner has combo pointing to us)
