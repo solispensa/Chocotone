@@ -352,7 +352,8 @@ void loop_presetMode() {
             } else if (partner == -1) {
               // OVERRIDE MODE: Check for DOUBLE_TAP or toggle types
               ActionType triggerType = ACTION_PRESS;
-              if (now - lastButtonReleaseTime_pads[i] < 300) {
+              bool isDoubleTap = (now - lastButtonReleaseTime_pads[i] < 300);
+              if (isDoubleTap && (comboMsg.action == ACTION_DOUBLE_TAP)) {
                 triggerType = ACTION_DOUBLE_TAP;
                 Serial.printf("BTN %d: Global Double Tap detected\n", i);
               } else if (buttonConfigs[currentPreset][i].isAlternate) {
@@ -361,6 +362,9 @@ void loop_presetMode() {
 
               // Fire if it matches the current event OR its alternate/fallback
               if (comboMsg.action == triggerType ||
+                  ((triggerType == ACTION_PRESS ||
+                    triggerType == ACTION_2ND_PRESS) &&
+                   comboMsg.action == ACTION_COMBO) ||
                   (triggerType == ACTION_2ND_PRESS &&
                    comboMsg.action == ACTION_PRESS)) {
                 fireGlobalAction(comboMsg, i);

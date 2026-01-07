@@ -147,6 +147,28 @@ const char *getCommandTypeString(MidiCommandType t) {
     return "OFF";
   }
 }
+const char *getActionTypeString(ActionType t) {
+  switch (t) {
+  case ACTION_PRESS:
+    return "PRESS";
+  case ACTION_2ND_PRESS:
+    return "2ND_PRESS";
+  case ACTION_RELEASE:
+    return "RELEASE";
+  case ACTION_2ND_RELEASE:
+    return "2ND_RELEASE";
+  case ACTION_LONG_PRESS:
+    return "LONG_PRESS";
+  case ACTION_2ND_LONG_PRESS:
+    return "2ND_LONG_PRESS";
+  case ACTION_DOUBLE_TAP:
+    return "DOUBLE_TAP";
+  case ACTION_COMBO:
+    return "COMBO";
+  default:
+    return "PRESS";
+  }
+}
 MidiCommandType parseCommandType(String s) {
   if (s == "NOTE_MOMENTARY")
     return NOTE_MOMENTARY;
@@ -1591,7 +1613,7 @@ void handleImportUploadData() {
           ActionMessage &msg = gsa.comboAction;
 
           gsa.hasCombo = gsaObj["enabled"] | false;
-          msg.action = ACTION_COMBO;
+          msg.action = parseActionType(gsaObj["action"] | "PRESS");
           msg.combo.partner = gsaObj["partner"] | -1;
           msg.type = parseCommandType(gsaObj["type"] | "OFF");
           msg.channel = gsaObj["channel"] | 1;
@@ -1607,6 +1629,11 @@ void handleImportUploadData() {
             msg.tapTempo.rhythmPrev = gsaObj["rhythmPrev"] | 0;
             msg.tapTempo.rhythmNext = gsaObj["rhythmNext"] | 4;
             msg.tapTempo.tapLock = gsaObj["tapLock"] | 7;
+          }
+
+          if (msg.action == ACTION_LONG_PRESS ||
+              msg.action == ACTION_2ND_LONG_PRESS) {
+            msg.longPress.holdMs = gsaObj["holdMs"] | 500;
           }
 
           if (msg.type == SYSEX) {
@@ -2232,7 +2259,11 @@ String buildFullConfigJson() {
     json += String(globalSpecialActions[i].comboAction.combo.partner);
     json += ",\"type\":\"";
     json += getCommandTypeString(globalSpecialActions[i].comboAction.type);
-    json += "\",\"label\":\"";
+    json += "\",\"action\":\"";
+    json += getActionTypeString(globalSpecialActions[i].comboAction.action);
+    json += "\",\"holdMs\":" +
+            String(globalSpecialActions[i].comboAction.longPress.holdMs);
+    json += ",\"label\":\"";
     char labelBuf[6] = {0};
     strncpy(labelBuf, globalSpecialActions[i].comboAction.label, 5);
     json += escapeJson(labelBuf);
@@ -2616,7 +2647,16 @@ bool applyConfigJson(JsonObject doc) {
             gsaObj["partner"] | -1;
         globalSpecialActions[i].comboAction.type =
             parseCommandType(gsaObj["type"] | "OFF");
-        globalSpecialActions[i].comboAction.action = ACTION_COMBO;
+        globalSpecialActions[i].comboAction.action =
+            parseActionType(gsaObj["action"] | "PRESS");
+
+        if (globalSpecialActions[i].comboAction.action == ACTION_LONG_PRESS ||
+            globalSpecialActions[i].comboAction.action ==
+                ACTION_2ND_LONG_PRESS) {
+          globalSpecialActions[i].comboAction.longPress.holdMs =
+              gsaObj["holdMs"] | 500;
+        }
+
         if (gsaObj.containsKey("label")) {
           strncpy(globalSpecialActions[i].comboAction.label,
                   gsaObj["label"] | "", 5);
