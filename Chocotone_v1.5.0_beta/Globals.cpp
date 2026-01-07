@@ -120,9 +120,9 @@ OledConfig oledConfig = {
      56,    // bottomRowY (labelBottomY)
      true,  // showBpm
      false, // showAnalog
-     true,  true,  true, 0, 0, 0, "",
-     "",    false, 4,    0, 0}, // colorStrips: show, height, topAlign,
-                                // bottomAlign
+     true,  true, true,  0, 0, 0,
+     "",    "",   false, 4, 0, 0}, // colorStrips: show, height, topAlign,
+                                   // bottomAlign
     // Overlay settings
     {2, // labelSize
      2, // titleSize (textSize)
@@ -173,6 +173,7 @@ int editingValue = 0;
 // Button state tracking
 bool buttonPinActive[MAX_BUTTONS] = {false};
 unsigned long lastButtonPressTime_pads[MAX_BUTTONS] = {0};
+unsigned long lastButtonReleaseTime_pads[MAX_BUTTONS] = {0};
 int activeNotesOnButtonPins[MAX_BUTTONS] = {0};
 
 // Hold/Combo action tracking

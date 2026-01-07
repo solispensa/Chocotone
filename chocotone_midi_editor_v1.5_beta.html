@@ -1693,6 +1693,29 @@
             return html;
         }
 
+        function renderGlobalSpecialActions() {
+            var html = '<div class="msg-box" style="border-color:#a78bfa"><div class="msg-title" style="color:#a78bfa">🔥 Global Actions Overview</div>';
+            html += '<div style="font-size:10px;color:#888;margin-bottom:10px">Manage global actions for all buttons. These trigger regardless of the current preset.</div>';
+
+            var gsa = presetData.system.globalSpecialActions || [];
+            var btnCount = presetData.system.buttonCount || 8;
+
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px">';
+            for (var i = 0; i < btnCount; i++) {
+                var action = gsa[i] || { enabled: false, type: 'OFF' };
+                var isActive = action.enabled && action.type !== 'OFF';
+
+                html += '<div class="btn-tile' + (isActive ? ' active' : '') + '" style="padding:8px;border-color:' + (isActive ? '#a78bfa' : '#333') + ';cursor:pointer" onclick="selBtn(' + i + ')">';
+                html += '<div style="font-size:0.7rem;color:#888">BTN ' + (i + 1) + '</div>';
+                html += '<div style="font-size:0.8rem;font-weight:600;color:' + (isActive ? '#a78bfa' : '#ccc') + '">' + (isActive ? action.type : 'NONE') + '</div>';
+                if (isActive && action.label) html += '<div style="font-size:0.65rem;color:#666">' + action.label + '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+            return html;
+        }
+
 
         // Auto-label generator - matches firmware getButtonSummary() in UI_Display.cpp
         // For notes, CC, PC: return empty so button label is used instead
@@ -1812,8 +1835,6 @@
         function chgPresetLedMode(mode) { presetData.presets[presetData.currentPreset].presetLedMode = mode; render(); }
         function chgPresetName(newName) { presetData.presets[presetData.currentPreset].name = newName; }
         function chgSyncMode(v) { presetData.presets[presetData.currentPreset].syncMode = v; render(); }
-
-        function toggleSystem() { showSystem = !showSystem; selectedAnalogInput = -1; render(); }
 
         // Analog Input functions
         function updAnalogCount(count) {

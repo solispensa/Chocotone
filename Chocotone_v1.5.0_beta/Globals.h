@@ -341,6 +341,7 @@ extern int editingValue;
 // Button state tracking
 extern bool buttonPinActive[MAX_BUTTONS];
 extern unsigned long lastButtonPressTime_pads[MAX_BUTTONS];
+extern unsigned long lastButtonReleaseTime_pads[MAX_BUTTONS];
 extern int activeNotesOnButtonPins[MAX_BUTTONS];
 
 // Hold/Combo action tracking
