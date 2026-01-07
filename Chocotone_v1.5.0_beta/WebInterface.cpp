@@ -3237,7 +3237,51 @@ void handleSerialConfig() {
         }
         Serial.print("]}"); // Close analogInputs array AND the root object
 
-        Serial.println();
+        // Global Special Actions (Serial Export)
+        Serial.print(",\"globalSpecialActions\":[");
+        for (int i = 0; i < systemConfig.buttonCount; i++) {
+          if (i > 0)
+            Serial.print(",");
+          const GlobalSpecialAction &gsa = globalSpecialActions[i];
+          const ActionMessage &msg = gsa.comboAction;
+
+          Serial.print("{\"enabled\":");
+          Serial.print(gsa.hasCombo ? "true" : "false");
+          Serial.print(",\"action\":\"");
+          Serial.print(getActionTypeString(msg.action));
+          Serial.print("\",\"partner\":");
+          Serial.print(msg.combo.partner);
+
+          Serial.print(",\"type\":\"");
+          Serial.print(getCommandTypeString(msg.type));
+          Serial.print("\",\"channel\":");
+          Serial.print(msg.channel);
+          Serial.print(",\"data1\":");
+          Serial.print(msg.data1);
+          Serial.print(",\"data2\":");
+          Serial.print(msg.data2);
+
+          char hexColor[8];
+          rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+          Serial.print(",\"rgb\":\"");
+          Serial.print(hexColor);
+          Serial.print("\"");
+
+          if (msg.label[0] != '\0') {
+            Serial.print(",\"label\":\"");
+            Serial.print(msg.label);
+            Serial.print("\"");
+          }
+          if (msg.action == ACTION_LONG_PRESS ||
+              msg.action == ACTION_2ND_LONG_PRESS) {
+            Serial.print(",\"holdMs\":");
+            Serial.print(msg.longPress.holdMs);
+          }
+          Serial.print("}");
+        }
+        Serial.print("]");
+
+        Serial.println(); // End root object
         Serial.println("CONFIG_END");
       }
       // SET_CONFIG_START - Begin receiving config
@@ -3861,7 +3905,51 @@ void handleBtSerialConfig() {
         }
         SerialBT.print("]}"); // Close analogInputs array AND the root object
 
-        SerialBT.println();
+        // Global Special Actions (BT Serial Export)
+        SerialBT.print(",\"globalSpecialActions\":[");
+        for (int i = 0; i < systemConfig.buttonCount; i++) {
+          if (i > 0)
+            SerialBT.print(",");
+          const GlobalSpecialAction &gsa = globalSpecialActions[i];
+          const ActionMessage &msg = gsa.comboAction;
+
+          SerialBT.print("{\"enabled\":");
+          SerialBT.print(gsa.hasCombo ? "true" : "false");
+          SerialBT.print(",\"action\":\"");
+          SerialBT.print(getActionTypeString(msg.action));
+          SerialBT.print("\",\"partner\":");
+          SerialBT.print(msg.combo.partner);
+
+          SerialBT.print(",\"type\":\"");
+          SerialBT.print(getCommandTypeString(msg.type));
+          SerialBT.print("\",\"channel\":");
+          SerialBT.print(msg.channel);
+          SerialBT.print(",\"data1\":");
+          SerialBT.print(msg.data1);
+          SerialBT.print(",\"data2\":");
+          SerialBT.print(msg.data2);
+
+          char hexColor[8];
+          rgbToHex(hexColor, sizeof(hexColor), msg.rgb);
+          SerialBT.print(",\"rgb\":\"");
+          SerialBT.print(hexColor);
+          SerialBT.print("\"");
+
+          if (msg.label[0] != '\0') {
+            SerialBT.print(",\"label\":\"");
+            SerialBT.print(msg.label);
+            SerialBT.print("\"");
+          }
+          if (msg.action == ACTION_LONG_PRESS ||
+              msg.action == ACTION_2ND_LONG_PRESS) {
+            SerialBT.print(",\"holdMs\":");
+            SerialBT.print(msg.longPress.holdMs);
+          }
+          SerialBT.print("}");
+        }
+        SerialBT.print("]");
+
+        SerialBT.println(); // End root object
         SerialBT.println("CONFIG_END");
       }
       // SET_PRESET:N - Change preset
