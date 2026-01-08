@@ -9,6 +9,9 @@
 // Temp variable to track if BLE mode was changed (requires reboot)
 static bool bleModeChanged = false;
 
+// Deferred save flag for rhythm pattern (reduces NVS wear)
+static bool rhythmPatternDirty = false;
+
 // Forward declaration
 void executeActionMessage(const ActionMessage &msg);
 
@@ -233,6 +236,11 @@ void loop_presetMode() {
   if (inTapTempoMode && !tapModeLocked && millis() > tapModeTimeout) {
     inTapTempoMode = false;
     tapModeLocked = false;
+    // Save rhythm pattern if it was changed during tap mode
+    if (rhythmPatternDirty) {
+      saveSystemSettings();
+      rhythmPatternDirty = false;
+    }
     displayOLED();
     updateLeds();
   }
@@ -415,7 +423,7 @@ void loop_presetMode() {
                 // RHYTHM PREV
                 if (tapAction->tapTempo.rhythmPrev == i) {
                   rhythmPattern = (rhythmPattern - 1 + 4) % 4;
-                  saveSystemSettings();
+                  rhythmPatternDirty = true; // Defer save to mode exit
                   float delayMs =
                       (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
                   sendDelayTime(constrain((int)delayMs, 0, 1000));
@@ -430,7 +438,7 @@ void loop_presetMode() {
                 // RHYTHM NEXT
                 if (tapAction->tapTempo.rhythmNext == i) {
                   rhythmPattern = (rhythmPattern + 1) % 4;
-                  saveSystemSettings();
+                  rhythmPatternDirty = true; // Defer save to mode exit
                   float delayMs =
                       (60000.0 / currentBPM) * rhythmMultipliers[rhythmPattern];
                   sendDelayTime(constrain((int)delayMs, 0, 1000));
@@ -450,6 +458,11 @@ void loop_presetMode() {
                     buttonNameDisplayUntil = millis() + 1000;
                   } else {
                     inTapTempoMode = false;
+                    // Save rhythm pattern if changed during tap mode
+                    if (rhythmPatternDirty) {
+                      saveSystemSettings();
+                      rhythmPatternDirty = false;
+                    }
                     buttonNameDisplayUntil = 0;
                   }
                   safeDisplayOLED();

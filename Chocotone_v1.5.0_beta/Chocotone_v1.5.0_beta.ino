@@ -426,8 +426,8 @@ void loop() {
   }
 
   // Update LEDs continuously (needed for tap tempo blink)
-  // Skip when WiFi is on (heap too low)
-  if (!isWifiOn) {
+  // Skip when WiFi is on (heap too low) or when pending update will do it
+  if (!isWifiOn && !pendingDisplayUpdate) {
     updateLeds();
   }
 

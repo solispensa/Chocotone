@@ -69,12 +69,16 @@ void saveSystemSettings() {
 }
 
 void loadSystemSettings() {
-  // Use SAME namespace as presets to avoid namespace switch issues
+  // Use a FRESH LOCAL Preferences object (consistent with saveSystemSettings)
   yield(); // Feed watchdog before NVS operation
-  systemPrefs.begin(PRESETS_NAMESPACE, true);
+  Preferences prefs;
+  if (!prefs.begin(PRESETS_NAMESPACE, true)) {
+    Serial.println("ERROR: Cannot open presets namespace for loading!");
+    return;
+  }
 
   // Check for new format (sys_ver key) or old format
-  int version = systemPrefs.getInt("sys_ver", 0); // New unified format
+  int version = prefs.getInt("sys_ver", 0); // New unified format
   if (version == 0) {
     // Try old format - might not exist yet
     version = 1;
@@ -82,54 +86,52 @@ void loadSystemSettings() {
   Serial.printf("Loading System Settings (v%d)...\n", version);
 
   // UI Settings (prefixed keys in new format)
-  buttonNameFontSize = systemPrefs.getInt("s_font", 5);
-  ledBrightnessOn = systemPrefs.getInt("s_ledOn", 220);
-  ledBrightnessDim = systemPrefs.getInt("s_ledDim", 20);
-  ledBrightnessTap = systemPrefs.getInt("s_ledTap", 240);
-  buttonDebounce = systemPrefs.getInt("s_debounce", 120);
-  rhythmPattern = systemPrefs.getInt("s_rhythm", 0);
+  buttonNameFontSize = prefs.getInt("s_font", 5);
+  ledBrightnessOn = prefs.getInt("s_ledOn", 220);
+  ledBrightnessDim = prefs.getInt("s_ledDim", 20);
+  ledBrightnessTap = prefs.getInt("s_ledTap", 240);
+  buttonDebounce = prefs.getInt("s_debounce", 120);
+  rhythmPattern = prefs.getInt("s_rhythm", 0);
   if (rhythmPattern < 0 || rhythmPattern > 3)
     rhythmPattern = 0;
-  currentDelayType = systemPrefs.getInt("s_delay", 0);
-  currentPreset = systemPrefs.getInt("s_preset", 0);
+  currentDelayType = prefs.getInt("s_delay", 0);
+  currentPreset = prefs.getInt("s_preset", 0);
   if (currentPreset < 0 || currentPreset > 3)
     currentPreset = 0;
 
   // SystemConfig fields (prefixed keys)
-  String s_bleName = systemPrefs.getString("s_bleName", DEFAULT_BLE_NAME);
+  String s_bleName = prefs.getString("s_bleName", DEFAULT_BLE_NAME);
   strncpy(systemConfig.bleDeviceName, s_bleName.c_str(), 23);
   systemConfig.bleDeviceName[23] = '\0';
 
-  String s_ssid = systemPrefs.getString("s_apSSID", DEFAULT_AP_SSID);
+  String s_ssid = prefs.getString("s_apSSID", DEFAULT_AP_SSID);
   strncpy(systemConfig.apSSID, s_ssid.c_str(), 23);
   systemConfig.apSSID[23] = '\0';
 
-  String s_pass = systemPrefs.getString("s_apPass", DEFAULT_AP_PASS);
+  String s_pass = prefs.getString("s_apPass", DEFAULT_AP_PASS);
   strncpy(systemConfig.apPassword, s_pass.c_str(), 15);
   systemConfig.apPassword[15] = '\0';
 
-  systemConfig.buttonCount =
-      systemPrefs.getInt("s_btnCount", DEFAULT_BUTTON_COUNT);
+  systemConfig.buttonCount = prefs.getInt("s_btnCount", DEFAULT_BUTTON_COUNT);
   if (systemConfig.buttonCount < 4)
     systemConfig.buttonCount = 4;
   if (systemConfig.buttonCount > MAX_BUTTONS)
     systemConfig.buttonCount = MAX_BUTTONS;
 
-  systemPrefs.getBytes("s_btnPins", systemConfig.buttonPins,
-                       sizeof(systemConfig.buttonPins));
-  systemConfig.ledPin = systemPrefs.getInt("s_ledPin", NEOPIXEL_PIN);
-  systemConfig.encoderA = systemPrefs.getInt("s_encA", DEFAULT_ENCODER_A);
-  systemConfig.encoderB = systemPrefs.getInt("s_encB", DEFAULT_ENCODER_B);
-  systemConfig.encoderBtn = systemPrefs.getInt("s_encBtn", DEFAULT_ENCODER_BTN);
-  systemConfig.wifiOnAtBoot = systemPrefs.getBool("s_wifiBoot", false);
-  systemConfig.bleMode =
-      (BleMode)systemPrefs.getUChar("s_bleMode", BLE_CLIENT_ONLY);
-  systemConfig.ledsPerButton = systemPrefs.getUChar("s_ledsPerBtn", 1);
+  prefs.getBytes("s_btnPins", systemConfig.buttonPins,
+                 sizeof(systemConfig.buttonPins));
+  systemConfig.ledPin = prefs.getInt("s_ledPin", NEOPIXEL_PIN);
+  systemConfig.encoderA = prefs.getInt("s_encA", DEFAULT_ENCODER_A);
+  systemConfig.encoderB = prefs.getInt("s_encB", DEFAULT_ENCODER_B);
+  systemConfig.encoderBtn = prefs.getInt("s_encBtn", DEFAULT_ENCODER_BTN);
+  systemConfig.wifiOnAtBoot = prefs.getBool("s_wifiBoot", false);
+  systemConfig.bleMode = (BleMode)prefs.getUChar("s_bleMode", BLE_CLIENT_ONLY);
+  systemConfig.ledsPerButton = prefs.getUChar("s_ledsPerBtn", 1);
 
   // Load ledMap or use defaults
-  if (systemPrefs.getBytesLength("s_ledMap") == sizeof(systemConfig.ledMap)) {
-    systemPrefs.getBytes("s_ledMap", systemConfig.ledMap,
-                         sizeof(systemConfig.ledMap));
+  if (prefs.getBytesLength("s_ledMap") == sizeof(systemConfig.ledMap)) {
+    prefs.getBytes("s_ledMap", systemConfig.ledMap,
+                   sizeof(systemConfig.ledMap));
   } else {
     // Default ledMap: {0, 1, 2, 3, 7, 6, 5, 4, 8, 9, 10, 11...}
     uint8_t defaultMap[MAX_BUTTONS] = {0, 1, 2,  3,  7,  6,  5,  4,
@@ -138,8 +140,8 @@ void loadSystemSettings() {
   }
 
   // Load OLED Configuration (v1.5)
-  if (systemPrefs.getBytesLength("s_oledCfg") == sizeof(OledConfig)) {
-    systemPrefs.getBytes("s_oledCfg", &oledConfig, sizeof(OledConfig));
+  if (prefs.getBytesLength("s_oledCfg") == sizeof(OledConfig)) {
+    prefs.getBytes("s_oledCfg", &oledConfig, sizeof(OledConfig));
     Serial.printf("Loaded OLED config: type=%d, rotation=%d\n", oledConfig.type,
                   oledConfig.rotation);
   } else {
@@ -147,22 +149,22 @@ void loadSystemSettings() {
   }
 
   // Load Multiplexer Configuration (v1.5)
-  if (systemPrefs.getBytesLength("s_muxCfg") == sizeof(MultiplexerConfig)) {
-    systemPrefs.getBytes("s_muxCfg", &systemConfig.multiplexer,
-                         sizeof(MultiplexerConfig));
+  if (prefs.getBytesLength("s_muxCfg") == sizeof(MultiplexerConfig)) {
+    prefs.getBytes("s_muxCfg", &systemConfig.multiplexer,
+                   sizeof(MultiplexerConfig));
   } else {
     systemConfig.multiplexer.enabled = false;
     for (int i = 0; i < MAX_BUTTONS; i++)
       systemConfig.multiplexer.buttonChannels[i] = -1;
   }
 
-  systemConfig.targetDevice = (DeviceType)systemPrefs.getUChar("s_target", 0);
-  systemConfig.midiChannel = systemPrefs.getUChar("s_midiCh", 1);
-  systemConfig.debugAnalogIn = systemPrefs.getBool("s_debugAin", false);
-  systemConfig.analogInputCount = systemPrefs.getUChar("s_ainCount", 0);
+  systemConfig.targetDevice = (DeviceType)prefs.getUChar("s_target", 0);
+  systemConfig.midiChannel = prefs.getUChar("s_midiCh", 1);
+  systemConfig.debugAnalogIn = prefs.getBool("s_debugAin", false);
+  systemConfig.analogInputCount = prefs.getUChar("s_ainCount", 0);
 
   yield(); // Feed watchdog before closing
-  systemPrefs.end();
+  prefs.end();
   Serial.println("=== System Settings Loaded ===");
 }
 
