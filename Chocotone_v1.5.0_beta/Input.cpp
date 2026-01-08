@@ -1,10 +1,18 @@
 #include "Input.h"
 #include "AnalogInput.h"
 #include "BleMidi.h"
+#include "Config.h"
 #include "GP5Protocol.h"
 #include "Storage.h"
 #include "UI_Display.h"
 #include "WebInterface.h"
+
+// Debug logging helper - only prints when DEBUG_INPUT is defined
+#ifdef DEBUG_INPUT
+#define DBG_INPUT(...) Serial.printf(__VA_ARGS__)
+#else
+#define DBG_INPUT(...) ((void)0)
+#endif
 
 // Temp variable to track if BLE mode was changed (requires reboot)
 static bool bleModeChanged = false;
@@ -363,7 +371,7 @@ void loop_presetMode() {
               bool isDoubleTap = (now - lastButtonReleaseTime_pads[i] < 300);
               if (isDoubleTap && (comboMsg.action == ACTION_DOUBLE_TAP)) {
                 triggerType = ACTION_DOUBLE_TAP;
-                Serial.printf("BTN %d: Global Double Tap detected\n", i);
+                DBG_INPUT("BTN %d: Global Double Tap detected\n", i);
               } else if (buttonConfigs[currentPreset][i].isAlternate) {
                 triggerType = ACTION_2ND_PRESS;
               }
@@ -483,7 +491,7 @@ void loop_presetMode() {
                 findAction(config, ACTION_DOUBLE_TAP);
             if (doubleTapAction &&
                 (now - lastButtonReleaseTime_pads[i] < 300)) {
-              Serial.printf("BTN %d: Double Tap detected\n", i);
+              DBG_INPUT("BTN %d: Double Tap detected\n", i);
               executeActionMessage(*doubleTapAction);
               // Block regular press
               buttonComboChecked[i] = true;
@@ -494,7 +502,7 @@ void loop_presetMode() {
             // Find the appropriate action based on toggle state
             ActionMessage *action = nullptr;
 
-            Serial.printf("BTN %d: isAlternate=%d, has2nd=%d\n", i,
+            DBG_INPUT("BTN %d: isAlternate=%d, has2nd=%d\n", i,
                           config.isAlternate,
                           hasAction(config, ACTION_2ND_PRESS));
 
@@ -511,7 +519,7 @@ void loop_presetMode() {
             }
 
             if (action) {
-              Serial.printf("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
+              DBG_INPUT("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
                             action->type, action->data1, action->data2);
 
               // Display action label if set, otherwise use button name
@@ -536,7 +544,7 @@ void loop_presetMode() {
               if (longPress) {
                 // Has long press configured - DON'T fire PRESS now
                 // It will fire on release if held time < holdMs threshold
-                Serial.printf("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
+                DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
               } else if (action->type == TAP_TEMPO) {
                 handleTapTempo(i);
               } else {
@@ -557,13 +565,13 @@ void loop_presetMode() {
                   // Also update LED state to match (for SPM sync presets that
                   // skip early toggle)
                   ledToggleState[i] = config.isAlternate;
-                  Serial.printf("BTN %d: toggled isAlternate to %d, LED=%d\n",
+                  DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n",
                                 i, config.isAlternate, ledToggleState[i]);
                   updateLeds();
                 }
               }
             } else {
-              Serial.printf("BTN %d: NO ACTION FOUND!\n", i);
+              DBG_INPUT("BTN %d: NO ACTION FOUND!\n", i);
             }
           }
         }
@@ -596,7 +604,7 @@ void loop_presetMode() {
               }
 
               if (pressAction && pressAction->type != TAP_TEMPO) {
-                Serial.printf("BTN %d: Firing deferred PRESS on release\n", i);
+                DBG_INPUT("BTN %d: Firing deferred PRESS on release\n", i);
                 executeActionMessage(*pressAction);
 
                 // GP5 Sync: Request state after any button action
@@ -610,7 +618,7 @@ void loop_presetMode() {
                 if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
                   ledToggleState[i] = config.isAlternate;
-                  Serial.printf("BTN %d: toggled isAlternate to %d\n", i,
+                  DBG_INPUT("BTN %d: toggled isAlternate to %d\n", i,
                                 config.isAlternate);
                 }
               } else if (pressAction && pressAction->type == TAP_TEMPO) {
@@ -681,7 +689,7 @@ void loop_presetMode() {
           if (elapsed >= threshold) {
             fireGlobalAction(comboMsg, i);
             buttonHoldFired[i] = true;
-            Serial.printf("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
+            DBG_INPUT("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
                           comboMsg.action);
             updateLeds();
           }
@@ -741,7 +749,7 @@ void loop_presetMode() {
             }
 
             buttonHoldFired[i] = true;
-            Serial.printf("BTN %d LONG_PRESS fired\n", i);
+            DBG_INPUT("BTN %d LONG_PRESS fired\n", i);
             updateLeds();
           }
         }

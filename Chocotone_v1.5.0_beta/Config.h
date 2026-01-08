@@ -3,6 +3,13 @@
 
 #include <Arduino.h>
 
+// ============================================
+// DEBUG FLAGS - Comment out to disable verbose logging
+// ============================================
+// #define DEBUG_INPUT  // Button press/release logging
+// #define DEBUG_BLE    // BLE connection logging
+// #define DEBUG_MIDI   // MIDI message logging
+
 // Pin Definitions
 #define ENCODER_A_PIN 18
 #define ENCODER_B_PIN 19
