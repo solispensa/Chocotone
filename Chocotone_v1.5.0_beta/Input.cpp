@@ -317,13 +317,17 @@ void loop_presetMode() {
           if (isSelectionButton) {
             presetSelectionState[currentPreset] = i;
           } else if (config.ledMode == LED_TOGGLE) {
-            // For SPM sync presets, don't toggle here - wait for SPM response
-            // For non-SPM presets, toggle immediately as before
+            // For sync presets (SPM/GP5), don't toggle here - wait for device
+            // response For non-sync presets, toggle immediately as before
             if (presetSyncMode[currentPreset] == SYNC_NONE) {
               ledToggleState[i] = !ledToggleState[i];
             }
           }
-          updateLeds();
+          // Only update LEDs immediately if NOT in sync mode
+          // In sync mode, LEDs are updated when device response arrives
+          if (presetSyncMode[currentPreset] == SYNC_NONE) {
+            updateLeds();
+          }
 
           // ===== CHECK GLOBAL ACTION FIRST =====
           bool comboFired = false;
@@ -352,7 +356,10 @@ void loop_presetMode() {
                     if (presetSyncMode[currentPreset] == SYNC_NONE)
                       ledToggleState[partner] = !ledToggleState[partner];
                   }
-                  updateLeds();
+                  // Only update LEDs immediately if NOT in sync mode
+                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                    updateLeds();
+                  }
                 }
                 yield();
                 delayMicroseconds(500);
@@ -503,8 +510,7 @@ void loop_presetMode() {
             ActionMessage *action = nullptr;
 
             DBG_INPUT("BTN %d: isAlternate=%d, has2nd=%d\n", i,
-                          config.isAlternate,
-                          hasAction(config, ACTION_2ND_PRESS));
+                      config.isAlternate, hasAction(config, ACTION_2ND_PRESS));
 
             if (config.isAlternate) {
               // Toggle mode - alternate between PRESS and 2ND_PRESS
@@ -520,7 +526,7 @@ void loop_presetMode() {
 
             if (action) {
               DBG_INPUT("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
-                            action->type, action->data1, action->data2);
+                        action->type, action->data1, action->data2);
 
               // Display action label if set, otherwise use button name
               if (action->label[0] != '\0') {
@@ -562,12 +568,14 @@ void loop_presetMode() {
                 // Toggle alternate state if button has 2ND_PRESS
                 if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
-                  // Also update LED state to match (for SPM sync presets that
-                  // skip early toggle)
-                  ledToggleState[i] = config.isAlternate;
-                  DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n",
-                                i, config.isAlternate, ledToggleState[i]);
-                  updateLeds();
+                  // For non-sync mode, update LED to match alternate state
+                  // In sync mode, LED is controlled by device response
+                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                    ledToggleState[i] = config.isAlternate;
+                    DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n", i,
+                              config.isAlternate, ledToggleState[i]);
+                    updateLeds();
+                  }
                 }
               }
             } else {
@@ -613,13 +621,21 @@ void loop_presetMode() {
                   delay(100);
                   requestPresetState();
                 }
+                // Update LEDs only if NOT in sync mode
+                // In sync mode, LEDs are updated when device response arrives
+                if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                  updateLeds();
+                }
 
                 // Toggle alternate state if button has 2ND_PRESS
                 if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
-                  ledToggleState[i] = config.isAlternate;
+                  // For non-sync mode, update LED to match alternate state
+                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                    ledToggleState[i] = config.isAlternate;
+                  }
                   DBG_INPUT("BTN %d: toggled isAlternate to %d\n", i,
-                                config.isAlternate);
+                            config.isAlternate);
                 }
               } else if (pressAction && pressAction->type == TAP_TEMPO) {
                 // Handle deferred TAP_TEMPO
@@ -690,7 +706,7 @@ void loop_presetMode() {
             fireGlobalAction(comboMsg, i);
             buttonHoldFired[i] = true;
             DBG_INPUT("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
-                          comboMsg.action);
+                      comboMsg.action);
             updateLeds();
           }
         }
@@ -1059,8 +1075,12 @@ void handleEncoderButtonPress() {
           displayMenu();
         } else {
           currentPreset = (currentPreset + 1) % 4;
-          for (int j = 0; j < MAX_BUTTONS; j++) {
-            ledToggleState[j] = false;
+          // Only reset LED states if NOT in GP5 sync mode
+          // GP5 sync will provide correct states via requestPresetState()
+          if (presetSyncMode[currentPreset] != SYNC_GP5) {
+            for (int j = 0; j < MAX_BUTTONS; j++) {
+              ledToggleState[j] = false;
+            }
           }
           saveCurrentPresetIndex();
           displayOLED();
