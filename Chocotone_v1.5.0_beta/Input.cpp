@@ -566,16 +566,15 @@ void loop_presetMode() {
                 }
 
                 // Toggle alternate state if button has 2ND_PRESS
-                if (hasAction(config, ACTION_2ND_PRESS)) {
+                // In sync mode, don't toggle locally - GP5/SPM response sets
+                // state
+                if (hasAction(config, ACTION_2ND_PRESS) &&
+                    presetSyncMode[currentPreset] == SYNC_NONE) {
                   config.isAlternate = !config.isAlternate;
-                  // For non-sync mode, update LED to match alternate state
-                  // In sync mode, LED is controlled by device response
-                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
-                    ledToggleState[i] = config.isAlternate;
-                    DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n", i,
-                              config.isAlternate, ledToggleState[i]);
-                    updateLeds();
-                  }
+                  ledToggleState[i] = config.isAlternate;
+                  DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n", i,
+                            config.isAlternate, ledToggleState[i]);
+                  updateLeds();
                 }
               }
             } else {
@@ -628,12 +627,12 @@ void loop_presetMode() {
                 }
 
                 // Toggle alternate state if button has 2ND_PRESS
-                if (hasAction(config, ACTION_2ND_PRESS)) {
+                // In sync mode, don't toggle locally - GP5/SPM response sets
+                // state
+                if (hasAction(config, ACTION_2ND_PRESS) &&
+                    presetSyncMode[currentPreset] == SYNC_NONE) {
                   config.isAlternate = !config.isAlternate;
-                  // For non-sync mode, update LED to match alternate state
-                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
-                    ledToggleState[i] = config.isAlternate;
-                  }
+                  ledToggleState[i] = config.isAlternate;
                   DBG_INPUT("BTN %d: toggled isAlternate to %d\n", i,
                             config.isAlternate);
                 }
