@@ -481,6 +481,21 @@ void loop() {
         }
       }
     }
+
+    // Periodic display refresh for battery icon and BLE status (every 5 sec)
+    // This ensures battery % and connection state stay updated during idle
+    static unsigned long lastPeriodicDisplayUpdate = 0;
+    if (systemConfig.batteryAdcPin > 0 ||
+        systemConfig.bleMode == BLE_CLIENT_ONLY ||
+        systemConfig.bleMode == BLE_DUAL_MODE) {
+      unsigned long now = millis();
+      if (now - lastPeriodicDisplayUpdate >= 5000) {
+        lastPeriodicDisplayUpdate = now;
+        if (currentMode == 0 && buttonNameDisplayUntil == 0) {
+          displayOLED(); // Refresh main screen
+        }
+      }
+    }
   }
 
   // Handle serial commands for offline editor config transfer

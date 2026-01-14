@@ -60,6 +60,7 @@ void saveSystemSettings() {
   prefs.putUChar("s_midiCh", systemConfig.midiChannel);
   prefs.putBool("s_debugAin", systemConfig.debugAnalogIn);
   prefs.putUChar("s_ainCount", systemConfig.analogInputCount);
+  prefs.putUChar("s_battPin", systemConfig.batteryAdcPin); // v1.5: Battery ADC
 
   Serial.printf("Saved OLED config: type=%d, rotation=%d\n", oledConfig.type,
                 oledConfig.rotation);
@@ -162,6 +163,8 @@ void loadSystemSettings() {
   systemConfig.midiChannel = prefs.getUChar("s_midiCh", 1);
   systemConfig.debugAnalogIn = prefs.getBool("s_debugAin", false);
   systemConfig.analogInputCount = prefs.getUChar("s_ainCount", 0);
+  systemConfig.batteryAdcPin =
+      prefs.getUChar("s_battPin", 0); // v1.5: Battery ADC
 
   yield(); // Feed watchdog before closing
   prefs.end();

@@ -43,6 +43,7 @@ SystemConfig systemConfig = {
     {},                                     // multiplexer (zeroed)
     false,                                  // debugAnalogIn
     0,                                      // analogInputCount
+    0,                                      // batteryAdcPin (0=disabled)
     // Display pins
     21, // oledSdaPin
     22, // oledSclPin
@@ -89,7 +90,12 @@ OledConfig oledConfig = {
         false, // showColorStrips
         4,     // colorStripHeight
         0,     // topRowAlign
-        0      // bottomRowAlign
+        0,     // bottomRowAlign
+        // Battery Indicator (v1.5)
+        false, // showBattery
+        116,   // batteryX (right edge - 12px icon)
+        0,     // batteryY
+        1      // batteryScale
     },
     // Menu screen settings
     {1,     // labelSize (itemSize)
@@ -107,7 +113,9 @@ OledConfig oledConfig = {
      true,  // showBottomRow
      true,  // showStatus
      0,     0, 0, "", "",
-     false, 4, 0, 0}, // colorStrips: show, height, topAlign, bottomAlign
+     false, 4, 0, 0, // colorStrips: show, height, topAlign, bottomAlign
+     false,          // showBattery
+     116,   0, 1},   // batteryX, batteryY, batteryScale
     // Tap tempo screen settings
     {1,     // labelSize
      3,     // titleSize (bpmSize)
@@ -120,16 +128,18 @@ OledConfig oledConfig = {
      56,    // bottomRowY (labelBottomY)
      true,  // showBpm
      false, // showAnalog
-     true,  true, true,  0, 0, 0,
-     "",    "",   false, 4, 0, 0}, // colorStrips: show, height, topAlign,
-                                   // bottomAlign
+     true, true, true, 0, 0, 0, "", "", false, 4, 0,
+     0,          // colorStrips: show, height, topAlign,
+                 // bottomAlign
+     false,      // showBattery
+     116, 0, 1}, // batteryX, batteryY, batteryScale
     // Overlay settings
     {2, // labelSize
      2, // titleSize (textSize)
-     1,    1, 0, 0, 0,  0,  0,     false, false, true, true,
-     true, 0, 0, 0, "", "", false, 4,     0,     0}}; // colorStrips: show,
-                                                      // height, topAlign,
-                                                      // bottomAlign
+     1,     1, 0, 0, 0,  0,  0,     false, false, true, true,
+     true,  0, 0, 0, "", "", false, 4,     0,     0, // colorStrips
+     false,                                          // showBattery
+     116,   0, 1}}; // batteryX, batteryY, batteryScale
 
 // ============================================
 // GLOBAL SPECIAL ACTIONS
@@ -219,6 +229,13 @@ unsigned long lastSpmStateRequest = 0;
 
 bool oledHealthy = true;
 unsigned long lastOledCheck = 0;
+
+// ============================================
+// BATTERY MONITORING (v1.5)
+// ============================================
+
+uint8_t batteryPercent = 0;
+unsigned long lastBatteryRead = 0;
 
 // ============================================
 // DEFERRED UPDATES

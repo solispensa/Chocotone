@@ -188,6 +188,8 @@ struct SystemConfig {
   MultiplexerConfig multiplexer; // ~25 bytes
   bool debugAnalogIn;            // v1.5: Show raw ADC values on OLED
   uint8_t analogInputCount;      // v1.5: Number of enabled analog inputs (0-16)
+  uint8_t
+      batteryAdcPin; // v1.5: ADC pin for battery voltage divider (0=disabled)
 
   // Display pins (v1.5 - configurable I2C/SPI pins for auto-conflict
   // resolution)
@@ -236,6 +238,12 @@ struct OledScreenConfig {
                             // default 4)
   uint8_t topRowAlign;      // 1 byte - 0=Left, 1=Center, 2=Right for top row
   uint8_t bottomRowAlign;   // 1 byte - 0=Left, 1=Center, 2=Right for bottom row
+
+  // Battery Indicator (v1.5)
+  bool showBattery;     // 1 byte - Show battery indicator icon
+  uint8_t batteryX;     // 1 byte - X position (0-128, default: right edge)
+  uint8_t batteryY;     // 1 byte - Y position (0-64, default: 0)
+  uint8_t batteryScale; // 1 byte - Scale factor (1-3, default: 1)
 };
 
 struct OledConfig {
@@ -387,6 +395,13 @@ extern unsigned long lastSpmStateRequest; // Debounce state requests
 
 extern bool oledHealthy;
 extern unsigned long lastOledCheck;
+
+// ============================================
+// BATTERY MONITORING (v1.5)
+// ============================================
+
+extern uint8_t batteryPercent;        // Current battery level (0-100)
+extern unsigned long lastBatteryRead; // Last ADC read time
 
 // ============================================
 // DEFERRED UPDATES

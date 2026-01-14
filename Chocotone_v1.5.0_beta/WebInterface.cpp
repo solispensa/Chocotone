@@ -2179,6 +2179,8 @@ String buildFullConfigJson() {
   json += String(ledBrightnessTap);
   json += ",\"debugAnalogIn\":";
   json += systemConfig.debugAnalogIn ? "true" : "false";
+  json += ",\"batteryAdcPin\":";
+  json += String(systemConfig.batteryAdcPin);
 
   // OLED Configuration (v1.5)
   json += ",\"oled\":{";
@@ -2222,6 +2224,12 @@ String buildFullConfigJson() {
   json += ",\"colorStripHeight\":" + String(oledConfig.main.colorStripHeight);
   json += ",\"topRowAlign\":" + String(oledConfig.main.topRowAlign);
   json += ",\"bottomRowAlign\":" + String(oledConfig.main.bottomRowAlign);
+  // Battery Indicator (v1.5)
+  json += ",\"showBattery\":";
+  json += oledConfig.main.showBattery ? "true" : "false";
+  json += ",\"batteryX\":" + String(oledConfig.main.batteryX);
+  json += ",\"batteryY\":" + String(oledConfig.main.batteryY);
+  json += ",\"batteryScale\":" + String(oledConfig.main.batteryScale);
   json += "}";
 
   // Menu screen
@@ -2493,6 +2501,8 @@ bool applyConfigJson(JsonObject doc) {
         cnt = MAX_ANALOG_INPUTS;
       systemConfig.analogInputCount = cnt;
     }
+    if (sys.containsKey("batteryAdcPin"))
+      systemConfig.batteryAdcPin = sys["batteryAdcPin"] | 0;
 
     if (sys.containsKey("buttonPins")) {
       String pinsStr = sys["buttonPins"].as<String>();
@@ -2612,6 +2622,11 @@ bool applyConfigJson(JsonObject doc) {
           oledConfig.main.colorStripHeight = m["colorStripHeight"] | 4;
           oledConfig.main.topRowAlign = m["topRowAlign"] | 0;
           oledConfig.main.bottomRowAlign = m["bottomRowAlign"] | 0;
+          // Battery Indicator (v1.5)
+          oledConfig.main.showBattery = m["showBattery"] | false;
+          oledConfig.main.batteryX = m["batteryX"] | 116;
+          oledConfig.main.batteryY = m["batteryY"] | 0;
+          oledConfig.main.batteryScale = m["batteryScale"] | 1;
         }
         if (scs.containsKey("menu")) {
           JsonObject m = scs["menu"];

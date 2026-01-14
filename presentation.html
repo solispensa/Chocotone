@@ -195,7 +195,7 @@
         /* Card System (Glassmorphism) */
         .controls-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 24px;
         }
 
@@ -706,6 +706,7 @@
             background: #000;
             overflow: hidden;
             position: relative;
+            container-type: inline-size;
         }
 
         .oled-pixel-grid {
@@ -719,8 +720,7 @@
             justify-content: space-between;
             padding: 3px 5px;
             /* Font size scaling for mobile responsiveness */
-            font-size: clamp(8px, 1.2cqw, 14px);
-            container-type: inline-size;
+            font-size: clamp(8px, 10cqw, 16px);
             line-height: 1;
         }
 
@@ -816,12 +816,26 @@
         }
 
         @media (max-width: 600px) {
+            h2 {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
             .oled-pixel-grid {
-                font-size: 0.8rem;
+                padding: 1px 2px;
             }
 
             .oled-overlay {
                 font-size: 1.5em;
+            }
+
+            .control-card {
+                padding: 1.5rem;
             }
         }
 
@@ -1861,18 +1875,27 @@
 
             .slide-hero-container {
                 aspect-ratio: auto;
-                padding: 4%;
-                gap: 3%;
+                padding: 1.5rem;
+                gap: 1rem;
             }
 
             .slide-header {
                 grid-template-columns: 1fr;
-                gap: 3%;
+                gap: 1rem;
                 flex: 0 0 auto;
             }
 
             .slide-header-card:last-child {
-                display: none;
+                display: flex;
+                min-height: 200px;
+                padding: 0;
+            }
+
+            .slide-header-card:last-child img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 20px;
             }
 
             .slide-title {
@@ -1886,7 +1909,7 @@
 
             .slide-grid {
                 grid-template-columns: 1fr;
-                gap: 3%;
+                gap: 1rem;
             }
 
             /* Fix OLED Mockup Overlap on Tablet/Mobile */
@@ -1895,14 +1918,34 @@
                 top: auto !important;
                 right: auto !important;
                 left: auto !important;
-                margin-top: 1rem;
-                width: 100% !important;
+                margin: 1.5rem auto 0.5rem auto;
+                width: 60% !important;
+                max-width: 100%;
                 height: auto !important;
                 aspect-ratio: 2/1;
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+
+            .slide-glow-1 {
+                width: 80%;
+                height: 80%;
+                top: -20%;
+                right: -20%;
+                opacity: 0.6;
+            }
+
+            .slide-glow-2 {
+                width: 70%;
+                height: 70%;
+                bottom: -15%;
+                left: -15%;
+                opacity: 0.5;
             }
 
             .slide-card {
-                padding: 12% 10%;
+                padding: 1.5rem;
+                min-width: 0;
             }
 
             .slide-card-title {
@@ -1930,11 +1973,6 @@
 
             .controller-wrapper {
                 --chassis-w: 100%;
-                --btn-size: 11%;
-                --btn-spacing: 22%;
-                --enc-size: 9%;
-                --oled-w: 22%;
-                --oled-h: 28%;
             }
 
             /* Virtual Chocotone Designer - Bottom Sheet on Mobile */
@@ -2057,8 +2095,11 @@
                 left: auto !important;
                 margin-top: 1rem;
                 width: 100% !important;
+                max-width: 100%;
                 height: auto !important;
                 aspect-ratio: 2/1;
+                overflow: hidden;
+                box-sizing: border-box;
             }
 
             #layout-editor {
@@ -2076,15 +2117,17 @@
 
             .slide-card-icon {
                 font-size: 1.5rem;
+                margin-bottom: 1rem;
             }
 
-            .controller-wrapper {
-                --btn-size: 13%;
-                --btn-spacing: 20%;
-                --oled-w: 25%;
-                --oled-h: 32%;
-                --enc-size: 10%;
+            .slide-card-title {
+                margin-bottom: 0.5rem;
             }
+
+
+
+            /* Adjust internal components for the new scale */
+
 
             #layout-editor .editor-row {
                 flex-wrap: nowrap;

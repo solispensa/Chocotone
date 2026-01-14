@@ -30,6 +30,89 @@ void clearDisplayBuffer() {
   }
 }
 
+// ============================================
+// BATTERY MONITORING (v1.5)
+// ============================================
+
+// Read battery voltage and update percentage (0-100)
+// Uses voltage divider with 2x100k resistors (50%)
+// 18650: 4.2V=100%, 3.9V=75%, 3.7V=50%, 3.4V=25%, 3.0V=0%
+// After divider: 2.1V, 1.95V, 1.85V, 1.7V, 1.5V
+// ADC 12-bit (0-4095) with 3.3V ref: 2605, 2420, 2296, 2109, 1861
+void updateBatteryLevel() {
+  if (systemConfig.batteryAdcPin == 0)
+    return;
+  if (millis() - lastBatteryRead < 5000)
+    return; // Read every 5 seconds
+
+  lastBatteryRead = millis();
+  int rawAdc = analogRead(systemConfig.batteryAdcPin);
+
+  // Map ADC values to percentage based on 18650 discharge curve
+  if (rawAdc >= 2605)
+    batteryPercent = 100;
+  else if (rawAdc >= 2420)
+    batteryPercent = 75 + ((rawAdc - 2420) * 25) / 185;
+  else if (rawAdc >= 2296)
+    batteryPercent = 50 + ((rawAdc - 2296) * 25) / 124;
+  else if (rawAdc >= 2109)
+    batteryPercent = 25 + ((rawAdc - 2109) * 25) / 187;
+  else if (rawAdc >= 1861)
+    batteryPercent = ((rawAdc - 1861) * 25) / 248;
+  else
+    batteryPercent = 0;
+
+  // Debug output
+  Serial.printf("[BAT] Pin:%d ADC:%d -> %d%%\n", systemConfig.batteryAdcPin,
+                rawAdc, batteryPercent);
+}
+
+// Draw battery icon at specified position with scale factor
+// Base size: 12x7 pixels, 4 divisions
+// Uses white for OLED and green for TFT displays
+void drawBatteryIcon(int x, int y, int scale) {
+  if (displayPtr == nullptr)
+    return;
+  if (scale < 1)
+    scale = 1;
+  if (scale > 3)
+    scale = 3;
+
+  int w = 10 * scale;   // Main body width
+  int h = 7 * scale;    // Main body height
+  int tipW = 2 * scale; // Tip width
+  int tipH = 3 * scale; // Tip height
+  int segW = 2 * scale; // Segment width
+  int segH = 5 * scale; // Segment height
+
+  // Use green for TFT, white for OLED
+  // ST7735 green: 0x07E0 (RGB565)
+  uint16_t battColor =
+      (oledConfig.type == TFT_128X128) ? 0x07E0 : DISPLAY_WHITE;
+
+  // Battery outline
+  displayPtr->drawRect(x, y, w, h, battColor);
+  // Battery tip (positive terminal)
+  displayPtr->fillRect(x + w, y + (h - tipH) / 2, tipW, tipH, battColor);
+
+  // Calculate filled segments (4 divisions)
+  int segments = 0;
+  if (batteryPercent >= 87)
+    segments = 4;
+  else if (batteryPercent >= 62)
+    segments = 3;
+  else if (batteryPercent >= 37)
+    segments = 2;
+  else if (batteryPercent >= 12)
+    segments = 1;
+
+  // Draw filled segments
+  for (int i = 0; i < segments; i++) {
+    displayPtr->fillRect(x + scale + (i * segW), y + scale, segW, segH,
+                         battColor);
+  }
+}
+
 // MIDI Note Names
 const char *MIDI_NOTE_NAMES[] = {"C",  "C#", "D",  "D#", "E",  "F",
                                  "F#", "G",  "G#", "A",  "A#", "B"};
@@ -588,6 +671,17 @@ void displayOLED() {
       displayPtr->setCursor(statusX, statusLineY);
       displayPtr->print(statusLine);
     }
+  }
+
+  // Battery indicator (v1.5) - configurable position and scale
+  if (oledConfig.main.showBattery && systemConfig.batteryAdcPin > 0) {
+    updateBatteryLevel();
+    int battX = oledConfig.main.batteryX;
+    int battY = oledConfig.main.batteryY;
+    int battScale = oledConfig.main.batteryScale;
+    if (battScale < 1)
+      battScale = 1;
+    drawBatteryIcon(battX, battY, battScale);
   }
 
   flushDisplay();

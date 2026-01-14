@@ -566,10 +566,9 @@ void loop_presetMode() {
                 }
 
                 // Toggle alternate state if button has 2ND_PRESS
-                // In sync mode, don't toggle locally - GP5/SPM response sets
-                // state
-                if (hasAction(config, ACTION_2ND_PRESS) &&
-                    presetSyncMode[currentPreset] == SYNC_NONE) {
+                // In sync mode, still toggle locally because the button sends
+                // a toggle command to the device, and we need to track state
+                if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
                   ledToggleState[i] = config.isAlternate;
                   DBG_INPUT("BTN %d: toggled isAlternate to %d, LED=%d\n", i,
@@ -627,14 +626,13 @@ void loop_presetMode() {
                 }
 
                 // Toggle alternate state if button has 2ND_PRESS
-                // In sync mode, don't toggle locally - GP5/SPM response sets
-                // state
-                if (hasAction(config, ACTION_2ND_PRESS) &&
-                    presetSyncMode[currentPreset] == SYNC_NONE) {
+                // Toggle locally as we sent a toggle command to device
+                if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
                   ledToggleState[i] = config.isAlternate;
                   DBG_INPUT("BTN %d: toggled isAlternate to %d\n", i,
                             config.isAlternate);
+                  updateLeds();
                 }
               } else if (pressAction && pressAction->type == TAP_TEMPO) {
                 // Handle deferred TAP_TEMPO

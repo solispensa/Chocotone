@@ -29,4 +29,8 @@ void initDisplayHardware();
 void flushDisplay();
 void clearDisplayBuffer();
 
+// Battery Monitoring (v1.5)
+void updateBatteryLevel();
+void drawBatteryIcon(int x, int y, int scale = 1);
+
 #endif
