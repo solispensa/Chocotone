@@ -742,19 +742,6 @@ uint8_t sysexBuffer[256];
 size_t sysexLen = 0;
 
 void processBufferedSysex() {
-  // Log incoming SysEx
-  Serial.print("Received SysEx (");
-  Serial.print(sysexLen);
-  Serial.print(" bytes): ");
-  for (size_t i = 0; i < min(sysexLen, (size_t)40); i++) {
-    if (sysexBuffer[i] < 0x10)
-      Serial.print("0");
-    Serial.print(sysexBuffer[i], HEX);
-    Serial.print(" ");
-  }
-  if (sysexLen > 40)
-    Serial.print("...");
-  Serial.println();
 
   // Only process SysEx messages (start with 80 80 F0)
   if (sysexLen < 20 || sysexBuffer[0] != 0x80 || sysexBuffer[1] != 0x80 ||
@@ -770,18 +757,7 @@ void processBufferedSysex() {
   // Reference: GP5EditorBT.html handleNotification()
   // =========================================================
 
-  // DEBUG: Log sync mode for this preset
-  Serial.printf(
-      "[GP5 DEBUG] Current preset: %d, SyncMode: %d (0=NONE, 1=SPM, 2=GP5)\n",
-      currentPreset, presetSyncMode[currentPreset]);
-
   if (presetSyncMode[currentPreset] == SYNC_GP5) {
-    // DEBUG: Log key bytes for pattern matching
-    Serial.printf(
-        "[GP5 DEBUG] Key bytes: [5]=0x%02X [6]=0x%02X [7]=0x%02X [8]=0x%02X "
-        "[11]=0x%02X [12]=0x%02X [13]=0x%02X [14]=0x%02X\n",
-        sysexBuffer[5], sysexBuffer[6], sysexBuffer[7], sysexBuffer[8],
-        sysexBuffer[11], sysexBuffer[12], sysexBuffer[13], sysexBuffer[14]);
 
     // Static buffers for multi-chunk accumulation
     static uint8_t gp5PresetData[1024]; // Combined preset data
@@ -796,18 +772,9 @@ void processBufferedSysex() {
     bool isFinalChunk = (sysexBuffer[7] == 0x00 && sysexBuffer[8] == 0x04);
     bool isPresetChunk = (sysexBuffer[5] == 0x00 && sysexBuffer[6] == 0x05 &&
                           (sysexLen >= 150 || isFinalChunk));
-    Serial.printf("[GP5 DEBUG] Preset chunk check: len=%d, [5]=0? %s, [6]=5? "
-                  "%s, [7]=0 [8]=4? %s => %s\n",
-                  sysexLen, sysexBuffer[5] == 0x00 ? "YES" : "NO",
-                  sysexBuffer[6] == 0x05 ? "YES" : "NO",
-                  isFinalChunk ? "YES (final)" : "NO",
-                  isPresetChunk ? "MATCH" : "no match");
 
     if (isPresetChunk) {
       uint8_t chunkIndex = sysexBuffer[7] * 16 + sysexBuffer[8];
-
-      Serial.printf("GP5: Preset info chunk %d received (%d bytes)\n",
-                    chunkIndex, sysexLen);
 
       // Extract data portion (skip BLE header 80 80, SysEx F0, and chunk
       // header) Reference: bytes.slice(0,211).slice(11) means bytes 11-210
@@ -833,24 +800,12 @@ void processBufferedSysex() {
           (sysexLen < 160 && sysexBuffer[7] == 0x00 && sysexBuffer[8] == 0x04);
 
       if (isFinalChunk && gp5PresetDataLen >= 144) {
-        Serial.printf("GP5: Final chunk received - total data: %d bytes\n",
-                      gp5PresetDataLen);
-
         // Parse effect states from accumulated data
-        // Effect state bits from GP5EditorBT.html:
-        // data[140]: bit 0=CAB, bit 1=EQ, bit 2=MOD, bit 3=DLY
-        // data[141]: bit 0=NR, bit 1=PRE, bit 2=DST, bit 3=AMP
-        // data[143]: bit 0=RVB, bit 1=NS
-
         extern bool effectStates[10]; // From Globals
 
         uint8_t data140 = gp5PresetData[140];
         uint8_t data141 = gp5PresetData[141];
         uint8_t data143 = gp5PresetData[143];
-
-        Serial.printf(
-            "GP5: State bytes - [140]=0x%02X [141]=0x%02X [143]=0x%02X\n",
-            data140, data141, data143);
 
         // Decode effect states (order matches GP5EffectBlock enum)
         effectStates[0] = (data141 & (1 << 0)) != 0; // NR
@@ -863,14 +818,6 @@ void processBufferedSysex() {
         effectStates[7] = (data140 & (1 << 3)) != 0; // DLY
         effectStates[8] = (data143 & (1 << 0)) != 0; // RVB
         effectStates[9] = (data143 & (1 << 1)) != 0; // NS
-
-        Serial.println("GP5 State Decoded:");
-        Serial.printf("  NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d MOD=%d DLY=%d "
-                      "RVB=%d NS=%d\n",
-                      effectStates[0], effectStates[1], effectStates[2],
-                      effectStates[3], effectStates[4], effectStates[5],
-                      effectStates[6], effectStates[7], effectStates[8],
-                      effectStates[9]);
 
         // Apply to button states
         applyGp5StateToButtons();
@@ -895,22 +842,12 @@ void processBufferedSysex() {
     bool isCTLToggle = (sysexLen >= 24 && sysexBuffer[5] == 0x00 &&
                         sysexBuffer[6] == 0x01 && sysexBuffer[12] == 0x02 &&
                         sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x0E);
-    Serial.printf("[GP5 DEBUG] CTL toggle check: [5]=0, [6]=1, [12]=2, [13]=4, "
-                  "[14]=0E => %s\n",
-                  isCTLToggle ? "MATCH" : "no match");
-
     if (isCTLToggle) {
-
-      Serial.println("GP5: CTL toggle received - updating effect states");
-
       extern bool effectStates[10]; // From Globals
 
       uint8_t stateNibble1 = sysexBuffer[16]; // NR, PRE, DST, AMP
       uint8_t stateNibble2 = sysexBuffer[15]; // CAB, EQ, MOD, DLY
       uint8_t stateNibble3 = sysexBuffer[18]; // RVB, NS
-
-      Serial.printf("GP5 CTL: bytes[15]=0x%02X [16]=0x%02X [18]=0x%02X\n",
-                    stateNibble2, stateNibble1, stateNibble3);
 
       // Decode effect states (same mapping as preset dump)
       effectStates[0] = (stateNibble1 & (1 << 0)) != 0; // NR
@@ -924,13 +861,6 @@ void processBufferedSysex() {
       effectStates[8] = (stateNibble3 & (1 << 0)) != 0; // RVB
       effectStates[9] = (stateNibble3 & (1 << 1)) != 0; // NS
 
-      Serial.printf("GP5 CTL State: NR=%d PRE=%d DST=%d AMP=%d CAB=%d EQ=%d "
-                    "MOD=%d DLY=%d RVB=%d NS=%d\n",
-                    effectStates[0], effectStates[1], effectStates[2],
-                    effectStates[3], effectStates[4], effectStates[5],
-                    effectStates[6], effectStates[7], effectStates[8],
-                    effectStates[9]);
-
       // Apply to button LED states
       applyGp5StateToButtons();
       return;
@@ -942,16 +872,10 @@ void processBufferedSysex() {
     bool isPresetChanged =
         (sysexLen >= 20 && sysexBuffer[11] == 0x01 && sysexBuffer[12] == 0x02 &&
          sysexBuffer[13] == 0x04 && sysexBuffer[14] == 0x03);
-    Serial.printf("[GP5 DEBUG] Preset changed check: [11]=1, [12]=2, [13]=4, "
-                  "[14]=3 => %s\n",
-                  isPresetChanged ? "MATCH" : "no match");
 
     if (isPresetChanged && sysexLen >= 17) {
       // Extract preset number from nibbles
       uint8_t gp5ActivePreset = sysexBuffer[15] * 16 + sysexBuffer[16];
-      Serial.printf(
-          "GP5: Preset changed to %d - updating buttons and requesting state\n",
-          gp5ActivePreset);
 
       // Update preset selection buttons
       applyGp5PresetToButtons(gp5ActivePreset);
@@ -1002,9 +926,6 @@ void processBufferedSysex() {
       // Convert to payload position (pocketedit's payload starts at raw[5])
       int chainByteIndex = chainMarkerPosRaw - 5; // Position in payload
 
-      Serial.printf("SPM: Chain marker at raw[%d], payload[%d]\n",
-                    chainMarkerPosRaw, chainByteIndex);
-
       // Calculate positions in PAYLOAD (matching pocketedit)
       int nibble1PayloadPos = chainByteIndex - 13;
       int nibble2PayloadPos = chainByteIndex - 12;
@@ -1015,40 +936,20 @@ void processBufferedSysex() {
       int nibble2Pos = nibble2PayloadPos + 5;
       int globalStatePos = globalStatePayloadPos + 5;
 
-      Serial.printf("  Positions - nibble1: payload[%d]=raw[%d], nibble2: "
-                    "payload[%d]=raw[%d], globalState: payload[%d]=raw[%d]\n",
-                    nibble1PayloadPos, nibble1Pos, nibble2PayloadPos,
-                    nibble2Pos, globalStatePayloadPos, globalStatePos);
-
       if (nibble1Pos >= 5 && nibble1Pos < (int)sysexLen &&
           globalStatePos >= 5 && globalStatePos < (int)sysexLen) {
         uint8_t nibble1Byte = sysexBuffer[nibble1Pos];
         uint8_t nibble2Byte = sysexBuffer[nibble2Pos];
         uint8_t globalStateByte = sysexBuffer[globalStatePos];
 
-        Serial.printf(
-            "  Raw values: nibble1=0x%02X nibble2=0x%02X globalState=0x%02X\n",
-            nibble1Byte, nibble2Byte, globalStateByte);
-
         // CRITICAL: pocketedit uses only the LOW NIBBLE of each state byte
-        // JavaScript: parseInt(nibble1[1] + nibble2[1], 16) -> "F" + "E" = "FE"
-        // = 0xFE So nibble1 is HIGH nibble, nibble2 is LOW nibble!
         uint8_t lowNibble1 = nibble1Byte & 0x0F;
         uint8_t lowNibble2 = nibble2Byte & 0x0F;
         uint8_t mainBitmask = (lowNibble1 << 4) | lowNibble2;
 
-        Serial.printf("  Low nibbles: 0x%X + 0x%X = bitmask 0x%02X (binary: ",
-                      lowNibble1, lowNibble2, mainBitmask);
-        for (int b = 7; b >= 0; b--)
-          Serial.print((mainBitmask >> b) & 1);
-        Serial.println(")");
-
         // RVB and Clone mode from globalStateByte
         bool isRvbOn = (globalStateByte & 0x01) != 0;
         bool isCloneMode = (globalStateByte & 0x02) != 0;
-
-        Serial.printf("  globalStateByte: RVB=%d, CloneMode=%d\n", isRvbOn,
-                      isCloneMode);
 
         // Decode effect states
         spmEffectStates[0] = (mainBitmask & (1 << 0)) != 0; // NR
@@ -1299,8 +1200,6 @@ void applySpmStateToButtons() {
     return; // Sync not enabled for this preset
   }
 
-  Serial.println("SPM Sync: Applying state to buttons...");
-
   // CC number to effect index mapping:
   // CC 43 = NR (index 0)
   // CC 44 = FX1 (index 1)
@@ -1338,17 +1237,12 @@ void applySpmStateToButtons() {
       // sends OFF"
       config.isAlternate = effectIsOn;
       ledToggleState[btn] = effectIsOn;
-
-      Serial.printf("  BTN %d (%s): CC%d -> Effect[%d] = %s\n", btn,
-                    config.name, ccNum, effectIndex, effectIsOn ? "ON" : "OFF");
     }
   }
 
   // Update LEDs to reflect new state
   extern void updateLeds(); // From UI_Display.cpp
   updateLeds();
-
-  Serial.println("SPM Sync: State applied successfully");
 }
 
 // Apply GP5 effect states to button LED states

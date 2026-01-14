@@ -46,6 +46,8 @@
   - Configurable signal processing: oversampling, smoothing, hysteresis
   - Multi-message support with input/output range mapping
 - **128x32 OLED Support (v1.5)** - Compact displays with optimized layouts
+- **128x128 TFT SPI Color Display (v1.5)** - Full-color display showing color stripes for each control
+- **Battery Monitoring (v1.5)** - Voltage divider with two 100kΩ resistors (tested with 18650 Li-ion)
 
 ### MIDI Capabilities
 - **BLE MIDI Dual-Mode** - Connect to BLE devices AND accept connections from DAWs/Apps

@@ -46,19 +46,28 @@ void updateBatteryLevel() {
     return; // Read every 5 seconds
 
   lastBatteryRead = millis();
-  int rawAdc = analogRead(systemConfig.batteryAdcPin);
+
+  // Take multiple samples and average to reduce fluctuation
+  long adcSum = 0;
+  for (int i = 0; i < 16; i++) {
+    adcSum += analogRead(systemConfig.batteryAdcPin);
+    delayMicroseconds(500);
+  }
+  int rawAdc = adcSum / 16;
 
   // Map ADC values to percentage based on 18650 discharge curve
-  if (rawAdc >= 2605)
+  // Calibrated for 2x100k voltage divider: 4.2V full → ~2250 ADC, 3.0V empty →
+  // ~1600 ADC
+  if (rawAdc >= 2250)
     batteryPercent = 100;
-  else if (rawAdc >= 2420)
-    batteryPercent = 75 + ((rawAdc - 2420) * 25) / 185;
-  else if (rawAdc >= 2296)
-    batteryPercent = 50 + ((rawAdc - 2296) * 25) / 124;
-  else if (rawAdc >= 2109)
-    batteryPercent = 25 + ((rawAdc - 2109) * 25) / 187;
-  else if (rawAdc >= 1861)
-    batteryPercent = ((rawAdc - 1861) * 25) / 248;
+  else if (rawAdc >= 2150)
+    batteryPercent = 75 + ((rawAdc - 2150) * 25) / 100;
+  else if (rawAdc >= 2000)
+    batteryPercent = 50 + ((rawAdc - 2000) * 25) / 150;
+  else if (rawAdc >= 1800)
+    batteryPercent = 25 + ((rawAdc - 1800) * 25) / 200;
+  else if (rawAdc >= 1600)
+    batteryPercent = ((rawAdc - 1600) * 25) / 200;
   else
     batteryPercent = 0;
 
@@ -297,16 +306,6 @@ void displayOLED() {
   int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
   if (oledConfig.type == OLED_128X32 && bottomRowY > 24) {
     bottomRowY = 24; // Clamp for 128x32
-  }
-
-  // Debug: Print layout values (comment out after debugging)
-  static unsigned long lastLayoutLog = 0;
-  if (millis() - lastLayoutLog > 10000) { // Print every 10 seconds
-    lastLayoutLog = millis();
-    Serial.printf("[OLED Layout] type=%d, topY=%d, titleY=%d, statusY=%d, "
-                  "bottomY=%d, sizes=%d/%d/%d\n",
-                  oledConfig.type, topRowY, titleY, statusY, bottomRowY,
-                  labelSize, titleSize, statusSize);
   }
 
   displayPtr->setTextSize(labelSize);
