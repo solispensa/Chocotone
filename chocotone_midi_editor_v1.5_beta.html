@@ -2736,13 +2736,13 @@
                     // Battery indicator (v1.5) - configurable position and scale
                     if (ts.showBattery) {
                         var battScale = ts.batteryScale || 1;
-                        var battX = ts.batteryX !== undefined ? ts.batteryX : (w - 12 * battScale - 2);
+                        var battX = ts.batteryX !== undefined ? ts.batteryX : (w - 15 * battScale - 2);
                         var battY = ts.batteryY !== undefined ? ts.batteryY : 0;
-                        var battW = 10 * battScale;
+                        var battW = 13 * battScale;  // Wider battery
                         var battH = 7 * battScale;
                         var tipW = 2 * battScale;
                         var tipH = 3 * battScale;
-                        var segW = 2 * battScale;
+                        var segW = 3 * battScale;    // 3px segments
                         var segH = 5 * battScale;
                         // Use white for OLED, green for TFT
                         var battColor = is128 ? '#22c55e' : '#ffffff';
@@ -2753,9 +2753,16 @@
                         // Draw battery tip
                         ctx.fillStyle = battColor;
                         ctx.fillRect((battX + battW) * scale, (battY + (battH - tipH) / 2) * scale, tipW * scale, tipH * scale);
-                        // Draw 3 filled segments (75% demo)
+                        // Draw 3 filled segments first (75% demo)
                         for (var seg = 0; seg < 3; seg++) {
-                            ctx.fillRect((battX + battScale + seg * segW) * scale, (battY + battScale) * scale, segW * scale, segH * scale);
+                            var segX = battX + 1 + (seg * segW);
+                            ctx.fillRect(segX * scale, (battY + 1) * scale, segW * scale, segH * scale);
+                        }
+                        // Draw black partition lines on top (3 lines for 4 divisions)
+                        ctx.fillStyle = '#000000';
+                        for (var line = 1; line < 4; line++) {
+                            var lineX = battX + (line * segW);
+                            ctx.fillRect(lineX * scale, (battY + 1) * scale, 1 * scale, segH * scale);
                         }
                     }
                 }
@@ -3386,10 +3393,40 @@
             await serialWriter.write(new TextEncoder().encode('GET_CONFIG\n'));
         }
 
-        async function sendToDevice() {
+        async function sendToDevice(isRetry) {
             if (!serialWriter) { alert('Connect USB first'); return; }
             var json = JSON.stringify(presetData);
             var CHUNK_SIZE = 200; // Smaller chunks to prevent serial buffer overflow
+
+            // Setup response listener
+            var uploadResult = null;
+            var uploadResolve = null;
+            var uploadTimeout = null;
+
+            // Add temporary response listener to processSerialData
+            var origProcessSerialData = processSerialData;
+            processSerialData = function () {
+                // Call original first
+                var origBuffer = serialBuffer;
+                origProcessSerialData();
+
+                // Check for responses in what we just processed
+                if (origBuffer.includes('SAVE_OK') || origBuffer.includes('Config saved')) {
+                    uploadResult = 'SUCCESS';
+                    if (uploadResolve) uploadResolve('SUCCESS');
+                } else if (origBuffer.includes('JSON_ERROR:InvalidInput')) {
+                    uploadResult = 'INVALID_INPUT';
+                    if (uploadResolve) uploadResolve('INVALID_INPUT');
+                } else if (origBuffer.includes('JSON_ERROR:')) {
+                    var match = origBuffer.match(/JSON_ERROR:(\w+)/);
+                    uploadResult = match ? match[0] : 'JSON_ERROR';
+                    if (uploadResolve) uploadResolve(uploadResult);
+                } else if (origBuffer.includes('CHUNK_ERROR:')) {
+                    var match = origBuffer.match(/CHUNK_ERROR:(\w+)/);
+                    uploadResult = match ? match[0] : 'CHUNK_ERROR';
+                    if (uploadResolve) uploadResolve(uploadResult);
+                }
+            };
 
             try {
                 // Start upload - pause BLE scan first
@@ -3409,14 +3446,51 @@
                     if ((i / CHUNK_SIZE) % 10 === 0) await sleep(100);
                 }
 
-                // End upload
+                // End upload and wait for response
                 await sleep(500);
                 await serialWriter.write(new TextEncoder().encode('SET_CONFIG_END\n'));
+
+                // Wait for response (max 10 seconds)
+                var responsePromise = new Promise(function (resolve) {
+                    uploadResolve = resolve;
+                    uploadTimeout = setTimeout(function () {
+                        resolve('TIMEOUT');
+                    }, 10000);
+                });
+
+                var result = await responsePromise;
+                clearTimeout(uploadTimeout);
+
+                // Restore original processSerialData
+                processSerialData = origProcessSerialData;
+
+                // Resume BLE scan
                 await sleep(200);
                 await serialWriter.write(new TextEncoder().encode('RESUME_SCAN\n'));
-                alert('Config sent to device! Check serial monitor for status.');
+
+                // Handle result
+                if (result === 'SUCCESS') {
+                    alert('✅ Config saved to device successfully!');
+                } else if (result === 'INVALID_INPUT' && !isRetry) {
+                    // Auto-retry once for InvalidInput
+                    console.log('JSON_ERROR:InvalidInput - auto-retrying once...');
+                    await sleep(1000);
+                    return sendToDevice(true); // Retry with flag
+                } else if (result === 'INVALID_INPUT' && isRetry) {
+                    alert('❌ Config save failed: Invalid JSON input\n\nThe device failed to parse the config twice.\nPlease check the serial monitor for details.');
+                } else if (result === 'TIMEOUT') {
+                    alert('⚠️ Config upload timeout.\n\nNo response from device after 10 seconds.\nCheck if device is connected and try again.');
+                } else if (result.startsWith('JSON_ERROR:')) {
+                    alert('❌ Config save failed: ' + result + '\n\nPlease check the serial monitor for details.');
+                } else if (result.startsWith('CHUNK_ERROR:')) {
+                    alert('❌ Config upload failed: ' + result + '\n\nBuffer overflow - try again or restart device.');
+                } else {
+                    alert('⚠️ Config sent. Check serial monitor for status.');
+                }
             } catch (e) {
-                alert('Send error: ' + e.message);
+                // Restore original processSerialData on error
+                processSerialData = origProcessSerialData;
+                alert('❌ Send error: ' + e.message);
             }
         }
 

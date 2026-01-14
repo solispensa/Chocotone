@@ -68,7 +68,7 @@ void updateBatteryLevel() {
 }
 
 // Draw battery icon at specified position with scale factor
-// Base size: 12x7 pixels, 4 divisions
+// Base size: 14x7 pixels, 4 divisions with black partition lines
 // Uses white for OLED and green for TFT displays
 void drawBatteryIcon(int x, int y, int scale) {
   if (displayPtr == nullptr)
@@ -78,15 +78,14 @@ void drawBatteryIcon(int x, int y, int scale) {
   if (scale > 3)
     scale = 3;
 
-  int w = 10 * scale;   // Main body width
+  int w = 13 * scale;   // Main body width (wider for 4 segments + gaps)
   int h = 7 * scale;    // Main body height
   int tipW = 2 * scale; // Tip width
   int tipH = 3 * scale; // Tip height
-  int segW = 2 * scale; // Segment width
+  int segW = 3 * scale; // Segment width (3 pixels each)
   int segH = 5 * scale; // Segment height
 
   // Use green for TFT, white for OLED
-  // ST7735 green: 0x07E0 (RGB565)
   uint16_t battColor =
       (oledConfig.type == TFT_128X128) ? 0x07E0 : DISPLAY_WHITE;
 
@@ -106,10 +105,16 @@ void drawBatteryIcon(int x, int y, int scale) {
   else if (batteryPercent >= 12)
     segments = 1;
 
-  // Draw filled segments
+  // Draw filled segments first
   for (int i = 0; i < segments; i++) {
-    displayPtr->fillRect(x + scale + (i * segW), y + scale, segW, segH,
-                         battColor);
+    int segX = x + 1 + (i * segW);
+    displayPtr->fillRect(segX, y + 1, segW, segH, battColor);
+  }
+
+  // Draw black partition lines on top (3 lines for 4 divisions)
+  for (int i = 1; i < 4; i++) {
+    int lineX = x + (i * segW);
+    displayPtr->drawFastVLine(lineX, y + 1, segH, DISPLAY_BLACK);
   }
 }
 
