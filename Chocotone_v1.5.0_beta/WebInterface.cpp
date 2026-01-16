@@ -2264,12 +2264,19 @@ String buildFullConfigJson() {
     json += "{\"enabled\":";
     json += globalSpecialActions[i].hasCombo ? "true" : "false";
     json += ",\"partner\":";
-    json += String(globalSpecialActions[i].comboAction.combo.partner);
+    json +=
+        String(globalSpecialActions[i].partner); // Use separate partner field
     json += ",\"type\":\"";
     json += getCommandTypeString(globalSpecialActions[i].comboAction.type);
     json += "\",\"action\":\"";
     json += getActionTypeString(globalSpecialActions[i].comboAction.action);
-    json += "\",\"holdMs\":" +
+    json += "\",\"channel\":";
+    json += String(globalSpecialActions[i].comboAction.channel);
+    json += ",\"data1\":";
+    json += String(globalSpecialActions[i].comboAction.data1);
+    json += ",\"data2\":";
+    json += String(globalSpecialActions[i].comboAction.data2);
+    json += ",\"holdMs\":" +
             String(globalSpecialActions[i].comboAction.longPress.holdMs);
     json += ",\"label\":\"";
     char labelBuf[6] = {0};
@@ -2663,6 +2670,11 @@ bool applyConfigJson(JsonObject doc) {
             parseCommandType(gsaObj["type"] | "OFF");
         globalSpecialActions[i].comboAction.action =
             parseActionType(gsaObj["action"] | "PRESS");
+
+        // MIDI data fields (required for CC, NOTE, PC commands)
+        globalSpecialActions[i].comboAction.channel = gsaObj["channel"] | 1;
+        globalSpecialActions[i].comboAction.data1 = gsaObj["data1"] | 0;
+        globalSpecialActions[i].comboAction.data2 = gsaObj["data2"] | 0;
 
         if (globalSpecialActions[i].comboAction.action == ACTION_LONG_PRESS ||
             globalSpecialActions[i].comboAction.action ==
