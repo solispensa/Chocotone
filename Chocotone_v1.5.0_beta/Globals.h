@@ -206,7 +206,12 @@ struct SystemConfig {
 // ============================================
 // OLED CONFIGURATION (v1.5 - 128x32 support)
 // ============================================
-enum OledType : uint8_t { OLED_128X64 = 0, OLED_128X32 = 1, TFT_128X128 = 2 };
+enum OledType : uint8_t {
+  OLED_128X64 = 0,
+  OLED_128X32 = 1,
+  TFT_128X128 = 2,
+  TFT_128X160 = 3
+};
 
 struct OledScreenConfig {
   uint8_t labelSize;   // 1 byte - Text size for button labels (1-3)
@@ -259,9 +264,13 @@ extern OledConfig oledConfig;
 
 // Color abstraction for different display types
 #define DISPLAY_WHITE                                                          \
-  (oledConfig.type == TFT_128X128 ? ST7735_WHITE : SSD1306_WHITE)
+  ((oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)          \
+       ? ST7735_WHITE                                                          \
+       : SSD1306_WHITE)
 #define DISPLAY_BLACK                                                          \
-  (oledConfig.type == TFT_128X128 ? ST7735_BLACK : SSD1306_BLACK)
+  ((oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)          \
+       ? ST7735_BLACK                                                          \
+       : SSD1306_BLACK)
 
 // ============================================
 // GLOBAL SPECIAL ACTIONS (per-button, across presets)

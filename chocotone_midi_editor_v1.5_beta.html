@@ -802,7 +802,7 @@
                 var oled = data.system.oled;
                 // Convert numeric type to string format
                 if (typeof oled.type === 'number') {
-                    var typeMap = { 0: '128x64', 1: '128x32', 2: '128x128' };
+                    var typeMap = { 0: '128x64', 1: '128x32', 2: '128x128', 3: '128x160' };
                     oled.type = typeMap[oled.type] || '128x64';
                 }
                 // Ensure screens.main has all required fields with defaults
@@ -1008,7 +1008,8 @@
             html += '<div class="field"><label>Display Type</label><select onchange="updOled(\'type\',this.value)">';
             html += '<option value="128x64"' + (oled.type === '128x64' ? ' selected' : '') + '>128×64 I2C</option>';
             html += '<option value="128x32"' + (oled.type === '128x32' ? ' selected' : '') + '>128×32 I2C</option>';
-            html += '<option value="128x128"' + (oled.type === '128x128' ? ' selected' : '') + '>128×128 SPI TFT</option>';
+            html += '<option value="128x128"' + (oled.type === '128x128' ? ' selected' : '') + '>128×128 SPI TFT (1.44")</option>';
+            html += '<option value="128x160"' + (oled.type === '128x160' ? ' selected' : '') + '>128×160 SPI TFT (1.8")</option>';
             html += '</select></div>';
             html += '<div class="field"><label>Rotation</label><select onchange="updOled(\'rotation\',parseInt(this.value))">';
             html += '<option value="0"' + (oled.rotation === 0 ? ' selected' : '') + '>0°</option>';
@@ -1039,13 +1040,15 @@
             if (previewMode === 'main') {
                 // MAIN SCREEN controls
                 var main = screens.main || { labelSize: 1, titleSize: 2, statusSize: 1, bpmSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showAnalog: false, showStatus: true, showTopRow: true, showBottomRow: true, titleAlign: 1, statusAlign: 0, bpmAlign: 1, topRowMap: '5,6,7,8', bottomRowMap: '1,2,3,4', showColorStrips: false, colorStripHeight: 4, topRowAlign: 0, bottomRowAlign: 0 };
-                var maxY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 56);
-                var maxTitleY = (oled.type === '128x128') ? 110 : ((oled.type === '128x32') ? 24 : 50);
-                var maxStatusY = (oled.type === '128x128') ? 120 : ((oled.type === '128x32') ? 24 : 55);
+                var isTft128 = (oled.type === '128x128');
+                var isTft160 = (oled.type === '128x160');
+                var maxY = isTft160 ? 152 : (isTft128 ? 120 : ((oled.type === '128x32') ? 24 : 56));
+                var maxTitleY = isTft160 ? 140 : (isTft128 ? 110 : ((oled.type === '128x32') ? 24 : 50));
+                var maxStatusY = isTft160 ? 152 : (isTft128 ? 120 : ((oled.type === '128x32') ? 24 : 55));
                 html += '<div style="font-size:11px;color:#00d4ff;font-weight:600;margin-bottom:6px">Global Layout</div>';
 
                 // Color Strip Controls (TFT only)
-                if (oled.type === '128x128') {
+                if (oled.type === '128x128' || oled.type === '128x160') {
                     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:#1a2a1a;padding:6px 8px;border-radius:4px;border:1px solid #2a4a2a">';
                     html += '  <input type="checkbox" ' + (main.showColorStrips ? 'checked' : '') + ' onchange="updOledScreen(\'main\',\'showColorStrips\',this.checked)" style="width:14px;height:14px">';
                     html += '  <label style="font-size:10px;color:#8f8">Color Strips</label>';
@@ -1956,7 +1959,7 @@
             presetData.system.oled[k] = v;
 
             // Check for pin conflicts when switching to TFT display
-            if (k === 'type' && v === '128x128') {
+            if (k === 'type' && (v === '128x128' || v === '128x160')) {
                 resolveSpiPinConflicts();
             }
 
@@ -2060,11 +2063,12 @@
             var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
             var is32 = oled.type === '128x32';
             var is128 = oled.type === '128x128';
+            var is160 = oled.type === '128x160';
             var rotation = oled.rotation || 0;
             var isVertical = (rotation === 90 || rotation === 270);
             // Dimensions
             var baseW = 128;
-            var baseH = is128 ? 128 : (is32 ? 32 : 64);
+            var baseH = is160 ? 160 : (is128 ? 128 : (is32 ? 32 : 64));
             var w = isVertical ? baseH : baseW;
             var h = isVertical ? baseW : baseH;
             var scale = 2;
@@ -2745,7 +2749,7 @@
                         var segW = 3 * battScale;    // 3px segments
                         var segH = 5 * battScale;
                         // Use white for OLED, green for TFT
-                        var battColor = is128 ? '#22c55e' : '#ffffff';
+                        var battColor = (is128 || is160) ? '#22c55e' : '#ffffff';
                         // Draw battery outline
                         ctx.strokeStyle = battColor;
                         ctx.lineWidth = 1 * scale;
@@ -2777,7 +2781,7 @@
         function resolveSpiPinConflicts() {
             var sys = presetData.system;
             var oledType = sys.oled ? sys.oled.type : '128x64';
-            if (oledType !== '128x128') return; // Only TFT uses SPI
+            if (oledType !== '128x128' && oledType !== '128x160') return; // Only TFT uses SPI
 
             // TFT SPI pins (default: CS=15, DC=2, RST=4, MOSI=23, SCLK=18, LED=32)
             var tftPins = [15, 2, 4, 23, 18, 32];

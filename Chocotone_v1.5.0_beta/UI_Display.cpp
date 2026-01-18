@@ -5,16 +5,20 @@
 
 // Color abstraction
 #define DISPLAY_WHITE                                                          \
-  (oledConfig.type == TFT_128X128 ? ST7735_WHITE : SSD1306_WHITE)
+  ((oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)          \
+       ? ST7735_WHITE                                                          \
+       : SSD1306_WHITE)
 #define DISPLAY_BLACK                                                          \
-  (oledConfig.type == TFT_128X128 ? ST7735_BLACK : SSD1306_BLACK)
+  ((oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)          \
+       ? ST7735_BLACK                                                          \
+       : SSD1306_BLACK)
 
 // Helper to flush display (OLED needs this, TFT doesn't or at least not the
 // same way)
 void flushDisplay() {
   if (displayPtr == nullptr)
     return;
-  if (oledConfig.type != TFT_128X128) {
+  if (oledConfig.type != TFT_128X128 && oledConfig.type != TFT_128X160) {
     static_cast<Adafruit_SSD1306 *>(displayPtr)->display();
   }
 }
@@ -23,7 +27,7 @@ void flushDisplay() {
 void clearDisplayBuffer() {
   if (displayPtr == nullptr)
     return;
-  if (oledConfig.type == TFT_128X128) {
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160) {
     displayPtr->fillScreen(ST7735_BLACK);
   } else {
     static_cast<Adafruit_SSD1306 *>(displayPtr)->clearDisplay();
@@ -96,7 +100,9 @@ void drawBatteryIcon(int x, int y, int scale) {
 
   // Use green for TFT, white for OLED
   uint16_t battColor =
-      (oledConfig.type == TFT_128X128) ? 0x07E0 : DISPLAY_WHITE;
+      (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)
+          ? 0x07E0
+          : DISPLAY_WHITE;
 
   // Battery outline
   displayPtr->drawRect(x, y, w, h, battColor);
@@ -303,7 +309,10 @@ void displayOLED() {
   uint8_t bpmAlign = oledConfig.main.bpmAlign;
 
   // For 128x32, adjust bottomRowY if using default 128x64 value
-  int screenHeight = (oledConfig.type == OLED_128X32) ? 32 : 64;
+  int screenHeight = (oledConfig.type == OLED_128X32)   ? 32
+                     : (oledConfig.type == TFT_128X128) ? 128
+                     : (oledConfig.type == TFT_128X160) ? 160
+                                                        : 64;
   if (oledConfig.type == OLED_128X32 && bottomRowY > 24) {
     bottomRowY = 24; // Clamp for 128x32
   }
@@ -374,7 +383,8 @@ void displayOLED() {
           displayPtr->print(label);
 
           // Draw color strip below label for TFT when enabled
-          if (oledConfig.type == TFT_128X128 &&
+          if ((oledConfig.type == TFT_128X128 ||
+               oledConfig.type == TFT_128X160) &&
               oledConfig.main.showColorStrips && colorToken != NULL) {
             int stripY = topRowY + (labelSize * 8) + 1;
             int stripH = oledConfig.main.colorStripHeight > 0
@@ -476,7 +486,8 @@ void displayOLED() {
           displayPtr->print(label);
 
           // Draw color strip above label for TFT when enabled
-          if (oledConfig.type == TFT_128X128 &&
+          if ((oledConfig.type == TFT_128X128 ||
+               oledConfig.type == TFT_128X160) &&
               oledConfig.main.showColorStrips && colorToken != NULL) {
             int stripH = oledConfig.main.colorStripHeight > 0
                              ? oledConfig.main.colorStripHeight
@@ -696,13 +707,14 @@ void displayOLED() {
 void updateAnalogColorStrips() {
   if (displayPtr == nullptr)
     return;
-  if (oledConfig.type != TFT_128X128)
+  if (oledConfig.type != TFT_128X128 && oledConfig.type != TFT_128X160)
     return;
   if (!oledConfig.main.showColorStrips)
     return;
 
   // Get display dimensions
-  int w = 128, h = 128;
+  int w = 128;
+  int h = (oledConfig.type == TFT_128X160) ? 160 : 128;
   int labelSize = oledConfig.main.labelSize > 0 ? oledConfig.main.labelSize : 1;
   int stripH = oledConfig.main.colorStripHeight > 0
                    ? oledConfig.main.colorStripHeight
@@ -830,6 +842,15 @@ void displayTapTempoMode() {
     bpmSize = bpmSize < 4 ? 4 : bpmSize; // Larger BPM text for TFT
   }
 
+  // For 128x160 TFT, scale up positions for taller display
+  if (oledConfig.type == TFT_128X160) {
+    topRowY = 10;
+    bpmY = 50;
+    patternY = 100;
+    bottomRowY = 140;
+    bpmSize = bpmSize < 4 ? 4 : bpmSize; // Larger BPM text for TFT
+  }
+
   // Top row: NEXT (left) and LOCK indicator (right)
   displayPtr->setTextSize(labelSize);
   displayPtr->setCursor(0, topRowY);
@@ -893,6 +914,7 @@ void displayButtonName() {
                          ? oledConfig.overlay.titleSize
                          : 2; // Default to 2 if not set
   int screenHeight = (oledConfig.type == TFT_128X128)   ? 128
+                     : (oledConfig.type == TFT_128X160) ? 160
                      : (oledConfig.type == OLED_128X32) ? 32
                                                         : 64;
 
@@ -932,6 +954,13 @@ void displayMenu() {
     itemStartY = 16;     // Start below header with more padding
     lineHeight = 12;     // Taller line height for better readability
     maxVisibleItems = 9; // Show more items on larger screen
+  }
+
+  // Adjust for 128x160 TFT - even more items visible on taller screen
+  if (oledConfig.type == TFT_128X160) {
+    itemStartY = 16;      // Start below header with more padding
+    lineHeight = 12;      // Taller line height for better readability
+    maxVisibleItems = 11; // Show more items on taller screen
   }
 
   displayPtr->setTextSize(itemSize);
@@ -1035,7 +1064,8 @@ void displayAnalogDebug() {
 
   bool is32 = (oledConfig.type == OLED_128X32);
   bool is128 = (oledConfig.type == TFT_128X128);
-  int screenHeight = is128 ? 128 : (is32 ? 32 : 64);
+  bool is160 = (oledConfig.type == TFT_128X160);
+  int screenHeight = is160 ? 160 : (is128 ? 128 : (is32 ? 32 : 64));
 
   // Header
   displayPtr->setTextSize(1);
@@ -1332,7 +1362,7 @@ bool checkOledHealth() {
   static unsigned long lastOledCheck = 0;
 
   // TFT displays use SPI, not I2C - always consider them healthy
-  if (oledConfig.type == TFT_128X128) {
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160) {
     return true;
   }
 
@@ -1372,7 +1402,7 @@ void recoverOled() {
 
   // Try to reinitialize display
   bool success = false;
-  if (oledConfig.type == TFT_128X128) {
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160) {
     // TFT uses SPI, not I2C - skip I2C recovery
     // For TFT, we could potentially re-init the display, but typically SPI
     // doesn't fail
@@ -1414,9 +1444,10 @@ void initDisplayHardware() {
     displayPtr = nullptr;
   }
 
-  if (oledConfig.type == TFT_128X128) {
-    // ST7735 TFT 128x128 Initialization - use configurable pins
-    Serial.println("Initializing TFT 128x128...");
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160) {
+    // ST7735 TFT Initialization - use configurable pins
+    bool is160 = (oledConfig.type == TFT_128X160);
+    Serial.printf("Initializing TFT %s...\n", is160 ? "128x160" : "128x128");
     Serial.printf("SPI Pins - CS:%d, DC:%d, RST:%d, MOSI:%d, SCLK:%d, LED:%d\n",
                   systemConfig.tftCsPin, systemConfig.tftDcPin,
                   systemConfig.tftRstPin, systemConfig.tftMosiPin,
@@ -1425,12 +1456,20 @@ void initDisplayHardware() {
     Adafruit_ST7735 *tft = new Adafruit_ST7735(
         systemConfig.tftCsPin, systemConfig.tftDcPin, systemConfig.tftRstPin);
 
-    // Try different init methods - comment/uncomment as needed
-    Serial.println("Calling initR(INITR_144GREENTAB)...");
-    tft->initR(INITR_144GREENTAB); // 128x128 1.44" displays
-    // Alternative initializations to try if above doesn't work:
-    // tft->initR(INITR_BLACKTAB);   // Try this if GREENTAB doesn't work
-    // tft->initR(INITR_REDTAB);     // Or this
+    // Initialize based on display type
+    if (is160) {
+      Serial.println("Calling initR(INITR_BLACKTAB) for 128x160...");
+      tft->initR(INITR_BLACKTAB); // 128x160 1.8" displays
+      // Alternative initializations to try if BLACKTAB doesn't work:
+      // tft->initR(INITR_GREENTAB);   // Try this if BLACKTAB doesn't work
+      // tft->initR(INITR_18GREENTAB); // Some 1.8" displays need this
+    } else {
+      Serial.println("Calling initR(INITR_144GREENTAB) for 128x128...");
+      tft->initR(INITR_144GREENTAB); // 128x128 1.44" displays
+      // Alternative initializations to try if GREENTAB doesn't work:
+      // tft->initR(INITR_BLACKTAB);   // Try this if GREENTAB doesn't work
+      // tft->initR(INITR_REDTAB);     // Or this
+    }
 
     Serial.println("Setting rotation...");
     // Apply rotation (Config uses 0, 90, 180, 270)
@@ -1445,7 +1484,8 @@ void initDisplayHardware() {
     digitalWrite(systemConfig.tftLedPin, HIGH); // Turn on backlight
 
     displayPtr = tft;
-    Serial.println("TFT 128x128 Initialized Successfully!");
+    Serial.printf("TFT %s Initialized Successfully!\n",
+                  is160 ? "128x160" : "128x128");
   } else {
     // SSD1306 OLED Initialization - use configurable I2C pins
     int h = (oledConfig.type == OLED_128X32) ? 32 : 64;

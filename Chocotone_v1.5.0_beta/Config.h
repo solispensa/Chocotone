@@ -21,6 +21,7 @@
 // Constants
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+#define SCREEN_HEIGHT_160 160 // For ST7735 1.8" TFT displays
 #define OLED_RESET -1
 
 // TFT SPI Pins (ST7735)
