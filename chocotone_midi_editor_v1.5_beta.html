@@ -2307,8 +2307,8 @@
                     drawText('MENU', 0, ts.top || 0, ts.title);
                     drawText('>Save & Exit', 0, ts.itemStartY || 12, ts.label);
                     drawText(' Exit NoSave', 0, (ts.itemStartY || 12) + 10, ts.label);
-                } else if (is128) {
-                    // TFT 128x128 - more items visible, larger spacing (matches firmware)
+                } else if (is128 || is160) {
+                    // TFT 128x128 or 128x160 - more items visible, larger spacing (matches firmware)
                     drawText('-- Menu CHOCOTONE --', 4, ts.top || 0, ts.title);
                     var items = ['Save and Exit', 'Exit without Saving', 'WiFi LoadCfg (OFF)', 'BT SerialEdit (OFF)', 'LED Bright (On)', 'LED Bright (Dim)', 'Pad Debounce', 'Clear BLE Bonds', 'Reboot'];
                     var startY = 16;  // Matches firmware itemStartY for TFT
@@ -2671,7 +2671,7 @@
                             var xPos = topRowStartX + i * colWidth;
                             drawText(topRowLabels[i], xPos, topRowY, ts.label);
                             // Draw color strip BELOW label for top row (TFT only)
-                            if (ts.showColorStrips && is128 && topRowData.colors[i]) {
+                            if (ts.showColorStrips && (is128 || is160) && topRowData.colors[i]) {
                                 ctx.fillStyle = topRowData.colors[i];
                                 var stripW = (colWidth - 2) * (topRowData.percents[i] || 1.0);
                                 ctx.fillRect(xPos * scale, (topRowY + labelHeight + 1) * scale, stripW * scale, stripHeight * scale);
@@ -2684,7 +2684,7 @@
                             var xPos = bottomRowStartX + i * colWidth;
                             drawText(bottomRowLabels[i], xPos, bottomRowY, ts.label);
                             // Draw color strip ABOVE label for bottom row (TFT only)
-                            if (ts.showColorStrips && is128 && bottomRowData.colors[i]) {
+                            if (ts.showColorStrips && (is128 || is160) && bottomRowData.colors[i]) {
                                 ctx.fillStyle = bottomRowData.colors[i];
                                 var stripW = (colWidth - 2) * (bottomRowData.percents[i] || 1.0);
                                 ctx.fillRect(xPos * scale, (bottomRowY - stripHeight - 1) * scale, stripW * scale, stripHeight * scale);
