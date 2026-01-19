@@ -1516,6 +1516,8 @@ void handleImportUploadData() {
             oledConfig.type = OLED_128X32;
           else if (typeStr == "128x128" || typeStr == "TFT")
             oledConfig.type = TFT_128X128;
+          else if (typeStr == "128x160")
+            oledConfig.type = TFT_128X160;
           else
             oledConfig.type = OLED_128X64;
         }
