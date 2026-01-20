@@ -2659,21 +2659,29 @@
                     var labelHeight = (ts.label || 1) * 8;
                     var stripHeight = ts.colorStripHeight || 4; // Height of color strip (configurable)
 
-                    // Calculate row width for alignment
-                    var topRowTotalWidth = topRowLabels.length * colWidth;
-                    var bottomRowTotalWidth = bottomRowLabels.length * colWidth;
+                    // Calculate per-row column widths based on text width (not screen-filling)
+                    var labelSize = ts.label || 1;
+                    var topMaxChars = (topRowLabels.length > 4) ? 3 : 4;
+                    var bottomMaxChars = (bottomRowLabels.length > 4) ? 3 : 4;
+                    var charPixelWidth = labelSize * 6; // 6 pixels per char at size 1
+                    var topFixedColWidth = topMaxChars * charPixelWidth + 4;
+                    var bottomFixedColWidth = bottomMaxChars * charPixelWidth + 4;
+                    var topColWidth = (topRowLabels.length * topFixedColWidth > w) ? (w / topRowLabels.length) : topFixedColWidth;
+                    var bottomColWidth = (bottomRowLabels.length * bottomFixedColWidth > w) ? (w / bottomRowLabels.length) : bottomFixedColWidth;
+                    var topRowTotalWidth = topRowLabels.length * topColWidth;
+                    var bottomRowTotalWidth = bottomRowLabels.length * bottomColWidth;
                     var topRowStartX = (topRowAlign === 1) ? (w - topRowTotalWidth) / 2 : (topRowAlign === 2) ? (w - topRowTotalWidth) : 0;
                     var bottomRowStartX = (bottomRowAlign === 1) ? (w - bottomRowTotalWidth) / 2 : (bottomRowAlign === 2) ? (w - bottomRowTotalWidth) : 0;
 
                     // Top row labels (conditional on showTopRow)
                     if (ts.showTopRow !== false && topRowLabels.length > 0) {
                         for (var i = 0; i < topRowLabels.length; i++) {
-                            var xPos = topRowStartX + i * colWidth;
+                            var xPos = topRowStartX + i * topColWidth;
                             drawText(topRowLabels[i], xPos, topRowY, ts.label);
                             // Draw color strip BELOW label for top row (TFT only)
                             if (ts.showColorStrips && (is128 || is160) && topRowData.colors[i]) {
                                 ctx.fillStyle = topRowData.colors[i];
-                                var stripW = (colWidth - 2) * (topRowData.percents[i] || 1.0);
+                                var stripW = (topColWidth - 2) * (topRowData.percents[i] || 1.0);
                                 ctx.fillRect(xPos * scale, (topRowY + labelHeight + 1) * scale, stripW * scale, stripHeight * scale);
                             }
                         }
@@ -2681,12 +2689,12 @@
                     // Bottom row labels (conditional on showBottomRow)
                     if (ts.showBottomRow !== false && bottomRowLabels.length > 0) {
                         for (var i = 0; i < bottomRowLabels.length; i++) {
-                            var xPos = bottomRowStartX + i * colWidth;
+                            var xPos = bottomRowStartX + i * bottomColWidth;
                             drawText(bottomRowLabels[i], xPos, bottomRowY, ts.label);
                             // Draw color strip ABOVE label for bottom row (TFT only)
                             if (ts.showColorStrips && (is128 || is160) && bottomRowData.colors[i]) {
                                 ctx.fillStyle = bottomRowData.colors[i];
-                                var stripW = (colWidth - 2) * (bottomRowData.percents[i] || 1.0);
+                                var stripW = (bottomColWidth - 2) * (bottomRowData.percents[i] || 1.0);
                                 ctx.fillRect(xPos * scale, (bottomRowY - stripHeight - 1) * scale, stripW * scale, stripHeight * scale);
                             }
                         }

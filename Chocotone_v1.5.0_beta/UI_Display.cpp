@@ -361,8 +361,12 @@ void displayOLED() {
             break; // Stop if too many items
         }
         // Horizontal layout: row of items
-        int dynColWidth = w / itemCount;
+        // Use fixed column width based on max chars (not screen-filling)
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
+        int charWidth = labelSize * 6; // 6 pixels per char at size 1
+        int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
+        int dynColWidth =
+            (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
 
         // Calculate row alignment offset (0=left, 1=center, 2=right)
         int rowTotalWidth = itemCount * dynColWidth;
@@ -473,8 +477,12 @@ void displayOLED() {
         }
       } else {
         // Horizontal layout: row of items
-        int dynColWidth = w / itemCount;
+        // Use fixed column width based on max chars (not screen-filling)
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
+        int charWidth = labelSize * 6; // 6 pixels per char at size 1
+        int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
+        int dynColWidth =
+            (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
 
         // Calculate row alignment offset (0=left, 1=center, 2=right)
         int rowTotalWidth = itemCount * dynColWidth;
@@ -754,7 +762,12 @@ void updateAnalogColorStrips() {
     itemCount++;
 
   if (itemCount > 0) {
-    int dynColWidth = w / itemCount;
+    // Use fixed column width based on max chars (not screen-filling)
+    int dynMaxChars = (itemCount > 4) ? 3 : 4;
+    int charWidth = labelSize * 6; // 6 pixels per char at size 1
+    int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
+    int dynColWidth =
+        (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
 
     // Calculate row alignment offset (0=left, 1=center, 2=right)
     int rowTotalWidth = itemCount * dynColWidth;
@@ -808,7 +821,12 @@ void updateAnalogColorStrips() {
     itemCount++;
 
   if (itemCount > 0) {
-    int dynColWidth = w / itemCount;
+    // Use fixed column width based on max chars (not screen-filling)
+    int dynMaxChars = (itemCount > 4) ? 3 : 4;
+    int charWidth = labelSize * 6; // 6 pixels per char at size 1
+    int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
+    int dynColWidth =
+        (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
 
     // Calculate row alignment offset (0=left, 1=center, 2=right)
     int rowTotalWidth = itemCount * dynColWidth;
