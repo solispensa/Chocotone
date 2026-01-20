@@ -360,6 +360,7 @@ void displayOLED() {
           if (yOffset > h / 2)
             break; // Stop if too many items
         }
+      } else {
         // Horizontal layout: row of items
         int dynColWidth = w / itemCount;
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
