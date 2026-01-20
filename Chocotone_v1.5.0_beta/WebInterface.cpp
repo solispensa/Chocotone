@@ -3053,6 +3053,8 @@ void handleSerialConfig() {
         Serial.print(systemConfig.midiChannel);
         Serial.print(",\"debugAnalogIn\":");
         Serial.print(systemConfig.debugAnalogIn ? "true" : "false");
+        Serial.print(",\"batteryAdcPin\":");
+        Serial.print(systemConfig.batteryAdcPin);
 
         // Multiplexer Settings
         Serial.print(",\"multiplexer\":{");
