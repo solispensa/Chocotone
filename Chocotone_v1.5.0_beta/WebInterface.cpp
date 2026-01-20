@@ -3135,6 +3135,15 @@ void handleSerialConfig() {
         Serial.print(oledConfig.main.topRowAlign);
         Serial.print(",\"bottomRowAlign\":");
         Serial.print(oledConfig.main.bottomRowAlign);
+        // Battery Indicator (v1.5)
+        Serial.print(",\"showBattery\":");
+        Serial.print(oledConfig.main.showBattery ? "true" : "false");
+        Serial.print(",\"batteryX\":");
+        Serial.print(oledConfig.main.batteryX);
+        Serial.print(",\"batteryY\":");
+        Serial.print(oledConfig.main.batteryY);
+        Serial.print(",\"batteryScale\":");
+        Serial.print(oledConfig.main.batteryScale);
 
         // Menu Screen
         Serial.print("},\"menu\":{");
@@ -3264,7 +3273,7 @@ void handleSerialConfig() {
           }
           Serial.print("]}");
         }
-        Serial.print("]}"); // Close analogInputs array AND the root object
+        Serial.print("]"); // Close analogInputs array only (root still open)
 
         // Global Special Actions (Serial Export)
         Serial.print(",\"globalSpecialActions\":[");
@@ -3308,9 +3317,8 @@ void handleSerialConfig() {
           }
           Serial.print("}");
         }
-        Serial.print("]");
-
-        Serial.println(); // End root object
+        Serial.print("]}"); // Close globalSpecialActions array AND root object
+        Serial.println();   // End line
         Serial.println("CONFIG_END");
       }
       // SET_CONFIG_START - Begin receiving config
