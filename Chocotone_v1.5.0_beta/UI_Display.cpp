@@ -91,12 +91,12 @@ void drawBatteryIcon(int x, int y, int scale) {
   if (scale > 3)
     scale = 3;
 
-  int w = 13 * scale;   // Main body width (wider for 4 segments + gaps)
+  int w = 13 * scale;   // Main body width
   int h = 7 * scale;    // Main body height
   int tipW = 2 * scale; // Tip width
   int tipH = 3 * scale; // Tip height
-  int segW = 3 * scale; // Segment width (3 pixels each)
-  int segH = 5 * scale; // Segment height
+  int innerW = w - 2;   // Interior fill width
+  int innerH = h - 2;   // Interior fill height
 
   // Use green for TFT, white for OLED
   uint16_t battColor =
@@ -109,27 +109,16 @@ void drawBatteryIcon(int x, int y, int scale) {
   // Battery tip (positive terminal)
   displayPtr->fillRect(x + w, y + (h - tipH) / 2, tipW, tipH, battColor);
 
-  // Calculate filled segments (4 divisions)
-  int segments = 0;
-  if (batteryPercent >= 87)
-    segments = 4;
-  else if (batteryPercent >= 62)
-    segments = 3;
-  else if (batteryPercent >= 37)
-    segments = 2;
-  else if (batteryPercent >= 12)
-    segments = 1;
+  // Calculate proportional fill width based on percentage (loading bar style)
+  int fillW = (innerW * batteryPercent) / 100;
+  if (fillW > innerW)
+    fillW = innerW;
+  if (fillW < 0)
+    fillW = 0;
 
-  // Draw filled segments first
-  for (int i = 0; i < segments; i++) {
-    int segX = x + 1 + (i * segW);
-    displayPtr->fillRect(segX, y + 1, segW, segH, battColor);
-  }
-
-  // Draw black partition lines on top (3 lines for 4 divisions)
-  for (int i = 1; i < 4; i++) {
-    int lineX = x + (i * segW);
-    displayPtr->drawFastVLine(lineX, y + 1, segH, DISPLAY_BLACK);
+  // Draw filled portion (proportional loading bar)
+  if (fillW > 0) {
+    displayPtr->fillRect(x + 1, y + 1, fillW, innerH, battColor);
   }
 }
 
