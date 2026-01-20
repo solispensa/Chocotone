@@ -361,21 +361,8 @@ void displayOLED() {
             break; // Stop if too many items
         }
         // Horizontal layout: row of items
-        // Use fixed column width based on max chars (not screen-filling)
+        int dynColWidth = w / itemCount;
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
-        int charWidth = labelSize * 6; // 6 pixels per char at size 1
-        int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
-        int dynColWidth =
-            (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
-
-        // Calculate row alignment offset (0=left, 1=center, 2=right)
-        int rowTotalWidth = itemCount * dynColWidth;
-        int topRowXOffset = 0;
-        if (oledConfig.main.topRowAlign == 1) {
-          topRowXOffset = (w - rowTotalWidth) / 2;
-        } else if (oledConfig.main.topRowAlign == 2) {
-          topRowXOffset = w - rowTotalWidth;
-        }
 
         // For TFT color strips, need to re-parse to get button indices
         char parseMap[34];
@@ -391,7 +378,17 @@ void displayOLED() {
         while (token != NULL) {
           char label[11];
           getInputLabel(label, sizeof(label), token, dynMaxChars);
-          displayPtr->setCursor(topRowXOffset + i * dynColWidth, topRowY);
+
+          // Calculate text width and apply alignment within column
+          int textWidth = strlen(label) * 6 * labelSize;
+          int colStart = i * dynColWidth;
+          int textX = colStart; // Default: left align
+          if (oledConfig.main.topRowAlign == 1) {
+            textX = colStart + (dynColWidth - textWidth) / 2; // Center
+          } else if (oledConfig.main.topRowAlign == 2) {
+            textX = colStart + dynColWidth - textWidth; // Right
+          }
+          displayPtr->setCursor(textX, topRowY);
           displayPtr->print(label);
 
           // Draw color strip below label for TFT when enabled
@@ -417,8 +414,7 @@ void displayOLED() {
                 int stripW = (int)(maxStripW * percent);
                 if (stripW < 1 && percent > 0.01f)
                   stripW = 1; // Min 1px if active
-                displayPtr->fillRect(topRowXOffset + i * dynColWidth, stripY,
-                                     stripW, stripH, color);
+                displayPtr->fillRect(colStart, stripY, stripW, stripH, color);
               }
             } else {
               // Button - full-width strip
@@ -429,8 +425,8 @@ void displayOLED() {
                   uint8_t *rgb = btn.messages[0].rgb;
                   uint16_t color = ((rgb[0] >> 3) << 11) |
                                    ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
-                  displayPtr->fillRect(topRowXOffset + i * dynColWidth, stripY,
-                                       maxStripW, stripH, color);
+                  displayPtr->fillRect(colStart, stripY, maxStripW, stripH,
+                                       color);
                 }
               }
             }
@@ -477,21 +473,8 @@ void displayOLED() {
         }
       } else {
         // Horizontal layout: row of items
-        // Use fixed column width based on max chars (not screen-filling)
+        int dynColWidth = w / itemCount;
         int dynMaxChars = (itemCount > 4) ? 3 : 4;
-        int charWidth = labelSize * 6; // 6 pixels per char at size 1
-        int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
-        int dynColWidth =
-            (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
-
-        // Calculate row alignment offset (0=left, 1=center, 2=right)
-        int rowTotalWidth = itemCount * dynColWidth;
-        int bottomRowXOffset = 0;
-        if (oledConfig.main.bottomRowAlign == 1) {
-          bottomRowXOffset = (w - rowTotalWidth) / 2;
-        } else if (oledConfig.main.bottomRowAlign == 2) {
-          bottomRowXOffset = w - rowTotalWidth;
-        }
 
         // For TFT color strips, need to re-parse to get button indices
         char parseMap[34];
@@ -507,7 +490,17 @@ void displayOLED() {
         while (token != NULL) {
           char label[11];
           getInputLabel(label, sizeof(label), token, dynMaxChars);
-          displayPtr->setCursor(bottomRowXOffset + i * dynColWidth, bottomRowY);
+
+          // Calculate text width and apply alignment within column
+          int textWidth = strlen(label) * 6 * labelSize;
+          int colStart = i * dynColWidth;
+          int textX = colStart; // Default: left align
+          if (oledConfig.main.bottomRowAlign == 1) {
+            textX = colStart + (dynColWidth - textWidth) / 2; // Center
+          } else if (oledConfig.main.bottomRowAlign == 2) {
+            textX = colStart + dynColWidth - textWidth; // Right
+          }
+          displayPtr->setCursor(textX, bottomRowY);
           displayPtr->print(label);
 
           // Draw color strip above label for TFT when enabled
@@ -533,8 +526,7 @@ void displayOLED() {
                 int stripW = (int)(maxStripW * percent);
                 if (stripW < 1 && percent > 0.01f)
                   stripW = 1; // Min 1px if active
-                displayPtr->fillRect(bottomRowXOffset + i * dynColWidth, stripY,
-                                     stripW, stripH, color);
+                displayPtr->fillRect(colStart, stripY, stripW, stripH, color);
               }
             } else {
               // Button - full-width strip
@@ -545,8 +537,8 @@ void displayOLED() {
                   uint8_t *rgb = btn.messages[0].rgb;
                   uint16_t color = ((rgb[0] >> 3) << 11) |
                                    ((rgb[1] >> 2) << 5) | (rgb[2] >> 3);
-                  displayPtr->fillRect(bottomRowXOffset + i * dynColWidth,
-                                       stripY, maxStripW, stripH, color);
+                  displayPtr->fillRect(colStart, stripY, maxStripW, stripH,
+                                       color);
                 }
               }
             }
@@ -762,21 +754,7 @@ void updateAnalogColorStrips() {
     itemCount++;
 
   if (itemCount > 0) {
-    // Use fixed column width based on max chars (not screen-filling)
-    int dynMaxChars = (itemCount > 4) ? 3 : 4;
-    int charWidth = labelSize * 6; // 6 pixels per char at size 1
-    int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
-    int dynColWidth =
-        (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
-
-    // Calculate row alignment offset (0=left, 1=center, 2=right)
-    int rowTotalWidth = itemCount * dynColWidth;
-    int topRowXOffset = 0;
-    if (oledConfig.main.topRowAlign == 1) {
-      topRowXOffset = (w - rowTotalWidth) / 2;
-    } else if (oledConfig.main.topRowAlign == 2) {
-      topRowXOffset = w - rowTotalWidth;
-    }
+    int dynColWidth = w / itemCount;
 
     char *token = strtok(tempMap, ",");
     int i = 0;
@@ -796,10 +774,10 @@ void updateAnalogColorStrips() {
           if (stripW < 1 && percent > 0.01f)
             stripW = 1;
           // Clear strip area first (black), then draw filled portion
-          displayPtr->fillRect(topRowXOffset + i * dynColWidth, stripY,
-                               maxStripW, stripH, ST7735_BLACK);
-          displayPtr->fillRect(topRowXOffset + i * dynColWidth, stripY, stripW,
-                               stripH, color);
+          int colStart = i * dynColWidth;
+          displayPtr->fillRect(colStart, stripY, maxStripW, stripH,
+                               ST7735_BLACK);
+          displayPtr->fillRect(colStart, stripY, stripW, stripH, color);
         }
       }
       token = strtok(NULL, ",");
@@ -821,21 +799,8 @@ void updateAnalogColorStrips() {
     itemCount++;
 
   if (itemCount > 0) {
-    // Use fixed column width based on max chars (not screen-filling)
-    int dynMaxChars = (itemCount > 4) ? 3 : 4;
-    int charWidth = labelSize * 6; // 6 pixels per char at size 1
-    int fixedColWidth = dynMaxChars * charWidth + 4; // +4 for padding
-    int dynColWidth =
-        (itemCount * fixedColWidth > w) ? (w / itemCount) : fixedColWidth;
+    int dynColWidth = w / itemCount;
 
-    // Calculate row alignment offset (0=left, 1=center, 2=right)
-    int rowTotalWidth = itemCount * dynColWidth;
-    int bottomRowXOffset = 0;
-    if (oledConfig.main.bottomRowAlign == 1) {
-      bottomRowXOffset = (w - rowTotalWidth) / 2;
-    } else if (oledConfig.main.bottomRowAlign == 2) {
-      bottomRowXOffset = w - rowTotalWidth;
-    }
     char *token = strtok(tempMap, ",");
     int i = 0;
     while (token != NULL) {
@@ -854,10 +819,10 @@ void updateAnalogColorStrips() {
           if (stripW < 1 && percent > 0.01f)
             stripW = 1;
           // Clear strip area first (black), then draw filled portion
-          displayPtr->fillRect(bottomRowXOffset + i * dynColWidth, stripY,
-                               maxStripW, stripH, ST7735_BLACK);
-          displayPtr->fillRect(bottomRowXOffset + i * dynColWidth, stripY,
-                               stripW, stripH, color);
+          int colStart = i * dynColWidth;
+          displayPtr->fillRect(colStart, stripY, maxStripW, stripH,
+                               ST7735_BLACK);
+          displayPtr->fillRect(colStart, stripY, stripW, stripH, color);
         }
       }
       token = strtok(NULL, ",");
