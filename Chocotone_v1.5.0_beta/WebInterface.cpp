@@ -2348,6 +2348,7 @@ String buildFullConfigJson() {
     json += "]}";
   }
 
+  json += "]}"; // Close analogInputs array and root object
   return json;
 }
 
