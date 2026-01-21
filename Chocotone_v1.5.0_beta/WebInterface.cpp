@@ -1521,7 +1521,16 @@ void handleImportUploadData() {
           else
             oledConfig.type = OLED_128X64;
         }
-        oledConfig.rotation = oled["rotation"] | 0;
+        // Convert rotation degrees (0, 90, 180, 270) to index (0, 1, 2, 3)
+        int rotDeg = oled["rotation"] | 0;
+        if (rotDeg >= 270)
+          oledConfig.rotation = 3;
+        else if (rotDeg >= 180)
+          oledConfig.rotation = 2;
+        else if (rotDeg >= 90)
+          oledConfig.rotation = 1;
+        else
+          oledConfig.rotation = 0;
 
         // Per-screen settings
         if (oled.containsKey("screens")) {
@@ -2789,13 +2798,33 @@ bool applyConfigJson(JsonObject doc) {
 
 bool processConfigChunk(const String &jsonStr, int chunkNum) {
   // Parse and apply JSON config (same logic as multipart upload handler)
-  StaticJsonDocument<512> filter;
-  filter["version"] = true;
-  filter["presets"] = true;
-  filter["system"] = true;
+  Serial.printf("processConfigChunk: Parsing %d bytes...\n", jsonStr.length());
+  Serial.printf("Free heap before parse: %d\n", ESP.getFreeHeap());
 
-  DynamicJsonDocument doc(32768); // 32KB for full config
-  DeserializationError error = deserializeJson(doc, jsonStr);
+  DeserializationError error;
+
+#ifdef BOARD_HAS_PSRAM
+  // Use PSRAM allocator for large configs (ESP32-S3 with 8MB PSRAM)
+  struct SpiRamAllocator {
+    void *allocate(size_t size) {
+      return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    }
+    void deallocate(void *ptr) { heap_caps_free(ptr); }
+    void *reallocate(void *ptr, size_t new_size) {
+      return heap_caps_realloc(ptr, new_size, MALLOC_CAP_SPIRAM);
+    }
+  };
+  BasicJsonDocument<SpiRamAllocator> doc(65536); // 64KB in PSRAM
+  error = deserializeJson(doc, jsonStr);
+  Serial.println("Using PSRAM for JSON parsing");
+#else
+  // Standard heap allocation - may fail for large configs
+  JsonDocument doc;
+  error = deserializeJson(doc, jsonStr);
+  Serial.println("Using heap for JSON parsing");
+#endif
+
+  Serial.printf("Free heap after parse: %d\n", ESP.getFreeHeap());
 
   if (error) {
     Serial.printf("JSON parse error: %s\n", error.c_str());
@@ -3372,11 +3401,29 @@ void handleSerialConfig() {
         Serial.printf("Parsing %d bytes of config...\n", uploadBufferLen);
         Serial.printf("Free heap before parse: %d\n", ESP.getFreeHeap());
 
-        // Use zero-copy in-place parsing - ArduinoJson modifies buffer directly
-        // This dramatically reduces memory usage (no string duplication)
+        // Try to use PSRAM for JSON parsing if available (ESP32-S3 with PSRAM)
+        DeserializationError error;
+
+#ifdef BOARD_HAS_PSRAM
+        // Use PSRAM allocator for large configs (ESP32-S3 with 8MB PSRAM)
+        struct SpiRamAllocator {
+          void *allocate(size_t size) {
+            return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+          }
+          void deallocate(void *ptr) { heap_caps_free(ptr); }
+          void *reallocate(void *ptr, size_t new_size) {
+            return heap_caps_realloc(ptr, new_size, MALLOC_CAP_SPIRAM);
+          }
+        };
+        BasicJsonDocument<SpiRamAllocator> doc(65536); // 64KB in PSRAM
+        error = deserializeJson(doc, uploadBuffer);
+        Serial.println("Using PSRAM for JSON parsing");
+#else
+        // Standard heap allocation - may fail for large configs
         JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, uploadBuffer);
-        // Note: uploadBuffer is now modified and cannot be reused as-is
+        error = deserializeJson(doc, uploadBuffer);
+        Serial.println("Using heap for JSON parsing");
+#endif
 
         Serial.printf("Free heap after parse: %d\n", ESP.getFreeHeap());
         Serial.printf("JSON doc memory: %d bytes\n", doc.memoryUsage());

@@ -547,10 +547,25 @@ void loop_presetMode() {
                 longPress = findAction(config, ACTION_LONG_PRESS);
               }
 
-              if (longPress) {
-                // Has long press configured - DON'T fire PRESS now
-                // It will fire on release if held time < holdMs threshold
-                DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS)\n", i);
+              // Also check for GLOBAL LONG_PRESS override
+              bool hasGlobalLongPress = false;
+              if (globalSpecialActions[i].hasCombo &&
+                  globalSpecialActions[i].partner == -1) {
+                const ActionMessage &globalMsg =
+                    globalSpecialActions[i].comboAction;
+                if (globalMsg.action == ACTION_LONG_PRESS ||
+                    globalMsg.action == ACTION_2ND_LONG_PRESS) {
+                  hasGlobalLongPress = true;
+                }
+              }
+
+              if (longPress || hasGlobalLongPress) {
+                // Has long press configured (local or global) - DON'T fire
+                // PRESS now It will fire on release if held time < holdMs
+                // threshold
+                DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS: local=%d, "
+                          "global=%d)\n",
+                          i, longPress != nullptr, hasGlobalLongPress);
               } else if (action->type == TAP_TEMPO) {
                 handleTapTempo(i);
               } else {
@@ -586,11 +601,25 @@ void loop_presetMode() {
         buttonPinActive[i] = false;
         lastButtonReleaseTime_pads[i] = millis();
 
+        // Skip ALL release handling if button was consumed (e.g., by preset
+        // change) This ensures no action fires when releasing after a global
+        // LONG_PRESS
+        if (buttonConsumed[i] || buttonHoldFired[i]) {
+          DBG_INPUT("BTN %d: Release skipped (consumed=%d, holdFired=%d)\n", i,
+                    buttonConsumed[i], buttonHoldFired[i]);
+          buttonComboChecked[i] = false;
+          buttonHoldFired[i] = false;
+          buttonConsumed[i] = false;
+          updateLeds();
+          continue;
+        }
+
         if (!buttonComboChecked[i]) {
           ButtonConfig &config = buttonConfigs[currentPreset][i];
 
           // ===== DEFERRED PRESS (for buttons with LONG_PRESS) =====
-          // If button has LONG_PRESS but it didn't fire, fire PRESS now
+          // If button has LONG_PRESS (local or global) but it didn't fire, fire
+          // PRESS now
           if (!buttonHoldFired[i]) {
             ActionType longPressType =
                 config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
@@ -599,9 +628,21 @@ void loop_presetMode() {
               longPress = findAction(config, ACTION_LONG_PRESS);
             }
 
-            if (longPress) {
-              // Button has LONG_PRESS configured but it didn't fire
-              // This means we need to fire the deferred PRESS now
+            // Also check for GLOBAL LONG_PRESS override
+            bool hasGlobalLongPress = false;
+            if (globalSpecialActions[i].hasCombo &&
+                globalSpecialActions[i].partner == -1) {
+              const ActionMessage &globalMsg =
+                  globalSpecialActions[i].comboAction;
+              if (globalMsg.action == ACTION_LONG_PRESS ||
+                  globalMsg.action == ACTION_2ND_LONG_PRESS) {
+                hasGlobalLongPress = true;
+              }
+            }
+
+            if (longPress || hasGlobalLongPress) {
+              // Button has LONG_PRESS configured (local or global) but it
+              // didn't fire This means we need to fire the deferred PRESS now
               ActionMessage *pressAction =
                   config.isAlternate ? findAction(config, ACTION_2ND_PRESS)
                                      : findAction(config, ACTION_PRESS);
@@ -610,7 +651,9 @@ void loop_presetMode() {
               }
 
               if (pressAction && pressAction->type != TAP_TEMPO) {
-                DBG_INPUT("BTN %d: Firing deferred PRESS on release\n", i);
+                DBG_INPUT(
+                    "BTN %d: Firing deferred PRESS on release (global=%d)\n", i,
+                    hasGlobalLongPress);
                 executeActionMessage(*pressAction);
 
                 // GP5 Sync: Request state after any button action
@@ -702,6 +745,7 @@ void loop_presetMode() {
           if (elapsed >= threshold) {
             fireGlobalAction(comboMsg, i);
             buttonHoldFired[i] = true;
+            buttonComboChecked[i] = true; // Block all normal button handling
             DBG_INPUT("BTN %d Global LONG_PRESS fired (type=%d)\n", i,
                       comboMsg.action);
             updateLeds();

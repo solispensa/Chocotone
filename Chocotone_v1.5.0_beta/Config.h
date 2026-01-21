@@ -38,7 +38,8 @@
 #define NUM_BUTTONS DEFAULT_BUTTON_COUNT // Backward compatibility
 #define NUM_LEDS MAX_BUTTONS             // LEDs match max buttons
 #define LONG_PRESS_DURATION 500
-#define ENCODER_BUTTON_DEBOUNCE_DELAY 50
+#define ENCODER_BUTTON_DEBOUNCE_DELAY                                          \
+  100 // Increased from 50 for noise immunity
 
 // Default Button Pins (verified correct: 14,27,26,25,33,32,16,17)
 const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {

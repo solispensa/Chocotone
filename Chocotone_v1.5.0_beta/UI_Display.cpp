@@ -310,7 +310,8 @@ void displayOLED() {
   char summary[10];
 
   // Dynamic layout based on button count and orientation
-  bool isVertical = (oledConfig.rotation == 90 || oledConfig.rotation == 270);
+  // Rotation index: 0=0°, 1=90°, 2=180°, 3=270°
+  bool isVertical = (oledConfig.rotation == 1 || oledConfig.rotation == 3);
   int w = displayPtr->width();
   int h = displayPtr->height();
 
@@ -1483,8 +1484,8 @@ void initDisplayHardware() {
     }
 
     Serial.println("Setting rotation...");
-    // Apply rotation (Config uses 0, 90, 180, 270)
-    tft->setRotation(oledConfig.rotation / 90);
+    // Apply rotation (Config stores 0-3 index)
+    tft->setRotation(oledConfig.rotation);
 
     Serial.println("Clearing screen...");
     tft->fillScreen(ST7735_BLACK);
@@ -1512,7 +1513,7 @@ void initDisplayHardware() {
       return;
     }
 
-    oled->setRotation(oledConfig.rotation / 90);
+    oled->setRotation(oledConfig.rotation);
     oled->clearDisplay();
     oled->setTextColor(SSD1306_WHITE);
     oled->display();
