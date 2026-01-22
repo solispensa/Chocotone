@@ -632,7 +632,7 @@
         var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
 
         // v1.5.1: Categorized command types for grouped dropdown
-        var MIDI_COMMANDS = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX'];
+        var MIDI_COMMANDS = ['OFF', 'NOTE_MOMENTARY', 'NOTE_ON', 'NOTE_OFF', 'CC', 'PC', 'SYSEX', 'SYSEX_SCROLL'];
         var INTERNAL_COMMANDS = ['TAP_TEMPO', 'PRESET_UP', 'PRESET_DOWN', 'PRESET_1', 'PRESET_2', 'PRESET_3', 'PRESET_4', 'CLEAR_BLE_BONDS', 'WIFI_TOGGLE', 'MENU_TOGGLE', 'MENU_UP', 'MENU_DOWN', 'MENU_ENTER'];
         var midiTypes = MIDI_COMMANDS.concat(INTERNAL_COMMANDS); // Combined for backward compatibility
         var analogActionTypes = ['linear_linear', 'log_linear', 'linear_log', 'joystick'];
@@ -1653,15 +1653,50 @@
                 html += '<div class="field" style="flex:1"><label style="font-size:10px; color:#aaa">In Range Max%</label><input type="number" min="0" max="100" value="' + (msg.inMax !== undefined ? msg.inMax : 100) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'inMax\',parseInt(this.value))"></div>';
                 html += '</div>';
 
-                // Data1 & Range
-                html += '<div class="row">';
-                // Label Data1 dynamically based on type? For now generic "Data 1 / CC"
-                var d1Label = (msg.type === 'CC') ? 'CC #' : (msg.type === 'NOTE_ON' ? 'Note #' : 'Data 1');
-                html += '<div class="field"><label>' + d1Label + '</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'data1\',parseInt(this.value))"></div>';
+                // SYSEX_SCROLL: Show parameter dropdown instead of generic fields
+                if (msg.type === 'SYSEX_SCROLL') {
+                    html += '<div class="row">';
+                    html += '<div class="field"><label style="color:#f59e0b">Parameter</label><select onchange="updAnalogMsg(' + idx + ',' + i + ',\'sysexParam\',this.value)">';
+                    // Get available SysEx scroll params from devices_database.js
+                    var allParams = [];
+                    if (typeof SYSEX_SCROLL_PARAMS !== 'undefined') {
+                        for (var devName in SYSEX_SCROLL_PARAMS) {
+                            var devParams = SYSEX_SCROLL_PARAMS[devName];
+                            for (var paramName in devParams) {
+                                allParams.push({ device: devName, name: paramName, fullName: devName + ': ' + paramName });
+                            }
+                        }
+                    }
+                    if (allParams.length === 0) {
+                        html += '<option value="">No parameters defined</option>';
+                    } else {
+                        for (var p = 0; p < allParams.length; p++) {
+                            var param = allParams[p];
+                            var paramVal = param.device + '|' + param.name;
+                            html += '<option value="' + paramVal + '"' + (msg.sysexParam === paramVal ? ' selected' : '') + '>' + param.fullName + '</option>';
+                        }
+                    }
+                    html += '</select></div>';
+                    html += '</div>';
+                    // Show list size info
+                    if (msg.sysexParam && typeof SYSEX_SCROLL_PARAMS !== 'undefined') {
+                        var parts = msg.sysexParam.split('|');
+                        if (parts.length === 2 && SYSEX_SCROLL_PARAMS[parts[0]] && SYSEX_SCROLL_PARAMS[parts[0]][parts[1]]) {
+                            var listLen = SYSEX_SCROLL_PARAMS[parts[0]][parts[1]].length;
+                            html += '<div style="font-size:10px;color:#888;padding:4px 0">📋 ' + listLen + ' SysEx messages in list (0-' + (listLen - 1) + ')</div>';
+                        }
+                    }
+                } else {
+                    // Data1 & Range (standard CC/NOTE types)
+                    html += '<div class="row">';
+                    // Label Data1 dynamically based on type? For now generic "Data 1 / CC"
+                    var d1Label = (msg.type === 'CC') ? 'CC #' : (msg.type === 'NOTE_ON' ? 'Note #' : 'Data 1');
+                    html += '<div class="field"><label>' + d1Label + '</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'data1\',parseInt(this.value))"></div>';
 
-                html += '<div class="field"><label style="font-size:10px">Out Min</label><input type="number" min="0" max="127" value="' + (msg.min !== undefined ? msg.min : 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'min\',parseInt(this.value))"></div>';
-                html += '<div class="field"><label style="font-size:10px">Out Max</label><input type="number" min="0" max="127" value="' + (msg.max !== undefined ? msg.max : 127) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'max\',parseInt(this.value))"></div>';
-                html += '</div>';
+                    html += '<div class="field"><label style="font-size:10px">Out Min</label><input type="number" min="0" max="127" value="' + (msg.min !== undefined ? msg.min : 0) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'min\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label style="font-size:10px">Out Max</label><input type="number" min="0" max="127" value="' + (msg.max !== undefined ? msg.max : 127) + '" onchange="updAnalogMsg(' + idx + ',' + i + ',\'max\',parseInt(this.value))"></div>';
+                    html += '</div>';
+                }
 
                 html += '</div>'; // close msg-box
             }
@@ -3134,8 +3169,28 @@
 
             // Filter analog inputs - only include enabled ones with their index
             if (exportData.analogInputs) {
+                // Map sysexParam string to numeric ID for firmware
+                var sysexParamToId = {
+                    'Valeton GP-5|PITCH - HIGH': 1
+                    // Add more as needed
+                };
+
                 exportData.analogInputs = exportData.analogInputs
-                    .map(function (inp, idx) { return inp.enabled ? Object.assign({ index: idx }, inp) : null; })
+                    .map(function (inp, idx) {
+                        if (!inp.enabled) return null;
+
+                        // Process SYSEX_SCROLL messages - convert sysexParam to data1
+                        if (inp.messages) {
+                            for (var m = 0; m < inp.messages.length; m++) {
+                                var msg = inp.messages[m];
+                                if (msg.type === 'SYSEX_SCROLL' && msg.sysexParam) {
+                                    msg.data1 = sysexParamToId[msg.sysexParam] || 0;
+                                }
+                            }
+                        }
+
+                        return Object.assign({ index: idx }, inp);
+                    })
                     .filter(function (inp) { return inp !== null; });
             }
 

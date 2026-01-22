@@ -182,6 +182,8 @@ MidiCommandType parseCommandType(String s) {
     return PC;
   if (s == "SYSEX")
     return SYSEX;
+  if (s == "SYSEX_SCROLL")
+    return SYSEX_SCROLL;
   if (s == "TAP_TEMPO")
     return TAP_TEMPO;
   if (s == "PRESET_UP")

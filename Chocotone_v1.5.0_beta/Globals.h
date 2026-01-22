@@ -34,7 +34,8 @@ enum MidiCommandType : uint8_t {
   NOTE_OFF,
   CC,
   PC,
-  SYSEX, // Raw SysEx message (hex string stored in sysexData)
+  SYSEX,        // Raw SysEx message (hex string stored in sysexData)
+  SYSEX_SCROLL, // Analog input: scroll through SysEx list by position
   TAP_TEMPO,
   PRESET_UP,
   PRESET_DOWN,

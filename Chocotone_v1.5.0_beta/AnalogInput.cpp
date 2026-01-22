@@ -2,6 +2,7 @@
 #include "BleMidi.h"
 #include "Globals.h"
 #include "Storage.h"
+#include "SysexScrollData.h"
 #include "UI_Display.h"
 #include <Arduino.h>
 
@@ -118,6 +119,34 @@ void triggerAnalogActions(AnalogInputConfig &cfg, int value, int velocity) {
         sendMidiNoteOn(msg.data1, 0, msg.channel); // Immediate Note Off
       }
       break;
+    case SYSEX_SCROLL: {
+      // Map analog value to list index
+      SysexScrollParamId paramId =
+          (SysexScrollParamId)msg.data1; // data1 = param ID
+      const SysexScrollList *list = getSysexScrollList(paramId);
+      if (list && list->msgCount > 0) {
+        // Map outVal (0-127) to list index (0 to msgCount-1)
+        int listIndex = map(outVal, 0, 127, 0, list->msgCount - 1);
+        listIndex = constrain(listIndex, 0, list->msgCount - 1);
+
+        // Get message from PROGMEM
+        uint8_t msgLen = 0;
+        const uint8_t *msgData =
+            getSysexScrollMessage(paramId, listIndex, &msgLen);
+        if (msgData && msgLen > 0) {
+          // Copy from PROGMEM to RAM buffer
+          uint8_t buffer[SYSEX_SCROLL_MSG_MAX_LEN];
+          for (int j = 0; j < msgLen && j < SYSEX_SCROLL_MSG_MAX_LEN; j++) {
+            buffer[j] = pgm_read_byte(msgData + j);
+          }
+          // Send SysEx (skip first 2 envelope bytes 0x80 0x80)
+          if (msgLen > 2) {
+            sendSysex(buffer + 2, msgLen - 2);
+          }
+        }
+      }
+      break;
+    }
     // Add other types as needed
     default:
       break;
