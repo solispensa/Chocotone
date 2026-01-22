@@ -2757,6 +2757,15 @@ bool applyConfigJson(JsonObject doc) {
                   gsaObj["label"] | "", 5);
           globalSpecialActions[idx].comboAction.label[5] = '\0';
         }
+
+        // Debug output for global special actions
+        Serial.printf(
+            "GSA[%d]: enabled=%d, partner=%d, action=%d, type=%d, holdMs=%d\n",
+            idx, globalSpecialActions[idx].hasCombo,
+            globalSpecialActions[idx].partner,
+            globalSpecialActions[idx].comboAction.action,
+            globalSpecialActions[idx].comboAction.type,
+            globalSpecialActions[idx].comboAction.longPress.holdMs);
       }
     }
   } // End sys

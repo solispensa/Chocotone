@@ -875,6 +875,27 @@
             if (data.presetCount === undefined) {
                 data.presetCount = data.presets ? data.presets.length : 4;
             }
+            // Expand sparse globalSpecialActions array (v1.5.3 optimized export fix)
+            // If imported config has sparse array with index fields, expand to full array
+            if (data.system && data.system.globalSpecialActions && data.system.globalSpecialActions.length > 0) {
+                var sparse = data.system.globalSpecialActions;
+                var hasIndexField = sparse.some(function (a) { return a && a.index !== undefined; });
+                if (hasIndexField) {
+                    // Create full array of 16 elements (max buttons)
+                    var full = [];
+                    for (var i = 0; i < 16; i++) {
+                        full.push({ enabled: false, partner: -1, type: 'OFF', action: 'PRESS', label: '' });
+                    }
+                    // Place enabled actions at their correct indices
+                    for (var i = 0; i < sparse.length; i++) {
+                        var act = sparse[i];
+                        if (act && act.index !== undefined && act.index >= 0 && act.index < 16) {
+                            full[act.index] = act;
+                        }
+                    }
+                    data.system.globalSpecialActions = full;
+                }
+            }
             // Normalize OLED config (v1.5.2)
             if (data.system && data.system.oled) {
                 var oled = data.system.oled;
@@ -3121,7 +3142,10 @@
             // Filter global special actions - only include enabled ones with their index
             if (exportData.system && exportData.system.globalSpecialActions) {
                 exportData.system.globalSpecialActions = exportData.system.globalSpecialActions
-                    .map(function (act, idx) { return act && act.enabled ? Object.assign({ index: idx }, act) : null; })
+                    .map(function (act, idx) {
+                        // Put act first, then override with correct index (idx is array position)
+                        return act && act.enabled ? Object.assign({}, act, { index: idx }) : null;
+                    })
                     .filter(function (act) { return act !== null; });
             }
 
