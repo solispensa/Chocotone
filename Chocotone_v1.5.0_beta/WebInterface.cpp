@@ -1254,8 +1254,8 @@ void handleImport() {
 // ============================================================================
 
 // Static buffer for upload - stored in BSS, not heap (avoids fragmentation)
-// Reduced to 16KB to leave more heap for ArduinoJson parsing (~25KB needed)
-static char uploadBuffer[16384]; // 16KB static buffer (DRAM limited)
+// 16KB buffer for optimized configs (heap tested at 41KB+ free)
+static char uploadBuffer[16384]; // 16KB static buffer for config uploads
 static size_t uploadBufferLen = 0;
 static bool pendingRestart = false; // Flag to trigger restart after response
 static char uploadError[128] = "";  // Error message for browser
@@ -2717,45 +2717,67 @@ bool applyConfigJson(JsonObject doc) {
       } // End screens
     } // End oled
 
-    // Global Special Actions (v1.5.1)
+    // Global Special Actions (v1.5.2: optimized format with index field)
+    // Reset all global special actions first, then apply only the enabled ones
     if (sys.containsKey("globalSpecialActions")) {
       JsonArray gsaArr = sys["globalSpecialActions"];
-      for (int i = 0; i < (int)gsaArr.size() && i < MAX_BUTTONS; i++) {
+      // Reset all global special actions to disabled state first
+      for (int i = 0; i < MAX_BUTTONS; i++) {
+        globalSpecialActions[i].hasCombo = false;
+      }
+      // Apply only the enabled actions from the config (may have index field)
+      for (int i = 0; i < (int)gsaArr.size(); i++) {
         JsonObject gsaObj = gsaArr[i];
-        globalSpecialActions[i].hasCombo = gsaObj["enabled"] | false;
-        globalSpecialActions[i].partner = gsaObj["partner"] | -1;
-        globalSpecialActions[i].comboAction.type =
+        // Use index field if present (optimized export), otherwise use array
+        // position
+        int idx = gsaObj.containsKey("index") ? (int)gsaObj["index"] : i;
+        if (idx < 0 || idx >= MAX_BUTTONS)
+          continue;
+        globalSpecialActions[idx].hasCombo = gsaObj["enabled"] | false;
+        globalSpecialActions[idx].partner = gsaObj["partner"] | -1;
+        globalSpecialActions[idx].comboAction.type =
             parseCommandType(gsaObj["type"] | "OFF");
-        globalSpecialActions[i].comboAction.action =
+        globalSpecialActions[idx].comboAction.action =
             parseActionType(gsaObj["action"] | "PRESS");
 
         // MIDI data fields (required for CC, NOTE, PC commands)
-        globalSpecialActions[i].comboAction.channel = gsaObj["channel"] | 1;
-        globalSpecialActions[i].comboAction.data1 = gsaObj["data1"] | 0;
-        globalSpecialActions[i].comboAction.data2 = gsaObj["data2"] | 0;
+        globalSpecialActions[idx].comboAction.channel = gsaObj["channel"] | 1;
+        globalSpecialActions[idx].comboAction.data1 = gsaObj["data1"] | 0;
+        globalSpecialActions[idx].comboAction.data2 = gsaObj["data2"] | 0;
 
-        if (globalSpecialActions[i].comboAction.action == ACTION_LONG_PRESS ||
-            globalSpecialActions[i].comboAction.action ==
+        if (globalSpecialActions[idx].comboAction.action == ACTION_LONG_PRESS ||
+            globalSpecialActions[idx].comboAction.action ==
                 ACTION_2ND_LONG_PRESS) {
-          globalSpecialActions[i].comboAction.longPress.holdMs =
+          globalSpecialActions[idx].comboAction.longPress.holdMs =
               gsaObj["holdMs"] | 500;
         }
 
         if (gsaObj.containsKey("label")) {
-          strncpy(globalSpecialActions[i].comboAction.label,
+          strncpy(globalSpecialActions[idx].comboAction.label,
                   gsaObj["label"] | "", 5);
-          globalSpecialActions[i].comboAction.label[5] = '\0';
+          globalSpecialActions[idx].comboAction.label[5] = '\0';
         }
       }
     }
   } // End sys
 
-  // Analog Inputs
+  // Analog Inputs (v1.5.2: optimized format with index field)
+  // Reset all analog inputs first, then apply only the enabled ones
   JsonArray analogs = doc["analogInputs"];
   if (!analogs.isNull()) {
-    for (int i = 0; i < MAX_ANALOG_INPUTS && i < (int)analogs.size(); i++) {
+    // Reset all analog inputs to disabled state first
+    for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+      analogInputs[i].enabled = false;
+    }
+    // Apply only the enabled inputs from the config (may have index field)
+    for (int i = 0; i < (int)analogs.size(); i++) {
       JsonObject aObj = analogs[i];
-      AnalogInputConfig &acfg = analogInputs[i];
+      // Use index field if present (optimized export), otherwise use array
+      // position
+      int idx = aObj.containsKey("index") ? (int)aObj["index"] : i;
+      if (idx < 0 || idx >= MAX_ANALOG_INPUTS)
+        continue;
+      AnalogInputConfig &acfg = analogInputs[idx];
 
       if (aObj.containsKey("enabled"))
         acfg.enabled = aObj["enabled"];
@@ -3465,10 +3487,16 @@ void handleSerialConfig() {
         error = deserializeJson(doc, uploadBuffer);
         Serial.println("Using PSRAM for JSON parsing");
 #else
-        // Standard heap allocation - may fail for large configs
-        JsonDocument doc;
-        error = deserializeJson(doc, uploadBuffer);
-        Serial.println("Using heap for JSON parsing");
+        // Use static allocation to avoid heap exhaustion on regular ESP32
+        // This uses BSS segment instead of heap (allocated at compile time)
+        // Reduced to 16KB since v1.5.2 exports only enabled analog
+        // inputs/actions
+        static StaticJsonDocument<16384> staticDoc; // 16KB in BSS
+        staticDoc.clear(); // Clear any previous content
+        error = deserializeJson(staticDoc, uploadBuffer, uploadBufferLen);
+        Serial.println("Using static buffer for JSON parsing (16KB)");
+        // Create reference to use with applyConfigJson
+        JsonDocument &doc = staticDoc;
 #endif
 
         Serial.printf("Free heap after parse: %d\n", ESP.getFreeHeap());
@@ -3491,6 +3519,9 @@ void handleSerialConfig() {
 
           Serial.println("SAVE_OK");
           Serial.println("Config saved successfully!");
+          Serial.println("Rebooting in 1 second...");
+          delay(1000);
+          ESP.restart();
         }
         // doc goes out of scope, memory freed automatically
       }

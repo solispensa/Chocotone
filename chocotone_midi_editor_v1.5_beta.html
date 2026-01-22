@@ -838,9 +838,18 @@
                             msg.rgb = msg.color;
                             delete msg.color;
                         }
-                        // Ensure defaults for missing fields
+                        // Ensure defaults for missing fields (supports older configs and stripped exports)
+                        if (!msg.action) msg.action = 'PRESS';
+                        if (!msg.type) msg.type = 'CC';
+                        if (msg.channel === undefined) msg.channel = 1;
+                        if (msg.data1 === undefined) msg.data1 = 0;
+                        if (msg.data2 === undefined) msg.data2 = 0;
+                        if (msg.inMin === undefined) msg.inMin = 0;
+                        if (msg.inMax === undefined) msg.inMax = 100;
+                        if (msg.min === undefined) msg.min = 0;
+                        if (msg.max === undefined) msg.max = 127;
                         if (!msg.rgb) msg.rgb = '#bb86fc';
-                        if (!msg.label) msg.label = '';
+                        if (msg.label === undefined) msg.label = '';
                         if (msg.partner === undefined) msg.partner = 0;
                     }
                 }
@@ -1067,6 +1076,20 @@
             html += '<button class="btn" style="background:#8b5cf6;color:#fff;flex:1" onclick="downloadJSON()">💾 Download</button>';
             html += '</div>';
             html += '<div class="field" style="max-width:80px;align-self:flex-end"><button class="btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);width:100%;font-weight:bold" onclick="saveChanges()">💾 Save</button></div>';
+            html += '</div>';
+            // Config size indicator
+            var exportData = prepareExportData();
+            var sizeBytes = JSON.stringify(exportData).length;
+            var sizeKB = (sizeBytes / 1024).toFixed(1);
+            var maxKB = 16;
+            var pct = Math.min(100, Math.round((sizeBytes / (maxKB * 1024)) * 100));
+            var sizeColor = pct < 70 ? '#22c55e' : pct < 90 ? '#f59e0b' : '#ef4444';
+            html += '<div class="row" style="margin-top:8px;align-items:center;gap:10px">';
+            html += '<span style="font-size:12px;color:#94a3b8">📦 Config Size:</span>';
+            html += '<div style="flex:1;height:8px;background:#334155;border-radius:4px;overflow:hidden">';
+            html += '<div style="width:' + pct + '%;height:100%;background:' + sizeColor + ';transition:width 0.3s"></div>';
+            html += '</div>';
+            html += '<span style="font-size:12px;color:' + sizeColor + ';font-weight:bold">' + sizeKB + ' KB / ' + maxKB + ' KB</span>';
             html += '</div>';
             html += '</div>';
 
@@ -3060,9 +3083,55 @@
             };
         }
 
+        // Prepare config for export - optimize size by removing defaults and disabled items
+        // This significantly reduces config size and memory usage on the controller
+        function prepareExportData() {
+            var exportData = JSON.parse(JSON.stringify(presetData)); // Deep clone
+
+            // Optimize button messages - remove fields that are defaults or unused
+            if (exportData.presets) {
+                for (var p = 0; p < exportData.presets.length; p++) {
+                    var preset = exportData.presets[p];
+                    if (!preset.buttons) continue;
+                    for (var b = 0; b < preset.buttons.length; b++) {
+                        var btn = preset.buttons[b];
+                        if (!btn.messages) continue;
+                        for (var m = 0; m < btn.messages.length; m++) {
+                            var msg = btn.messages[m];
+                            // Remove analog-only fields (useless for buttons)
+                            delete msg.inMin;
+                            delete msg.inMax;
+                            delete msg.min;
+                            delete msg.max;
+                            // Remove empty/default values
+                            if (msg.label === '' || msg.label === undefined) delete msg.label;
+                            if (msg.partner === 0 || msg.partner === undefined) delete msg.partner;
+                        }
+                    }
+                }
+            }
+
+            // Filter analog inputs - only include enabled ones with their index
+            if (exportData.analogInputs) {
+                exportData.analogInputs = exportData.analogInputs
+                    .map(function (inp, idx) { return inp.enabled ? Object.assign({ index: idx }, inp) : null; })
+                    .filter(function (inp) { return inp !== null; });
+            }
+
+            // Filter global special actions - only include enabled ones with their index
+            if (exportData.system && exportData.system.globalSpecialActions) {
+                exportData.system.globalSpecialActions = exportData.system.globalSpecialActions
+                    .map(function (act, idx) { return act && act.enabled ? Object.assign({ index: idx }, act) : null; })
+                    .filter(function (act) { return act !== null; });
+            }
+
+            return exportData;
+        }
+
         function exportJSON() {
             presetData.lastModified = new Date().toISOString().slice(0, 19).replace('T', ' ');
-            var jsonStr = JSON.stringify(presetData, null, 2);
+            var exportData = prepareExportData();
+            var jsonStr = JSON.stringify(exportData, null, 2);
             render(); // Update UI to show new timestamp (rebuilds DOM)
             document.getElementById('jsonArea').value = jsonStr; // Restore JSON after render
         }
@@ -3073,14 +3142,14 @@
                     // Preserve configName and lastModified
                     var savedConfigName = presetData.configName;
                     var savedLastModified = presetData.lastModified;
-                    presetData = data;
+                    presetData = normalizeConfigData(data); // Auto-update older versions
                     // Restore if not present in imported data
                     if (!data.configName) presetData.configName = savedConfigName;
                     if (!data.lastModified) presetData.lastModified = savedLastModified;
                     selectedBtn = 0;
                     showSystem = false;
                     render();
-                    alert('Imported!\n\nConfig: ' + (presetData.configName || 'Unnamed') + '\nLast Modified: ' + (presetData.lastModified || 'Unknown'));
+                    alert('Imported & Updated!\n\nConfig: ' + (presetData.configName || 'Unnamed') + '\nLast Modified: ' + (presetData.lastModified || 'Unknown'));
                 } else alert('Invalid format');
             } catch (e) { alert('Error: ' + e.message); }
         }
@@ -3102,12 +3171,12 @@
                 try {
                     var data = JSON.parse(e.target.result);
                     if (data.presets) {
-                        presetData = data;
+                        presetData = normalizeConfigData(data); // Auto-update older versions
                         selectedBtn = 0;
                         showSystem = false;
                         render();
-                        document.getElementById('jsonArea').value = e.target.result;
-                        alert('File loaded!\\n\\nConfig: ' + (data.configName || 'Unnamed') + '\\nLast Modified: ' + (data.lastModified || 'Unknown'));
+                        document.getElementById('jsonArea').value = JSON.stringify(presetData, null, 2); // Show updated config
+                        alert('File loaded & updated!\\n\\nConfig: ' + (data.configName || 'Unnamed') + '\\nLast Modified: ' + (data.lastModified || 'Unknown'));
                     } else {
                         alert('Invalid file format: no presets found');
                     }
@@ -3130,12 +3199,12 @@
                 if (!res.ok) throw new Error('Status ' + res.status);
                 var data = await res.json();
                 if (data.presets) {
-                    presetData = data;
+                    presetData = normalizeConfigData(data); // Auto-update older versions
                     selectedBtn = 0;
                     showSystem = false;
                     render();
-                    if (statusEl) statusEl.value = 'Fetch SUCCESS\n' + statusEl.value;
-                    alert('Configuration fetched successfully from ' + ip);
+                    if (statusEl) statusEl.value = 'Fetch SUCCESS (config updated)\n' + statusEl.value;
+                    alert('Configuration fetched & updated from ' + ip);
                 } else {
                     alert('Invalid configuration received');
                 }
@@ -3148,7 +3217,8 @@
         async function pushToDevice() {
             var ip = document.getElementById('deviceIp').value || '192.168.4.1';
             var url = 'http://' + ip + '/import';
-            var json = JSON.stringify(presetData);
+            var exportData = prepareExportData();
+            var json = JSON.stringify(exportData);
             var blob = new Blob([json], { type: 'application/json' });
             var fd = new FormData();
             fd.append('config', blob, 'config.json');
@@ -3202,7 +3272,8 @@
             statusEl.textContent = 'Preparing...';
             statusEl.style.color = '#f59e0b'; // Amber
 
-            var json = JSON.stringify(presetData);
+            var exportData = prepareExportData();
+            var json = JSON.stringify(exportData);
             var CHUNK_SIZE = 200; // Smaller chunks to prevent serial buffer overflow
             var totalChunks = Math.ceil(json.length / CHUNK_SIZE);
 

@@ -1165,11 +1165,15 @@ void updateLeds() {
   // interfere
 
   // Skip LED updates when heap is critically low
-  // Threshold lowered to allow updates even with WiFi on (heap ~13KB)
-  int heapThreshold = isWifiOn ? 10000 : 15000;
+  // Threshold lowered for TFT+BLE configs which use more memory (~12KB typical)
+  int heapThreshold = isWifiOn ? 8000 : 10000;
   if (ESP.getFreeHeap() < heapThreshold) {
-    Serial.printf("LED update skipped: heap %d < %d\n", ESP.getFreeHeap(),
-                  heapThreshold);
+    static unsigned long lastHeapWarn = 0;
+    if (millis() - lastHeapWarn > 5000) { // Only warn every 5 seconds
+      Serial.printf("LED update skipped: heap %d < %d\n", ESP.getFreeHeap(),
+                    heapThreshold);
+      lastHeapWarn = millis();
+    }
     return; // Safety: prevent crash from memory pressure
   }
 
