@@ -294,8 +294,11 @@ void loop_presetMode() {
       if (pressed) {
         // ===== BUTTON PRESS =====
         // Skip if button was consumed by preset change (requires release first)
+        // Track state for proper release detection, but keep holdFired true
+        // to prevent any action on release
         if (buttonConsumed[i]) {
-          buttonPinActive[i] = true; // Track state but don't process
+          buttonPinActive[i] = true; // Track state for release detection
+          buttonHoldFired[i] = true; // Ensure deferred PRESS doesn't fire
           continue;
         }
 
@@ -308,25 +311,41 @@ void loop_presetMode() {
 
           ButtonConfig &config = buttonConfigs[currentPreset][i];
 
-          // Handle LED state
-          PresetLedMode presetMode = presetLedModes[currentPreset];
-          bool isSelectionButton =
-              (presetMode == PRESET_LED_SELECTION) ||
-              (presetMode == PRESET_LED_HYBRID && config.inSelectionGroup);
-
-          if (isSelectionButton) {
-            presetSelectionState[currentPreset] = i;
-          } else if (config.ledMode == LED_TOGGLE) {
-            // For sync presets (SPM/GP5), don't toggle here - wait for device
-            // response For non-sync presets, toggle immediately as before
-            if (presetSyncMode[currentPreset] == SYNC_NONE) {
-              ledToggleState[i] = !ledToggleState[i];
+          // Check if button has a global LONG_PRESS override configured
+          // If so, defer LED toggle and overlay until we know if it's a short
+          // press
+          bool hasGlobalLongPressAction = false;
+          if (globalSpecialActions[i].hasCombo &&
+              globalSpecialActions[i].partner == -1) {
+            const ActionMessage &globalMsg =
+                globalSpecialActions[i].comboAction;
+            if (globalMsg.action == ACTION_LONG_PRESS ||
+                globalMsg.action == ACTION_2ND_LONG_PRESS) {
+              hasGlobalLongPressAction = true;
             }
           }
-          // Only update LEDs immediately if NOT in sync mode
-          // In sync mode, LEDs are updated when device response arrives
-          if (presetSyncMode[currentPreset] == SYNC_NONE) {
-            updateLeds();
+
+          // Handle LED state - defer if global LONG_PRESS configured
+          if (!hasGlobalLongPressAction) {
+            PresetLedMode presetMode = presetLedModes[currentPreset];
+            bool isSelectionButton =
+                (presetMode == PRESET_LED_SELECTION) ||
+                (presetMode == PRESET_LED_HYBRID && config.inSelectionGroup);
+
+            if (isSelectionButton) {
+              presetSelectionState[currentPreset] = i;
+            } else if (config.ledMode == LED_TOGGLE) {
+              // For sync presets (SPM/GP5), don't toggle here - wait for device
+              // response For non-sync presets, toggle immediately as before
+              if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                ledToggleState[i] = !ledToggleState[i];
+              }
+            }
+            // Only update LEDs immediately if NOT in sync mode
+            // In sync mode, LEDs are updated when device response arrives
+            if (presetSyncMode[currentPreset] == SYNC_NONE) {
+              updateLeds();
+            }
           }
 
           // ===== CHECK GLOBAL ACTION FIRST =====
@@ -528,16 +547,6 @@ void loop_presetMode() {
               DBG_INPUT("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
                         action->type, action->data1, action->data2);
 
-              // Display action label if set, otherwise use button name
-              if (action->label[0] != '\0') {
-                strncpy(buttonNameToShow, action->label, 20);
-              } else {
-                strncpy(buttonNameToShow, config.name, 20);
-              }
-              buttonNameToShow[20] = '\0';
-              buttonNameDisplayUntil = millis() + 1000;
-              safeDisplayOLED();
-
               // Check if button has LONG_PRESS - if so, defer PRESS to release
               ActionType longPressType = config.isAlternate
                                              ? ACTION_2ND_LONG_PRESS
@@ -561,8 +570,8 @@ void loop_presetMode() {
 
               if (longPress || hasGlobalLongPress) {
                 // Has long press configured (local or global) - DON'T fire
-                // PRESS now It will fire on release if held time < holdMs
-                // threshold
+                // PRESS now. Also DON'T show overlay yet.
+                // It will fire on release if held time < holdMs threshold
                 DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS: local=%d, "
                           "global=%d)\n",
                           i, longPress != nullptr, hasGlobalLongPress);
@@ -570,6 +579,16 @@ void loop_presetMode() {
                 handleTapTempo(i);
               } else {
                 // No LONG_PRESS configured - fire PRESS immediately
+                // Display action label if set, otherwise use button name
+                if (action->label[0] != '\0') {
+                  strncpy(buttonNameToShow, action->label, 20);
+                } else {
+                  strncpy(buttonNameToShow, config.name, 20);
+                }
+                buttonNameToShow[20] = '\0';
+                buttonNameDisplayUntil = millis() + 1000;
+                safeDisplayOLED();
+
                 executeActionMessage(*action);
 
                 // GP5 Sync: Request state after any button action to keep LEDs
@@ -654,6 +673,31 @@ void loop_presetMode() {
                 DBG_INPUT(
                     "BTN %d: Firing deferred PRESS on release (global=%d)\n", i,
                     hasGlobalLongPress);
+
+                // Handle LED toggle that was deferred
+                PresetLedMode presetMode = presetLedModes[currentPreset];
+                bool isSelectionButton = (presetMode == PRESET_LED_SELECTION) ||
+                                         (presetMode == PRESET_LED_HYBRID &&
+                                          config.inSelectionGroup);
+
+                if (isSelectionButton) {
+                  presetSelectionState[currentPreset] = i;
+                } else if (config.ledMode == LED_TOGGLE) {
+                  if (presetSyncMode[currentPreset] == SYNC_NONE) {
+                    ledToggleState[i] = !ledToggleState[i];
+                  }
+                }
+
+                // Display action label/button name (was deferred)
+                if (pressAction->label[0] != '\0') {
+                  strncpy(buttonNameToShow, pressAction->label, 20);
+                } else {
+                  strncpy(buttonNameToShow, config.name, 20);
+                }
+                buttonNameToShow[20] = '\0';
+                buttonNameDisplayUntil = millis() + 1000;
+                safeDisplayOLED();
+
                 executeActionMessage(*pressAction);
 
                 // GP5 Sync: Request state after any button action

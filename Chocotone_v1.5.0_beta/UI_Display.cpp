@@ -263,6 +263,11 @@ void displayOLED() {
     return;
   }
 
+  // Skip if no display configured (OLED_NONE)
+  if (displayPtr == nullptr || oledConfig.type == OLED_NONE) {
+    return;
+  }
+
   // Check if in tap tempo mode
   if (inTapTempoMode) {
     displayTapTempoMode();
@@ -823,6 +828,8 @@ void updateAnalogColorStrips() {
 }
 
 void displayTapTempoMode() {
+  if (displayPtr == nullptr || oledConfig.type == OLED_NONE)
+    return;
   clearDisplayBuffer();
   displayPtr->setTextColor(DISPLAY_WHITE);
 
@@ -918,6 +925,8 @@ void displayTapTempoMode() {
 }
 
 void displayButtonName() {
+  if (displayPtr == nullptr || oledConfig.type == OLED_NONE)
+    return;
   clearDisplayBuffer();
 
   // Get layout config from oledConfig.overlay (unified with menu "Name Font
@@ -1451,6 +1460,13 @@ void safeDisplayOLED() {
 
 // Hardware Init
 void initDisplayHardware() {
+  // Skip display initialization if OLED_NONE is set
+  if (oledConfig.type == OLED_NONE) {
+    Serial.println("Display type is NONE - skipping initialization");
+    displayPtr = nullptr;
+    return;
+  }
+
   if (displayPtr != nullptr) {
     delete displayPtr;
     displayPtr = nullptr;

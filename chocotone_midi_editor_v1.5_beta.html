@@ -603,6 +603,32 @@
             render(); // Rebuild DOM (auto-refresh will pick up state)
         }
 
+        // Change preset count (1-4)
+        function chgPresetCount(count) {
+            count = Math.max(1, Math.min(4, count));
+            presetData.presetCount = count;
+            // Ensure we have enough presets in the array
+            while (presetData.presets.length < count) {
+                var newIdx = presetData.presets.length;
+                presetData.presets.push({
+                    name: "Preset " + (newIdx + 1),
+                    presetLedMode: "NORMAL",
+                    syncMode: "NONE",
+                    buttons: []
+                });
+                // Fill buttons for new preset
+                var btnCount = presetData.system.buttonCount || 8;
+                for (var b = 0; b < btnCount; b++) {
+                    presetData.presets[newIdx].buttons.push(createDefaultButton(b));
+                }
+            }
+            // Clamp currentPreset if beyond count
+            if (presetData.currentPreset >= count) {
+                presetData.currentPreset = count - 1;
+            }
+            render();
+        }
+
         var actionTypes = ['NO_ACTION', 'PRESS', '2ND_PRESS', 'RELEASE', '2ND_RELEASE', 'LONG_PRESS', '2ND_LONG_PRESS', 'DOUBLE_TAP', 'COMBO'];
 
         // v1.5.1: Categorized command types for grouped dropdown
@@ -621,8 +647,8 @@
         // DATA
         // ===============================================================
         var presetData = {
-            configName: "My Chocotone Config",
-            lastModified: "",
+            configName: "globalactions2",
+            lastModified: "2026-01-21 06:56:04",
             presets: [
                 {
                     name: "STOMP", presetLedMode: "NORMAL", syncMode: "SPM", buttons: [
@@ -630,10 +656,10 @@
                         { name: "FX1", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 44, data2: 127, rgb: "#3f67ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 44, data2: 0, rgb: "#3f67ff" }] },
                         { name: "DRV", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 45, data2: 127, rgb: "#fc2c00" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 45, data2: 0, rgb: "#ff0000" }] },
                         { name: "TAP", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "TAP_TEMPO", channel: 1, data1: 13, data2: 127, rhythmPrev: 0, rhythmNext: 4, tapLock: 7, rgb: "#ffffff" }] },
-                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }, { action: "LONG_PRESS", type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "" }] },
+                        { name: "EQ", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 48, data2: 127, rgb: "#0af500" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 48, data2: 0, rgb: "#0af500" }] },
                         { name: "FX2", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 49, data2: 127, rgb: "#11f3ff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 49, data2: 0, rgb: "#11f3ff" }] },
                         { name: "DLY", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 50, data2: 127, rgb: "#332aff" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 50, data2: 0, rgb: "#332aff" }] },
-                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }, { action: "LONG_PRESS", type: "PRESET_UP", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "" }] }
+                        { name: "RVB", ledMode: "TOGGLE", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 51, data2: 127, rgb: "#8400f7" }, { action: "2ND_PRESS", type: "CC", channel: 1, data1: 51, data2: 0, rgb: "#8400f7" }] }
                     ]
                 },
                 {
@@ -642,10 +668,10 @@
                         { name: "B2", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 2, rgb: "#ffffff" }] },
                         { name: "B3", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 3, rgb: "#ffffff" }] },
                         { name: "B4", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 4, rgb: "#ffffff" }] },
-                        { name: "B5", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 5, rgb: "#0af500" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B5", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 5, rgb: "#0af500" }] },
                         { name: "B6", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 6, rgb: "#0af500" }] },
                         { name: "B7", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 7, rgb: "#0af500" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
-                        { name: "B8", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 8, rgb: "#0af500" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                        { name: "B8", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 8, rgb: "#0af500" }] }
                     ]
                 },
                 {
@@ -654,10 +680,10 @@
                         { name: "B10", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 10, rgb: "#11f3ff" }] },
                         { name: "B11", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 11, rgb: "#11f3ff" }] },
                         { name: "B12", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 12, rgb: "#11f3ff" }] },
-                        { name: "B13", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 13, rgb: "#aa00ff" }, { action: "COMBO", partner: 0, type: "PRESET_DOWN" }] },
+                        { name: "B13", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 13, rgb: "#aa00ff" }] },
                         { name: "B14", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 14, rgb: "#aa00ff" }] },
                         { name: "B15", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 15, rgb: "#aa00ff" }, { action: "COMBO", partner: 7, type: "WIFI_TOGGLE" }] },
-                        { name: "B16", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 16, rgb: "#aa00ff" }, { action: "COMBO", partner: 3, type: "PRESET_UP" }] }
+                        { name: "B16", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 16, rgb: "#aa00ff" }] }
                     ]
                 },
                 {
@@ -666,14 +692,15 @@
                         { name: "2nd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 41, rgb: "#fd0000" }] },
                         { name: "3rd", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 42, rgb: "#fd0000" }] },
                         { name: "4th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 43, rgb: "#fd0000" }] },
-                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 44, rgb: "#fd0000" }, { action: "LONG_PRESS", type: "PRESET_DOWN", holdMs: 700 }] },
+                        { name: "5th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 44, rgb: "#fd0000" }] },
                         { name: "6th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 45, rgb: "#fd0000" }] },
                         { name: "7th", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 46, rgb: "#fd0000" }] },
-                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 47, rgb: "#fd0000" }, { action: "LONG_PRESS", type: "PRESET_UP", holdMs: 700 }] }
+                        { name: "8up", ledMode: "MOMENTARY", inSelectionGroup: false, messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 1, data2: 47, rgb: "#fd0000" }] }
                     ]
                 }
             ],
-            currentPreset: 0,
+            currentPreset: 3,
+            presetCount: 4,  // Number of active presets (1-8)
             system: {
                 bleDeviceName: "CHOCOTONE",
                 apSSID: "CHOCOTONE",
@@ -693,7 +720,7 @@
                 analogInputCount: 0,
                 fsrThreshold: 100, // Default for FSR input mode
                 debugAnalogIn: false, // Show raw ADC values on OLED
-                batteryAdcPin: 0, // v1.5: ADC pin for battery voltage (0=disabled)
+                batteryAdcPin: 34, // v1.5: ADC pin for battery voltage
                 multiplexer: {
                     enabled: false,
                     type: "cd74hc4067",
@@ -705,6 +732,15 @@
                 oled: {
                     type: "128x64",
                     rotation: 0,
+                    // Display pins (v1.5.2)
+                    sdaPin: 21,
+                    sclPin: 22,
+                    csPin: 15,
+                    dcPin: 2,
+                    rstPin: 4,
+                    mosiPin: 23,
+                    sclkPin: 18,
+                    ledPin: 32,
                     screens: {
                         main: {
                             labelSize: 1,
@@ -722,19 +758,19 @@
                             showTopRow: true,
                             showBottomRow: true,
                             titleAlign: 1,
-                            statusAlign: 0,
+                            statusAlign: 1,
                             bpmAlign: 1,
                             topRowMap: "5,6,7,8",
                             bottomRowMap: "1,2,3,4",
                             // TFT Color Strip settings (v1.5.2)
                             showColorStrips: false,
                             colorStripHeight: 4,
-                            topRowAlign: 0,
-                            bottomRowAlign: 0,
+                            topRowAlign: 1,
+                            bottomRowAlign: 1,
                             // Battery Indicator (v1.5)
-                            showBattery: false,
-                            batteryX: 116,
-                            batteryY: 0,
+                            showBattery: true,
+                            batteryX: 103,
+                            batteryY: 32,
                             batteryScale: 1
                         },
                         menu: {
@@ -762,10 +798,10 @@
                     { enabled: false, partner: -1, type: "OFF", label: "" },
                     { enabled: false, partner: -1, type: "OFF", label: "" },
                     { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { action: "LONG_PRESS", type: "PRESET_DOWN", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "", enabled: true, partner: -1 },
                     { enabled: false, partner: -1, type: "OFF", label: "" },
                     { enabled: false, partner: -1, type: "OFF", label: "" },
-                    { enabled: false, partner: -1, type: "OFF", label: "" },
-                    { enabled: false, partner: -1, type: "OFF", label: "" },
+                    { action: "LONG_PRESS", type: "PRESET_UP", channel: 1, data1: 0, data2: 0, holdMs: 700, label: "", enabled: true, partner: -1 },
                     { enabled: false, partner: -1, type: "OFF", label: "" },
                     { enabled: false, partner: -1, type: "OFF", label: "" }
                 ]
@@ -826,14 +862,27 @@
                     }
                 }
             }
+            // Normalize presetCount (v1.5.2)
+            if (data.presetCount === undefined) {
+                data.presetCount = data.presets ? data.presets.length : 4;
+            }
             // Normalize OLED config (v1.5.2)
             if (data.system && data.system.oled) {
                 var oled = data.system.oled;
-                // Convert numeric type to string format
+                // Convert numeric type to string format (including 'none' = 0)
                 if (typeof oled.type === 'number') {
-                    var typeMap = { 0: '128x64', 1: '128x32', 2: '128x128', 3: '128x160' };
+                    var typeMap = { 0: 'none', 1: '128x64', 2: '128x32', 3: '128x128', 4: '128x160' };
                     oled.type = typeMap[oled.type] || '128x64';
                 }
+                // Display pins defaults (v1.5.2)
+                if (oled.sdaPin === undefined) oled.sdaPin = 21;
+                if (oled.sclPin === undefined) oled.sclPin = 22;
+                if (oled.csPin === undefined) oled.csPin = 15;
+                if (oled.dcPin === undefined) oled.dcPin = 2;
+                if (oled.rstPin === undefined) oled.rstPin = 4;
+                if (oled.mosiPin === undefined) oled.mosiPin = 23;
+                if (oled.sclkPin === undefined) oled.sclkPin = 18;
+                if (oled.ledPin === undefined) oled.ledPin = 32;
                 // Ensure screens.main has all required fields with defaults
                 if (oled.screens && oled.screens.main) {
                     var m = oled.screens.main;
@@ -1024,9 +1073,11 @@
             // --- PRESET CONFIG -------------------------------------------
             html += '<div class="section">';
             html += '<div class="section-title">Preset Configuration</div>';
+            var presetCount = presetData.presetCount || presetData.presets.length;
             html += '<div class="row">';
+            html += '<div class="field"><label># Presets</label><input type="number" min="1" max="4" value="' + presetCount + '" onchange="chgPresetCount(parseInt(this.value))"></div>';
             html += '<div class="field"><label>Preset</label><select onchange="chgPreset(this.value)">';
-            for (var i = 0; i < 4; i++) html += '<option value="' + i + '"' + (i === p ? ' selected' : '') + '>' + presetData.presets[i].name + '</option>';
+            for (var i = 0; i < presetCount; i++) html += '<option value="' + i + '"' + (i === p ? ' selected' : '') + '>' + (presetData.presets[i] ? presetData.presets[i].name : 'Preset ' + (i + 1)) + '</option>';
             html += '</select></div>';
             html += '<div class="field"><label>Name</label><input type="text" value="' + preset.name + '" maxlength="20" onchange="chgPresetName(this.value)"></div>';
             html += '<div class="field"><label>LED Mode</label><select onchange="chgPresetLedMode(this.value)">';
@@ -1043,25 +1094,33 @@
             html += '</select></div>';
             html += '</div></div>';
 
-            // --- OLED PREVIEW CARD (Live Preview) ----------------------------
+            // --- DISPLAY PREVIEW CARD (Live Preview) ----------------------------
             html += '<div class="section" id="oledCardSection">';
-            html += '<div class="section-title">🖥️ OLED Preview <button class="btn sm secondary" onclick="toggleOledConfig()">⚙️ Config</button></div>';
-            html += '<div id="oledCanvasWrap" style="display:flex;justify-content:center;padding:10px;background:#222;border-radius:8px;">';
-            html += '<canvas id="oledPreview" style="border:2px solid #444;"></canvas>';
-            html += '</div>';
-            html += '<div id="oledConfigPanel" style="display:' + (showOledConfigPanel ? 'block' : 'none') + ';margin-top:10px;">';
-
-            // Full OLED Config Options (moved from System Config)
             var oled = presetData.system.oled || {
                 type: '128x64', rotation: 0,
                 textSizes: { title: 2, subtitle: 1, label: 1, value: 2 },
                 yPositions: { topRow: 0, bottomRow: 56 }
             };
+            var showDisplayPreview = oled.type && oled.type !== 'none';
+            html += '<div class="section-title">🖥️ Display Preview <button class="btn sm secondary" onclick="toggleOledConfig()">⚙️ Config</button></div>';
+            if (showDisplayPreview) {
+                html += '<div id="oledCanvasWrap" style="display:flex;justify-content:center;padding:10px;background:#222;border-radius:8px;">';
+                html += '<canvas id="oledPreview" style="border:2px solid #444;"></canvas>';
+                html += '</div>';
+            } else {
+                html += '<div id="oledCanvasWrap" style="display:flex;justify-content:center;padding:20px;background:#222;border-radius:8px;color:#666;font-style:italic">';
+                html += 'No display configured';
+                html += '</div>';
+            }
+            html += '<div id="oledConfigPanel" style="display:' + (showOledConfigPanel ? 'block' : 'none') + ';margin-top:10px;">';
+
+            // Full OLED Config Options
             var ts = oled.textSizes || { title: 2, subtitle: 1, label: 1, value: 2 };
             var yp = oled.yPositions || { topRow: 0, bottomRow: 56 };
 
             html += '<div class="row">';
             html += '<div class="field"><label>Display Type</label><select onchange="updOled(\'type\',this.value)">';
+            html += '<option value="none"' + (oled.type === 'none' ? ' selected' : '') + '>None</option>';
             html += '<option value="128x64"' + (oled.type === '128x64' ? ' selected' : '') + '>128×64 I2C</option>';
             html += '<option value="128x32"' + (oled.type === '128x32' ? ' selected' : '') + '>128×32 I2C</option>';
             html += '<option value="128x128"' + (oled.type === '128x128' ? ' selected' : '') + '>128×128 SPI TFT (1.44")</option>';
@@ -1651,16 +1710,41 @@
             html += '</div>';
             var showWarning = (sys.brightness || 220) > 240 || (sys.brightnessDim || 20) > 240 || (sys.brightnessTap !== undefined ? sys.brightnessTap : 240) > 240;
             html += '<div id="brightnessWarning" class="row" style="color:#fbbf24; font-size:12px;' + (showWarning ? '' : 'display:none;') + '">⚠️ LED too bright, use with caution</div>';
-            html += '</div>';
-
-            html += '<div class="msg-box"><div class="msg-title">Encoder</div>';
-            html += '<div class="row">';
+            // Encoder pins (merged into hardware)
+            html += '<div class="row" style="margin-top:8px;border-top:1px solid #333;padding-top:8px">';
             html += '<div class="field"><label>Enc A</label><input type="number" min="0" max="39" value="' + sys.encoderA + '" onchange="updSys(\'encoderA\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>Enc B</label><input type="number" min="0" max="39" value="' + sys.encoderB + '" onchange="updSys(\'encoderB\',parseInt(this.value))"></div>';
             html += '<div class="field"><label>Enc Btn</label><input type="number" min="0" max="39" value="' + sys.encoderBtn + '" onchange="updSys(\'encoderBtn\',parseInt(this.value))"></div>';
-            html += '</div></div>';
+            html += '</div>';
+            // Display Pins - Conditional based on display type (I2C vs SPI)
+            var oled = sys.oled || {};
+            var dispType = oled.type || '128x64';
+            var isI2C = dispType === '128x64' || dispType === '128x32';
+            var isSPI = dispType === '128x128' || dispType === '128x160';
+            var hasDisplay = dispType !== 'none';
+            if (hasDisplay) {
+                html += '<div style="margin-top:8px;border-top:1px solid #333;padding-top:8px;font-size:11px;color:#8ffdff;font-weight:600;margin-bottom:4px">Display Pins (' + (isI2C ? 'I2C' : 'SPI') + ')</div>';
+                if (isI2C) {
+                    html += '<div class="row">';
+                    html += '<div class="field"><label>SDA</label><input type="number" min="0" max="39" value="' + (oled.sdaPin || 21) + '" onchange="updOled(\'sdaPin\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>SCL</label><input type="number" min="0" max="39" value="' + (oled.sclPin || 22) + '" onchange="updOled(\'sclPin\',parseInt(this.value))"></div>';
+                    html += '</div>';
+                } else if (isSPI) {
+                    html += '<div class="row">';
+                    html += '<div class="field"><label>CS</label><input type="number" min="0" max="39" value="' + (oled.csPin || 15) + '" onchange="updOled(\'csPin\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>DC</label><input type="number" min="0" max="39" value="' + (oled.dcPin || 2) + '" onchange="updOled(\'dcPin\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>RST</label><input type="number" min="0" max="39" value="' + (oled.rstPin || 4) + '" onchange="updOled(\'rstPin\',parseInt(this.value))"></div>';
+                    html += '</div>';
+                    html += '<div class="row">';
+                    html += '<div class="field"><label>MOSI</label><input type="number" min="0" max="39" value="' + (oled.mosiPin || 23) + '" onchange="updOled(\'mosiPin\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>SCLK</label><input type="number" min="0" max="39" value="' + (oled.sclkPin || 18) + '" onchange="updOled(\'sclkPin\',parseInt(this.value))"></div>';
+                    html += '<div class="field"><label>LED</label><input type="number" min="0" max="39" value="' + (oled.ledPin || 32) + '" onchange="updOled(\'ledPin\',parseInt(this.value))"></div>';
+                    html += '</div>';
+                }
+            }
+            html += '</div>';
 
-            // Note: OLED settings are now configured via the OLED Preview card in the left column
+            // Note: Display settings are now configured via the Display Preview card in the left column
 
             // Analog Inputs (v1.5 Beta)
             html += '<div class="msg-box" style="border-color:#f59e0b"><div class="msg-title" style="color:#f59e0b">🎚️ Analog Inputs (BETA)</div>';

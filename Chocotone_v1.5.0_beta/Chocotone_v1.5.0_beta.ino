@@ -162,89 +162,97 @@ void setup() {
   initDisplayHardware();
 
   // === Chocotone v1.5 BETA Loading Screen ===
-  int16_t x1, y1;
-  uint16_t w, h;
+  // Skip if no display configured
+  if (displayPtr != nullptr && oledConfig.type != OLED_NONE) {
+    int16_t x1, y1;
+    uint16_t w, h;
 
-  // Properly detect display type using oledConfig instead of height()
-  bool is32 = (oledConfig.type == OLED_128X32);
-  bool is128 = (oledConfig.type == TFT_128X128);
+    // Properly detect display type using oledConfig instead of height()
+    bool is32 = (oledConfig.type == OLED_128X32);
+    bool is128 = (oledConfig.type == TFT_128X128);
 
-  if (is32) {
-    // 128x32 Compact Layout
-    displayPtr->setTextSize(1);
-    displayPtr->setCursor(0, 10);
-    displayPtr->print(F("CHOCOTONE"));
-    displayPtr->setCursor(94, 10);
-    displayPtr->print(F("v1.5b"));
-  } else if (is128) {
-    // 128x128 TFT Layout - matching editor OLED preview
-    displayPtr->setTextSize(2);
-    displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((128 - w) / 2, 35);
-    displayPtr->print(F("CHOCOTONE"));
+    if (is32) {
+      // 128x32 Compact Layout
+      displayPtr->setTextSize(1);
+      displayPtr->setCursor(0, 10);
+      displayPtr->print(F("CHOCOTONE"));
+      displayPtr->setCursor(94, 10);
+      displayPtr->print(F("v1.5b"));
+    } else if (is128) {
+      // 128x128 TFT Layout - matching editor OLED preview
+      displayPtr->setTextSize(2);
+      displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((128 - w) / 2, 35);
+      displayPtr->print(F("CHOCOTONE"));
 
-    // Subtitle - uppercase "BY" to match preview
-    displayPtr->setTextSize(1);
-    displayPtr->getTextBounds("MIDI BY ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((128 - w) / 2, 60);
-    displayPtr->print(F("MIDI BY ANDRE SOLIS"));
+      // Subtitle - uppercase "BY" to match preview
+      displayPtr->setTextSize(1);
+      displayPtr->getTextBounds("MIDI BY ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((128 - w) / 2, 60);
+      displayPtr->print(F("MIDI BY ANDRE SOLIS"));
 
-    // Version text at bottom (dots drawn by loading section later)
-    displayPtr->setTextSize(1);
-    displayPtr->setCursor(72, 106);
-    displayPtr->print(F("V1.5B"));
-  } else {
-    // 128x64 Standard Layout
-    // Title: "CHOCOTONE" - Size 2, Centered
-    displayPtr->setTextSize(2);
-    displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((128 - w) / 2, 10);
-    displayPtr->print(F("CHOCOTONE"));
+      // Version text at bottom (dots drawn by loading section later)
+      displayPtr->setTextSize(1);
+      displayPtr->setCursor(72, 106);
+      displayPtr->print(F("V1.5B"));
+    } else {
+      // 128x64 Standard Layout
+      // Title: "CHOCOTONE" - Size 2, Centered
+      displayPtr->setTextSize(2);
+      displayPtr->getTextBounds("CHOCOTONE", 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((128 - w) / 2, 10);
+      displayPtr->print(F("CHOCOTONE"));
 
-    // Subtitle: "MIDI by ANDRE SOLIS" - Size 1, Centered
-    displayPtr->setTextSize(1);
-    displayPtr->getTextBounds("MIDI by ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
-    displayPtr->setCursor((128 - w) / 2, 30);
-    displayPtr->print(F("MIDI by ANDRE SOLIS"));
+      // Subtitle: "MIDI by ANDRE SOLIS" - Size 1, Centered
+      displayPtr->setTextSize(1);
+      displayPtr->getTextBounds("MIDI by ANDRE SOLIS", 0, 0, &x1, &y1, &w, &h);
+      displayPtr->setCursor((128 - w) / 2, 30);
+      displayPtr->print(F("MIDI by ANDRE SOLIS"));
 
-    // Version Badge - White rounded rect with black text
-    displayPtr->fillRoundRect(94, 47, 28, 10, 2, DISPLAY_WHITE);
-    displayPtr->setTextColor(DISPLAY_BLACK);
-    displayPtr->setTextSize(1);
-    displayPtr->setCursor(96, 48);
-    displayPtr->print(F("v1.5b"));
-    displayPtr->setTextColor(DISPLAY_WHITE); // Reset
-  }
-
-  // 8 Dots Grid - adapted for each display type
-  if (is32) {
-    // Single row for 32px
-    for (int col = 0; col < 8; col++) {
-      int x = 4 + col * 12 + 2;
-      int y = 22;
-      displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+      // Version Badge - White rounded rect with black text
+      displayPtr->fillRoundRect(94, 47, 28, 10, 2, DISPLAY_WHITE);
+      displayPtr->setTextColor(DISPLAY_BLACK);
+      displayPtr->setTextSize(1);
+      displayPtr->setCursor(96, 48);
+      displayPtr->print(F("v1.5b"));
+      displayPtr->setTextColor(DISPLAY_WHITE); // Reset
     }
-  } else if (is128) {
-    // 4 loading dots for 128x128, matching the static dots before V1.5B
-    for (int col = 0; col < 4; col++) {
-      int x = 35 + col * 8; // Same as static dots
-      int y = 110;
-      displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
-    }
-  } else {
-    // 2 rows x 4 cols for 64px
-    for (int row = 0; row < 2; row++) {
-      for (int col = 0; col < 4; col++) {
-        int x = 4 + col * 8 + 2;
-        int y = 45 + row * 8 + 2;
+
+    // 8 Dots Grid - adapted for each display type
+    if (is32) {
+      // Single row for 32px
+      for (int col = 0; col < 8; col++) {
+        int x = 4 + col * 12 + 2;
+        int y = 22;
         displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
       }
+    } else if (is128) {
+      // 4 loading dots for 128x128, matching the static dots before V1.5B
+      for (int col = 0; col < 4; col++) {
+        int x = 35 + col * 8; // Same as static dots
+        int y = 110;
+        displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+      }
+    } else {
+      // 2 rows x 4 cols for 64px
+      for (int row = 0; row < 2; row++) {
+        for (int col = 0; col < 4; col++) {
+          int x = 4 + col * 8 + 2;
+          int y = 45 + row * 8 + 2;
+          displayPtr->drawCircle(x, y, 2, DISPLAY_WHITE);
+        }
+      }
     }
-  }
-  flushDisplay();
+    flushDisplay();
+  } // End of display-dependent loading screen code
 
   // Helper lambda to fill a loading dot (0-7 for OLED 64, 0-3 for TFT)
+  // Safe to call even when display is NONE - just skips drawing
+  bool is32 = (oledConfig.type == OLED_128X32);
+  bool is128 = (oledConfig.type == TFT_128X128);
   auto fillLoadingDot = [is32, is128](int dotIndex) {
+    if (displayPtr == nullptr || oledConfig.type == OLED_NONE)
+      return;
     if (is32) {
       int x = 4 + dotIndex * 12 + 2;
       int y = 22;

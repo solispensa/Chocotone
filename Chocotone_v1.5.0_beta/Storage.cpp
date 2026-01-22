@@ -33,6 +33,7 @@ void saveSystemSettings() {
   prefs.putInt("s_rhythm", rhythmPattern);
   prefs.putInt("s_delay", currentDelayType);
   prefs.putInt("s_preset", currentPreset);
+  prefs.putInt("s_presCnt", presetCount); // v1.5.2: Preset count (1-8)
 
   // SystemConfig struct fields
   prefs.putString("s_bleName", systemConfig.bleDeviceName);
@@ -97,8 +98,13 @@ void loadSystemSettings() {
     rhythmPattern = 0;
   currentDelayType = prefs.getInt("s_delay", 0);
   currentPreset = prefs.getInt("s_preset", 0);
-  if (currentPreset < 0 || currentPreset > 3)
+  if (currentPreset < 0 || currentPreset >= CHOCO_MAX_PRESETS)
     currentPreset = 0;
+  presetCount = prefs.getInt("s_presCnt", 4); // v1.5.2: Default 4 presets
+  if (presetCount < 1)
+    presetCount = 1;
+  if (presetCount > CHOCO_MAX_PRESETS)
+    presetCount = CHOCO_MAX_PRESETS;
 
   // SystemConfig fields (prefixed keys)
   String s_bleName = prefs.getString("s_bleName", DEFAULT_BLE_NAME);

@@ -63,8 +63,18 @@ bool isBtSerialOn = false; // Bluetooth Serial (SPP) active
 // ============================================
 
 OledConfig oledConfig = {
-    OLED_128X64, // type
-    0,           // rotation (0°)
+    OLED_NONE, // type - No display by default (prevents I2C errors)
+    0,         // rotation (0°)
+    // I2C pins (for OLED displays)
+    21, // sdaPin
+    22, // sclPin
+    // SPI pins (for TFT displays)
+    15, // csPin
+    2,  // dcPin
+    4,  // rstPin
+    23, // mosiPin
+    18, // sclkPin
+    32, // ledPin (backlight)
     // Main screen settings
     {
         1,         // labelSize
@@ -152,10 +162,12 @@ GlobalSpecialAction globalSpecialActions[MAX_BUTTONS] = {};
 // ============================================
 
 int currentPreset = 0;
-char presetNames[4][21] = {"Preset 1", "Preset 2", "Preset 3", "Preset 4"};
-char configProfileName[32] = "My Chocotone Config"; // Editor metadata
-char configLastModified[24] = "";                   // Editor metadata
-ButtonConfig buttonConfigs[4][MAX_BUTTONS];         // Zero-initialized
+int presetCount = 4; // Default to 4 presets for backward compatibility
+char presetNames[CHOCO_MAX_PRESETS][21] = {"Preset 1", "Preset 2", "Preset 3",
+                                           "Preset 4"};
+char configProfileName[32] = "My Chocotone Config";         // Editor metadata
+char configLastModified[24] = "";                           // Editor metadata
+ButtonConfig buttonConfigs[CHOCO_MAX_PRESETS][MAX_BUTTONS]; // Zero-initialized
 
 // ============================================
 // UI SETTINGS
@@ -204,9 +216,10 @@ char lastSentMidiString[20] = "";
 bool ledToggleState[MAX_BUTTONS] = {false};
 
 // Preset-level LED mode configuration
-PresetLedMode presetLedModes[4] = {PRESET_LED_NORMAL, PRESET_LED_SELECTION,
-                                   PRESET_LED_SELECTION, PRESET_LED_SELECTION};
-int8_t presetSelectionState[4] = {-1, -1, -1, -1};
+PresetLedMode presetLedModes[CHOCO_MAX_PRESETS] = {
+    PRESET_LED_NORMAL, PRESET_LED_SELECTION, PRESET_LED_SELECTION,
+    PRESET_LED_SELECTION};
+int8_t presetSelectionState[CHOCO_MAX_PRESETS] = {-1, -1, -1, -1};
 
 uint32_t lastLedColors[NUM_LEDS] = {0};
 
@@ -214,8 +227,8 @@ uint32_t lastLedColors[NUM_LEDS] = {0};
 // EFFECT STATE SYNC (Device-Agnostic + Legacy)
 // ============================================
 
-SyncMode presetSyncMode[4] = {SYNC_NONE, SYNC_NONE, SYNC_NONE,
-                              SYNC_NONE}; // Per-preset sync mode
+SyncMode presetSyncMode[CHOCO_MAX_PRESETS] = {
+    SYNC_NONE, SYNC_NONE, SYNC_NONE, SYNC_NONE}; // Per-preset sync mode
 bool spmEffectStates[9] = {
     false}; // Legacy: NR, FX1, DRV, AMP, IR, EQ, FX2, DLY, RVB (SPM only)
 bool effectStates[EFFECT_BLOCK_COUNT_MAX] = {

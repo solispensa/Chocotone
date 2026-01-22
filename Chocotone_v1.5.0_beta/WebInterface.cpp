@@ -2050,9 +2050,11 @@ String buildFullConfigJson() {
   json += escapeJson(configProfileName);
   json += "\",\"lastModified\":\"";
   json += escapeJson(configLastModified);
-  json += "\",\"presets\":[";
+  json += "\",\"presetCount\":";
+  json += String(presetCount);
+  json += ",\"presets\":[";
 
-  for (int p = 0; p < 4; p++) {
+  for (int p = 0; p < presetCount; p++) {
     if (p > 0)
       json += ",";
 
@@ -2196,9 +2198,27 @@ String buildFullConfigJson() {
   // OLED Configuration (v1.5)
   json += ",\"oled\":{";
   json += "\"type\":";
-  json += String((int)oledConfig.type); // 0=128x64, 1=128x32, 2=128x128
+  json += String(
+      (int)oledConfig.type); // 0=none, 1=128x64, 2=128x32, 3=128x128, 4=128x160
   json += ",\"rotation\":";
   json += String(oledConfig.rotation);
+  // Display pins (v1.5.2)
+  json += ",\"sdaPin\":";
+  json += String(oledConfig.sdaPin);
+  json += ",\"sclPin\":";
+  json += String(oledConfig.sclPin);
+  json += ",\"csPin\":";
+  json += String(oledConfig.csPin);
+  json += ",\"dcPin\":";
+  json += String(oledConfig.dcPin);
+  json += ",\"rstPin\":";
+  json += String(oledConfig.rstPin);
+  json += ",\"mosiPin\":";
+  json += String(oledConfig.mosiPin);
+  json += ",\"sclkPin\":";
+  json += String(oledConfig.sclkPin);
+  json += ",\"ledPin\":";
+  json += String(oledConfig.ledPin);
   json += ",\"screens\":{";
 
   // Main screen
@@ -2371,6 +2391,15 @@ bool applyConfigJson(JsonObject doc) {
   if (doc.containsKey("lastModified")) {
     strncpy(configLastModified, doc["lastModified"] | "", 31);
     configLastModified[31] = '\0';
+  }
+
+  // v1.5.2: Parse preset count
+  if (doc.containsKey("presetCount")) {
+    presetCount = doc["presetCount"] | 4;
+    if (presetCount < 1)
+      presetCount = 1;
+    if (presetCount > CHOCO_MAX_PRESETS)
+      presetCount = CHOCO_MAX_PRESETS;
   }
 
   // Process Presets
@@ -2588,10 +2617,17 @@ bool applyConfigJson(JsonObject doc) {
     if (sys.containsKey("oled")) {
       JsonObject oled = sys["oled"];
       String t = oled["type"] | "128x64";
-      if (t == "128x32" || t == "1")
+      // Handle string types
+      if (t == "none" || t == "0")
+        oledConfig.type = OLED_NONE;
+      else if (t == "128x64" || t == "1")
+        oledConfig.type = OLED_128X64;
+      else if (t == "128x32" || t == "2")
         oledConfig.type = OLED_128X32;
-      else if (t == "128x128" || t == "2")
+      else if (t == "128x128" || t == "3")
         oledConfig.type = TFT_128X128;
+      else if (t == "128x160" || t == "4")
+        oledConfig.type = TFT_128X160;
       else
         oledConfig.type = OLED_128X64;
 
@@ -2604,6 +2640,16 @@ bool applyConfigJson(JsonObject doc) {
         oledConfig.rotation = 1;
       else
         oledConfig.rotation = 0;
+
+      // Display pins (v1.5.2)
+      oledConfig.sdaPin = oled["sdaPin"] | 21;
+      oledConfig.sclPin = oled["sclPin"] | 22;
+      oledConfig.csPin = oled["csPin"] | 15;
+      oledConfig.dcPin = oled["dcPin"] | 2;
+      oledConfig.rstPin = oled["rstPin"] | 4;
+      oledConfig.mosiPin = oled["mosiPin"] | 23;
+      oledConfig.sclkPin = oled["sclkPin"] | 18;
+      oledConfig.ledPin = oled["ledPin"] | 32;
 
       if (oled.containsKey("screens")) {
         JsonObject scs = oled["screens"];

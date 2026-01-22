@@ -207,10 +207,11 @@ struct SystemConfig {
 // OLED CONFIGURATION (v1.5 - 128x32 support)
 // ============================================
 enum OledType : uint8_t {
-  OLED_128X64 = 0,
-  OLED_128X32 = 1,
-  TFT_128X128 = 2,
-  TFT_128X160 = 3
+  OLED_NONE = 0, // No display - skip initialization (v1.5.2)
+  OLED_128X64 = 1,
+  OLED_128X32 = 2,
+  TFT_128X128 = 3,
+  TFT_128X160 = 4
 };
 
 struct OledScreenConfig {
@@ -252,8 +253,18 @@ struct OledScreenConfig {
 };
 
 struct OledConfig {
-  OledType type;            // 1 byte - OLED_128X64 or OLED_128X32
-  uint8_t rotation;         // 1 byte - 0, 90, 180, 270
+  OledType type;    // 1 byte - OLED_128X64 or OLED_128X32
+  uint8_t rotation; // 1 byte - 0, 90, 180, 270
+  // I2C pins (for OLED displays)
+  uint8_t sdaPin; // 1 byte - I2C SDA pin (default 21)
+  uint8_t sclPin; // 1 byte - I2C SCL pin (default 22)
+  // SPI pins (for TFT displays)
+  uint8_t csPin;            // 1 byte - CS pin (default 15)
+  uint8_t dcPin;            // 1 byte - DC pin (default 2)
+  uint8_t rstPin;           // 1 byte - RST pin (default 4)
+  uint8_t mosiPin;          // 1 byte - MOSI pin (default 23)
+  uint8_t sclkPin;          // 1 byte - SCLK pin (default 18)
+  uint8_t ledPin;           // 1 byte - LED/Backlight pin (default 32)
   OledScreenConfig main;    // Main screen settings
   OledScreenConfig menu;    // Menu screen settings
   OledScreenConfig tap;     // Tap tempo screen settings
@@ -327,11 +338,14 @@ extern bool isBtSerialOn; // Bluetooth Serial active (disables BLE like WiFi)
 // PRESET DATA
 // ============================================
 
+#define CHOCO_MAX_PRESETS 4 // Maximum presets for ESP32 DRAM (v1.5.2)
+
 extern int currentPreset;
-extern char presetNames[4][21];
+extern int presetCount; // Active number of presets (1-8)
+extern char presetNames[CHOCO_MAX_PRESETS][21];
 extern char configProfileName[32];  // Config profile name (editor metadata)
 extern char configLastModified[24]; // Last modified timestamp (editor metadata)
-extern ButtonConfig buttonConfigs[4][MAX_BUTTONS];
+extern ButtonConfig buttonConfigs[CHOCO_MAX_PRESETS][MAX_BUTTONS];
 extern GlobalSpecialAction globalSpecialActions[MAX_BUTTONS];
 
 // ============================================
@@ -379,8 +393,8 @@ extern char lastSentMidiString[20];
 // ============================================
 
 extern bool ledToggleState[MAX_BUTTONS];
-extern PresetLedMode presetLedModes[4];
-extern int8_t presetSelectionState[4];
+extern PresetLedMode presetLedModes[CHOCO_MAX_PRESETS];
+extern int8_t presetSelectionState[CHOCO_MAX_PRESETS];
 extern uint32_t lastLedColors[NUM_LEDS];
 
 // ============================================
@@ -390,7 +404,8 @@ extern uint32_t lastLedColors[NUM_LEDS];
 // Number of abstract effect blocks (from DeviceProfiles.h)
 #define EFFECT_BLOCK_COUNT_MAX 10
 
-extern SyncMode presetSyncMode[4]; // Per-preset sync mode (NONE, SPM, GP5)
+extern SyncMode
+    presetSyncMode[CHOCO_MAX_PRESETS]; // Per-preset sync mode (NONE, SPM, GP5)
 extern bool spmEffectStates[9]; // Legacy: NR, FX1, DRV, AMP, IR, EQ, FX2, DLY,
                                 // RVB (SPM only)
 extern bool effectStates[EFFECT_BLOCK_COUNT_MAX]; // Unified effect states for
