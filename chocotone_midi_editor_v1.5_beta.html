@@ -3149,8 +3149,18 @@
                 for (var p = 0; p < exportData.presets.length; p++) {
                     var preset = exportData.presets[p];
                     if (!preset.buttons) continue;
+
+                    // Strip preset-level defaults
+                    if (preset.presetLedMode === 'NORMAL') delete preset.presetLedMode;
+                    if (!preset.syncMode || preset.syncMode === 'NONE') delete preset.syncMode;
+
                     for (var b = 0; b < preset.buttons.length; b++) {
                         var btn = preset.buttons[b];
+
+                        // Strip button-level defaults
+                        if (btn.inSelectionGroup === false) delete btn.inSelectionGroup;
+                        if (btn.ledMode === 'MOMENTARY') delete btn.ledMode;
+
                         if (!btn.messages) continue;
                         for (var m = 0; m < btn.messages.length; m++) {
                             var msg = btn.messages[m];
@@ -3162,6 +3172,13 @@
                             // Remove empty/default values
                             if (msg.label === '' || msg.label === undefined) delete msg.label;
                             if (msg.partner === 0 || msg.partner === undefined) delete msg.partner;
+                            if (msg.channel === 1) delete msg.channel;  // Default channel
+                            if (msg.data1 === 0) delete msg.data1;
+                            if (msg.data2 === 0) delete msg.data2;
+                            if (msg.holdMs === 500 || msg.holdMs === undefined) delete msg.holdMs;
+                            if (msg.rhythmPrev === 0) delete msg.rhythmPrev;
+                            if (msg.rhythmNext === 0) delete msg.rhythmNext;
+                            if (msg.tapLock === 0) delete msg.tapLock;
                         }
                     }
                 }
@@ -3171,7 +3188,7 @@
             if (exportData.analogInputs) {
                 // Map sysexParam string to numeric ID for firmware
                 var sysexParamToId = {
-                    'Valeton GP-5|PITCH - HIGH': 1
+                    'Pocket Master|PITCH - HIGH': 1
                     // Add more as needed
                 };
 
@@ -3179,19 +3196,123 @@
                     .map(function (inp, idx) {
                         if (!inp.enabled) return null;
 
-                        // Process SYSEX_SCROLL messages - convert sysexParam to data1
+                        // Strip analog input defaults
+                        if (inp.source === 'gpio') delete inp.source;
+                        if (inp.actionType === 'linear_linear' || inp.actionType === 'linear') delete inp.actionType;
+                        if (inp.inverted === false) delete inp.inverted;
+                        if (inp.ledIndex === -1 || inp.ledIndex === undefined) delete inp.ledIndex;
+                        if (inp.inputMode === 0) delete inp.inputMode;
+                        if (inp.emaAlpha === 0.15) delete inp.emaAlpha;
+                        if (inp.hysteresis === 2) delete inp.hysteresis;
+                        if (inp.minVal === 0) delete inp.minVal;
+                        if (inp.maxVal === 4095) delete inp.maxVal;
+                        if (inp.actionOptions && Object.keys(inp.actionOptions).length === 0) delete inp.actionOptions;
+                        delete inp.enabled; // Already filtered, no need to include
+
+                        // Process messages - strip defaults
                         if (inp.messages) {
                             for (var m = 0; m < inp.messages.length; m++) {
                                 var msg = inp.messages[m];
-                                if (msg.type === 'SYSEX_SCROLL' && msg.sysexParam) {
-                                    msg.data1 = sysexParamToId[msg.sysexParam] || 0;
+                                // Force data1 for SYSEX_SCROLL (currently only PITCH_HIGH=1)
+                                if (msg.type === 'SYSEX_SCROLL') {
+                                    console.log('SYSEX_SCROLL export: sysexParam=', msg.sysexParam);
+                                    // Convert sysexParam to data1, or default to 1 (PITCH_HIGH)
+                                    msg.data1 = msg.sysexParam ? (sysexParamToId[msg.sysexParam] || 1) : 1;
+                                    delete msg.sysexParam;
                                 }
+                                if (msg.channel === 1) delete msg.channel;
+                                if (msg.data1 === 0) delete msg.data1;
+                                if (msg.data2 === 0) delete msg.data2;
+                                if (msg.min === 0) delete msg.min;
+                                if (msg.max === 127) delete msg.max;
+                                if (msg.inMin === 0) delete msg.inMin;
+                                if (msg.inMax === 100) delete msg.inMax;
                             }
                         }
 
                         return Object.assign({ index: idx }, inp);
                     })
                     .filter(function (inp) { return inp !== null; });
+            }
+
+            // Optimize system section - strip defaults
+            if (exportData.system) {
+                var sys = exportData.system;
+
+                // Remove disabled multiplexer entirely
+                if (sys.multiplexer && !sys.multiplexer.enabled) {
+                    delete sys.multiplexer;
+                }
+
+                // Strip system-level defaults
+                if (sys.brightness === 255) delete sys.brightness;
+                if (sys.brightnessDim === 20) delete sys.brightnessDim;
+                if (sys.fsrThreshold === 100) delete sys.fsrThreshold;
+                if (sys.debugAnalogIn === false) delete sys.debugAnalogIn;
+                if (sys.ledsPerButton === 1) delete sys.ledsPerButton;
+
+                // Strip OLED screen defaults to save significant space
+                if (sys.oled && sys.oled.screens) {
+                    var screens = sys.oled.screens;
+
+                    // Remove entire screen sections if they're all defaults
+                    // Main screen - strip common defaults
+                    if (screens.main) {
+                        var m = screens.main;
+                        if (m.labelSize === 1) delete m.labelSize;
+                        if (m.titleSize === 2) delete m.titleSize;
+                        if (m.statusSize === 1) delete m.statusSize;
+                        if (m.bpmSize === 2) delete m.bpmSize;
+                        if (m.titleAlign === 1) delete m.titleAlign;
+                        if (m.statusAlign === 1) delete m.statusAlign;
+                        if (m.bpmAlign === 1) delete m.bpmAlign;
+                        if (m.bottomRowAlign === 1) delete m.bottomRowAlign;
+                        if (m.topRowAlign === 1) delete m.topRowAlign;
+                        if (m.showBpm === true) delete m.showBpm;
+                        if (m.showAnalog === false) delete m.showAnalog;
+                        if (m.showTopRow === true) delete m.showTopRow;
+                        if (m.showBottomRow === true) delete m.showBottomRow;
+                        if (m.showColorStrips === true) delete m.showColorStrips;
+                        if (m.showBattery === true) delete m.showBattery;
+                        if (m.showStatus === true) delete m.showStatus;
+                        if (m.colorStripHeight === 10) delete m.colorStripHeight;
+                    }
+
+                    // Menu screen defaults
+                    if (screens.menu) {
+                        var menu = screens.menu;
+                        if (menu.headerSize === 1) delete menu.headerSize;
+                        if (menu.itemSize === 1) delete menu.itemSize;
+                        if (menu.headerY === 0) delete menu.headerY;
+                        if (menu.itemStartY === 14) delete menu.itemStartY;
+                        if (Object.keys(menu).length === 0) delete screens.menu;
+                    }
+
+                    // Tap screen defaults
+                    if (screens.tap) {
+                        var tap = screens.tap;
+                        if (tap.labelSize === 1) delete tap.labelSize;
+                        if (tap.bpmSize === 3) delete tap.bpmSize;
+                        if (tap.patternSize === 1) delete tap.patternSize;
+                        if (tap.labelTopY === 0) delete tap.labelTopY;
+                        if (tap.bpmY === 16) delete tap.bpmY;
+                        if (tap.patternY === 46) delete tap.patternY;
+                        if (tap.labelBottomY === 56) delete tap.labelBottomY;
+                        if (Object.keys(tap).length === 0) delete screens.tap;
+                    }
+
+                    // Overlay screen defaults  
+                    if (screens.overlay) {
+                        var ov = screens.overlay;
+                        if (ov.textSize === 2) delete ov.textSize;
+                        if (Object.keys(ov).length === 0) delete screens.overlay;
+                    }
+                }
+
+                // Strip OLED pin defaults for common configs
+                if (sys.oled) {
+                    if (sys.oled.rotation === 0) delete sys.oled.rotation;
+                }
             }
 
             // Filter global special actions - only include enabled ones with their index

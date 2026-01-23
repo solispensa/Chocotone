@@ -1256,8 +1256,8 @@ void handleImport() {
 // ============================================================================
 
 // Static buffer for upload - stored in BSS, not heap (avoids fragmentation)
-// 16KB buffer for optimized configs (heap tested at 41KB+ free)
-static char uploadBuffer[16384]; // 16KB static buffer for config uploads
+// 20KB buffer for configs with SYSEX_SCROLL parameters
+static char uploadBuffer[20480]; // 20KB static buffer for config uploads
 static size_t uploadBufferLen = 0;
 static bool pendingRestart = false; // Flag to trigger restart after response
 static char uploadError[128] = "";  // Error message for browser
@@ -2790,8 +2790,10 @@ bool applyConfigJson(JsonObject doc) {
         continue;
       AnalogInputConfig &acfg = analogInputs[idx];
 
-      if (aObj.containsKey("enabled"))
-        acfg.enabled = aObj["enabled"];
+      // If an input appears in the config, it's enabled (editor only exports
+      // enabled inputs) Honor explicit enabled field if present, otherwise
+      // default to true
+      acfg.enabled = aObj.containsKey("enabled") ? (bool)aObj["enabled"] : true;
       if (aObj.containsKey("source")) {
         acfg.source = (aObj["source"].as<String>() == "mux") ? AIN_SOURCE_MUX
                                                              : AIN_SOURCE_GPIO;
@@ -2858,7 +2860,8 @@ bool applyConfigJson(JsonObject doc) {
           ActionMessage &amsg = acfg.messages[acfg.messageCount];
           memset(&amsg, 0, sizeof(ActionMessage));
           amsg.action = ACTION_PRESS;
-          amsg.type = parseCommandType(amObj["type"] | "CC");
+          String typeStr = amObj["type"] | "CC";
+          amsg.type = parseCommandType(typeStr);
           amsg.channel = amObj["channel"] | 1;
           amsg.data1 = amObj["data1"] | 0;
           amsg.data2 = amObj["data2"] | 0;
@@ -2866,6 +2869,9 @@ bool applyConfigJson(JsonObject doc) {
           amsg.maxInput = amObj["inMax"] | 100;
           amsg.minOut = amObj["min"] | 0;
           amsg.maxOut = amObj["max"] | 127;
+          Serial.printf("AIN[%d] Msg[%d]: type='%s' -> %d, data1=%d\n", idx,
+                        acfg.messageCount, typeStr.c_str(), amsg.type,
+                        amsg.data1);
           acfg.messageCount++;
         }
       }
@@ -3478,7 +3484,23 @@ void handleSerialConfig() {
       else if (serialBuffer == "SET_CONFIG_END") {
         uploadBuffer[uploadBufferLen] = '\0';
         Serial.printf("Parsing %d bytes of config...\n", uploadBufferLen);
-        Serial.printf("Free heap before parse: %d\n", ESP.getFreeHeap());
+        Serial.printf("Free heap before cleanup: %d\n", ESP.getFreeHeap());
+
+        // Clear existing config arrays to free memory before parsing
+        // This returns ~10KB+ of RAM consumed by loaded config
+        for (int p = 0; p < CHOCO_MAX_PRESETS; p++) {
+          for (int b = 0; b < MAX_BUTTONS; b++) {
+            memset(&buttonConfigs[p][b], 0, sizeof(ButtonConfig));
+          }
+        }
+        for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+          memset(&analogInputs[i], 0, sizeof(AnalogInputConfig));
+        }
+        for (int i = 0; i < MAX_BUTTONS; i++) {
+          globalSpecialActions[i].hasCombo = false;
+        }
+
+        Serial.printf("Free heap after cleanup: %d\n", ESP.getFreeHeap());
 
         // Try to use PSRAM for JSON parsing if available (ESP32-S3 with PSRAM)
         DeserializationError error;
@@ -3498,16 +3520,30 @@ void handleSerialConfig() {
         error = deserializeJson(doc, uploadBuffer);
         Serial.println("Using PSRAM for JSON parsing");
 #else
-        // Use static allocation to avoid heap exhaustion on regular ESP32
-        // This uses BSS segment instead of heap (allocated at compile time)
-        // Reduced to 16KB since v1.5.2 exports only enabled analog
-        // inputs/actions
-        static StaticJsonDocument<16384> staticDoc; // 16KB in BSS
-        staticDoc.clear(); // Clear any previous content
-        error = deserializeJson(staticDoc, uploadBuffer, uploadBufferLen);
-        Serial.println("Using static buffer for JSON parsing (16KB)");
-        // Create reference to use with applyConfigJson
-        JsonDocument &doc = staticDoc;
+        // ZERO-COPY IN-PLACE PARSING
+        // By passing the mutable char* buffer, ArduinoJson modifies strings
+        // in-place This drastically reduces memory usage - no extra allocation
+        // for string copies
+        size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+        Serial.printf("Largest free block: %d bytes\n", largestBlock);
+
+        // For in-place parsing, we need memory for the JSON tree structure
+        // Use largest available block minus margin for safety
+        size_t docSize = largestBlock - 512; // Leave 512 bytes margin
+        if (docSize > 16384)
+          docSize = 16384; // Cap at 16KB
+        if (docSize < 4096)
+          docSize = 4096; // Minimum 4KB
+
+        DynamicJsonDocument doc(docSize);
+        Serial.printf("Allocated DynamicJsonDocument(%d), heap now: %d\n",
+                      docSize, ESP.getFreeHeap());
+
+        // Pass mutable buffer for zero-copy/in-place parsing
+        // ArduinoJson will modify uploadBuffer directly (replacing quotes with
+        // nulls)
+        error = deserializeJson(doc, uploadBuffer);
+        Serial.println("Using zero-copy in-place JSON parsing");
 #endif
 
         Serial.printf("Free heap after parse: %d\n", ESP.getFreeHeap());

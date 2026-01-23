@@ -121,13 +121,26 @@ void triggerAnalogActions(AnalogInputConfig &cfg, int value, int velocity) {
       break;
     case SYSEX_SCROLL: {
       // Map analog value to list index
-      SysexScrollParamId paramId =
-          (SysexScrollParamId)msg.data1; // data1 = param ID
+      SysexScrollParamId paramId = (SysexScrollParamId)msg.data1;
+      Serial.printf("SYSEX_SCROLL: paramId=%d, outVal=%d\n", paramId, outVal);
+
       const SysexScrollList *list = getSysexScrollList(paramId);
+
+      // Fallback to PITCH_HIGH if list not found (workaround for editor issues)
+      if (!list) {
+        Serial.printf(
+            "SYSEX_SCROLL: Fallback to PITCH_HIGH (paramId %d not found)\n",
+            paramId);
+        paramId = SYSEX_PARAM_PITCH_HIGH;
+        list = getSysexScrollList(paramId);
+      }
+
       if (list && list->msgCount > 0) {
         // Map outVal (0-127) to list index (0 to msgCount-1)
         int listIndex = map(outVal, 0, 127, 0, list->msgCount - 1);
         listIndex = constrain(listIndex, 0, list->msgCount - 1);
+        Serial.printf("SYSEX_SCROLL: listIndex=%d/%d\n", listIndex,
+                      list->msgCount);
 
         // Get message from PROGMEM
         uint8_t msgLen = 0;
@@ -139,11 +152,27 @@ void triggerAnalogActions(AnalogInputConfig &cfg, int value, int velocity) {
           for (int j = 0; j < msgLen && j < SYSEX_SCROLL_MSG_MAX_LEN; j++) {
             buffer[j] = pgm_read_byte(msgData + j);
           }
-          // Send SysEx (skip first 2 envelope bytes 0x80 0x80)
-          if (msgLen > 2) {
-            sendSysex(buffer + 2, msgLen - 2);
+          // Find actual SysEx length by locating F7 terminator
+          // Messages are padded to 41 bytes but actual content ends at F7
+          int actualLen = msgLen;
+          for (int k = msgLen - 1; k >= 2; k--) {
+            if (buffer[k] == 0xF7) {
+              actualLen = k + 1; // Include F7
+              break;
+            }
           }
+
+          // Skip the 8080 header - sendSysex() adds its own
+          if (actualLen > 2) {
+            Serial.printf("SYSEX_SCROLL: Sending %d bytes (skip 8080)\n",
+                          actualLen - 2);
+            sendSysex(buffer + 2, actualLen - 2);
+          }
+        } else {
+          Serial.println("SYSEX_SCROLL: No message data!");
         }
+      } else {
+        Serial.println("SYSEX_SCROLL: List still not found after fallback!");
       }
       break;
     }
