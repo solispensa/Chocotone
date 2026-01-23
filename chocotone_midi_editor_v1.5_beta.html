@@ -851,6 +851,12 @@
                         if (!msg.rgb) msg.rgb = '#bb86fc';
                         if (msg.label === undefined) msg.label = '';
                         if (msg.partner === undefined) msg.partner = 0;
+
+                        // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
+                        if (msg.type === 'SYSEX_SCROLL' && !msg.sysexParam && msg.data1) {
+                            var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN' };
+                            msg.sysexParam = idToParam[msg.data1] || 'PITCH - HIGH';
+                        }
                     }
                 }
             }
@@ -867,6 +873,12 @@
                             var amsg = inp.messages[m];
                             if (!amsg.type) amsg.type = 'CC';
                             if (amsg.channel === undefined) amsg.channel = 1;
+
+                            // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
+                            if (amsg.type === 'SYSEX_SCROLL' && !amsg.sysexParam && amsg.data1) {
+                                var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN' };
+                                amsg.sysexParam = idToParam[amsg.data1] || 'PITCH - HIGH';
+                            }
                         }
                     }
                 }
@@ -918,12 +930,52 @@
                     var m = oled.screens.main;
                     if (m.showColorStrips === undefined) m.showColorStrips = false;
                     if (m.colorStripHeight === undefined) m.colorStripHeight = 4;
-                    if (m.topRowAlign === undefined) m.topRowAlign = 0;
-                    if (m.bottomRowAlign === undefined) m.bottomRowAlign = 0;
+                    if (m.topRowAlign === undefined) m.topRowAlign = 1;
+                    if (m.bottomRowAlign === undefined) m.bottomRowAlign = 1;
                     if (m.showStatus === undefined) m.showStatus = true;
                     if (m.bpmSize === undefined) m.bpmSize = 1;
                     if (m.bpmY === undefined) m.bpmY = 32;
                     if (m.statusAlign === undefined) m.statusAlign = 0;
+                    if (m.titleAlign === undefined) m.titleAlign = 1;
+                    if (m.bpmAlign === undefined) m.bpmAlign = 1;
+                }
+            }
+            // Normalize Analog Inputs (v1.5.5) - Reconstruct sparse array from optimized export
+            if (data.analogInputs && data.system && data.system.analogInputCount > 0) {
+                var sparse = data.analogInputs;
+                var count = data.system.analogInputCount;
+                var hasIndex = sparse.some(function (inp) { return inp && inp.index !== undefined; });
+
+                if (hasIndex) {
+                    var full = [];
+                    for (var i = 0; i < count; i++) {
+                        full.push({
+                            enabled: false,
+                            index: i,
+                            name: 'A' + (i + 1),
+                            source: 'gpio',
+                            pin: 0,
+                            inputMode: 0,
+                            emaAlpha: 0.05,
+                            minVal: 0,
+                            maxVal: 4095,
+                            inverted: false,
+                            hysteresis: 3,
+                            actionType: 'linear',
+                            actionOptions: { curve: 0, center: 2048, deadzone: 50 },
+                            rgb: '#f59e0b',
+                            ledIndex: -1,
+                            messages: []
+                        });
+                    }
+                    for (var i = 0; i < sparse.length; i++) {
+                        var inp = sparse[i];
+                        if (inp && inp.index !== undefined && inp.index < count) {
+                            inp.enabled = true; // If it was exported, it was enabled
+                            full[inp.index] = inp;
+                        }
+                    }
+                    data.analogInputs = full;
                 }
             }
             return data;
@@ -1254,7 +1306,7 @@
                 html += '  </div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="4" value="' + (main.titleSize || 2) + '" oninput="updOledScreen(\'main\',\'titleSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.titleSize || 2) + '</span></div></div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxTitleY + '" value="' + (main.titleY || 14) + '" oninput="updOledScreen(\'main\',\'titleY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.titleY || 14) + '</span></div></div>';
-                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'titleAlign\',parseInt(this.value))"><option value="0"' + ((main.titleAlign || 1) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.titleAlign || 1) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.titleAlign || 1) === 2 ? ' selected' : '') + '>Right</option></select></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'titleAlign\',parseInt(this.value))"><option value="0"' + (main.titleAlign === 0 ? ' selected' : '') + '>Left</option><option value="1"' + (main.titleAlign === 1 || main.titleAlign === undefined ? ' selected' : '') + '>Center</option><option value="2"' + (main.titleAlign === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
 
                 // BPM Card
@@ -1265,7 +1317,7 @@
                 html += '  </div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="3" value="' + (main.bpmSize || 1) + '" oninput="updOledScreen(\'main\',\'bpmSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bpmSize || 1) + '</span></div></div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.bpmY !== undefined ? main.bpmY : 32) + '" oninput="updOledScreen(\'main\',\'bpmY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.bpmY !== undefined ? main.bpmY : 32) + '</span></div></div>';
-                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'bpmAlign\',parseInt(this.value))"><option value="0"' + ((main.bpmAlign || 1) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.bpmAlign || 1) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.bpmAlign || 1) === 2 ? ' selected' : '') + '>Right</option></select></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'bpmAlign\',parseInt(this.value))"><option value="0"' + (main.bpmAlign === 0 ? ' selected' : '') + '>Left</option><option value="1"' + (main.bpmAlign === 1 || main.bpmAlign === undefined ? ' selected' : '') + '>Center</option><option value="2"' + (main.bpmAlign === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
 
                 // Status Card
@@ -1276,7 +1328,7 @@
                 html += '  </div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Size</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="1" max="3" value="' + (main.statusSize || 1) + '" oninput="updOledScreen(\'main\',\'statusSize\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.statusSize || 1) + '</span></div></div>';
                 html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Pos Y</label><div style="display:flex;align-items:center;gap:4px"><input type="range" min="0" max="' + maxStatusY + '" value="' + (main.statusY || 44) + '" oninput="updOledScreen(\'main\',\'statusY\',parseInt(this.value)); this.nextElementSibling.textContent=this.value" style="flex:1"><span style="font-size:10px;width:18px;text-align:right">' + (main.statusY || 44) + '</span></div></div>';
-                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'statusAlign\',parseInt(this.value))"><option value="0"' + ((main.statusAlign || 0) === 0 ? ' selected' : '') + '>Left</option><option value="1"' + ((main.statusAlign || 0) === 1 ? ' selected' : '') + '>Center</option><option value="2"' + ((main.statusAlign || 0) === 2 ? ' selected' : '') + '>Right</option></select></div>';
+                html += '  <div class="field" style="margin:0"><label style="font-size:9px;color:#888">Align</label><select style="font-size:10px;width:100%;background:#111;border:1px solid #444;color:#ddd;padding:2px" onchange="updOledScreen(\'main\',\'statusAlign\',parseInt(this.value))"><option value="0"' + (main.statusAlign === 0 || main.statusAlign === undefined ? ' selected' : '') + '>Left</option><option value="1"' + (main.statusAlign === 1 ? ' selected' : '') + '>Center</option><option value="2"' + (main.statusAlign === 2 ? ' selected' : '') + '>Right</option></select></div>';
                 html += '</div>';
 
                 // Battery Icon Card (v1.5)
@@ -1655,36 +1707,35 @@
 
                 // SYSEX_SCROLL: Show parameter dropdown instead of generic fields
                 if (msg.type === 'SYSEX_SCROLL') {
-                    html += '<div class="row">';
-                    html += '<div class="field"><label style="color:#f59e0b">Parameter</label><select onchange="updAnalogMsg(' + idx + ',' + i + ',\'sysexParam\',this.value)">';
-                    // Get available SysEx scroll params from devices_database.js
+                    // Get available SysEx scroll params from devices_database.js (flat structure)
                     var allParams = [];
                     if (typeof SYSEX_SCROLL_PARAMS !== 'undefined') {
-                        for (var devName in SYSEX_SCROLL_PARAMS) {
-                            var devParams = SYSEX_SCROLL_PARAMS[devName];
-                            for (var paramName in devParams) {
-                                allParams.push({ device: devName, name: paramName, fullName: devName + ': ' + paramName });
+                        for (var paramName in SYSEX_SCROLL_PARAMS) {
+                            if (Array.isArray(SYSEX_SCROLL_PARAMS[paramName])) {
+                                allParams.push(paramName);
                             }
                         }
                     }
+                    // Initialize sysexParam if not set (ensures dropdown selection matches actual value)
+                    if (!msg.sysexParam && allParams.length > 0) {
+                        msg.sysexParam = allParams[0];
+                    }
+                    html += '<div class="row">';
+                    html += '<div class="field"><label style="color:#f59e0b">Parameter</label><select onchange="updAnalogMsg(' + idx + ',' + i + ',\'sysexParam\',this.value)">';
                     if (allParams.length === 0) {
                         html += '<option value="">No parameters defined</option>';
                     } else {
                         for (var p = 0; p < allParams.length; p++) {
-                            var param = allParams[p];
-                            var paramVal = param.device + '|' + param.name;
-                            html += '<option value="' + paramVal + '"' + (msg.sysexParam === paramVal ? ' selected' : '') + '>' + param.fullName + '</option>';
+                            var paramName = allParams[p];
+                            html += '<option value="' + paramName + '"' + (msg.sysexParam === paramName ? ' selected' : '') + '>' + paramName + '</option>';
                         }
                     }
                     html += '</select></div>';
                     html += '</div>';
                     // Show list size info
-                    if (msg.sysexParam && typeof SYSEX_SCROLL_PARAMS !== 'undefined') {
-                        var parts = msg.sysexParam.split('|');
-                        if (parts.length === 2 && SYSEX_SCROLL_PARAMS[parts[0]] && SYSEX_SCROLL_PARAMS[parts[0]][parts[1]]) {
-                            var listLen = SYSEX_SCROLL_PARAMS[parts[0]][parts[1]].length;
-                            html += '<div style="font-size:10px;color:#888;padding:4px 0">📋 ' + listLen + ' SysEx messages in list (0-' + (listLen - 1) + ')</div>';
-                        }
+                    if (msg.sysexParam && typeof SYSEX_SCROLL_PARAMS !== 'undefined' && SYSEX_SCROLL_PARAMS[msg.sysexParam]) {
+                        var listLen = SYSEX_SCROLL_PARAMS[msg.sysexParam].length;
+                        html += '<div style="font-size:10px;color:#888;padding:4px 0">📋 ' + listLen + ' SysEx messages in list (0-' + (listLen - 1) + ')</div>';
                     }
                 } else {
                     // Data1 & Range (standard CC/NOTE types)
@@ -3186,10 +3237,10 @@
 
             // Filter analog inputs - only include enabled ones with their index
             if (exportData.analogInputs) {
-                // Map sysexParam string to numeric ID for firmware
+                // Map sysexParam string to numeric ID for firmware (device-agnostic)
                 var sysexParamToId = {
-                    'Pocket Master|PITCH - HIGH': 1
-                    // Add more as needed
+                    'PITCH - HIGH': 1,
+                    'DRV - GAIN': 2
                 };
 
                 exportData.analogInputs = exportData.analogInputs
@@ -3262,20 +3313,20 @@
                         if (m.labelSize === 1) delete m.labelSize;
                         if (m.titleSize === 2) delete m.titleSize;
                         if (m.statusSize === 1) delete m.statusSize;
-                        if (m.bpmSize === 2) delete m.bpmSize;
+                        if (m.bpmSize === 1) delete m.bpmSize;
                         if (m.titleAlign === 1) delete m.titleAlign;
-                        if (m.statusAlign === 1) delete m.statusAlign;
+                        if (m.statusAlign === 0) delete m.statusAlign;
                         if (m.bpmAlign === 1) delete m.bpmAlign;
-                        if (m.bottomRowAlign === 1) delete m.bottomRowAlign;
-                        if (m.topRowAlign === 1) delete m.topRowAlign;
+                        if (m.bottomRowAlign === 0) delete m.bottomRowAlign;
+                        if (m.topRowAlign === 0) delete m.topRowAlign;
                         if (m.showBpm === true) delete m.showBpm;
                         if (m.showAnalog === false) delete m.showAnalog;
                         if (m.showTopRow === true) delete m.showTopRow;
                         if (m.showBottomRow === true) delete m.showBottomRow;
-                        if (m.showColorStrips === true) delete m.showColorStrips;
-                        if (m.showBattery === true) delete m.showBattery;
+                        if (m.showColorStrips === false) delete m.showColorStrips;
+                        if (m.showBattery === false) delete m.showBattery;
                         if (m.showStatus === true) delete m.showStatus;
-                        if (m.colorStripHeight === 10) delete m.colorStripHeight;
+                        if (m.colorStripHeight === 4) delete m.colorStripHeight;
                     }
 
                     // Menu screen defaults

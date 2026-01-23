@@ -13,7 +13,8 @@
 // SysEx scroll parameter IDs (stored in config)
 enum SysexScrollParamId : uint8_t {
   SYSEX_PARAM_NONE = 0,
-  SYSEX_PARAM_PITCH_HIGH = 1
+  SYSEX_PARAM_PITCH_HIGH = 1,
+  SYSEX_PARAM_DRV_GAIN = 2
 };
 
 // PITCH - HIGH SysEx messages (Sonicake Pocket Master)
@@ -177,6 +178,9 @@ const uint8_t PROGMEM PITCH_HIGH_DATA[PITCH_HIGH_LIST_SIZE *
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C,
     0x00, 0x04, 0x01, 0xF7, 0x00};
 
+// Include DRV_GAIN data (101 messages)
+#include "SysexScrollDrvGain.h"
+
 // Structure for SysEx scroll list metadata
 struct SysexScrollList {
   SysexScrollParamId id;
@@ -188,7 +192,9 @@ struct SysexScrollList {
 // Available SysEx scroll lists
 const SysexScrollList sysexScrollLists[] = {
     {SYSEX_PARAM_PITCH_HIGH, PITCH_HIGH_LIST_SIZE, PITCH_HIGH_MSG_LEN,
-     PITCH_HIGH_DATA}};
+     PITCH_HIGH_DATA},
+    {SYSEX_PARAM_DRV_GAIN, DRV_GAIN_LIST_SIZE, DRV_GAIN_MSG_LEN,
+     DRV_GAIN_DATA}};
 
 const int SYSEX_SCROLL_LIST_COUNT =
     sizeof(sysexScrollLists) / sizeof(sysexScrollLists[0]);

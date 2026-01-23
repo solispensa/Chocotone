@@ -1341,330 +1341,14 @@ void handleImportUploadData() {
       return;
     }
 
-    // Parse config metadata (editor fields)
-    const char *cfgName = doc["configName"] | "";
-    if (strlen(cfgName) > 0) {
-      strncpy(configProfileName, cfgName, sizeof(configProfileName) - 1);
-      configProfileName[sizeof(configProfileName) - 1] = '\0';
-    }
-    const char *cfgModified = doc["lastModified"] | "";
-    if (strlen(cfgModified) > 0) {
-      strncpy(configLastModified, cfgModified, sizeof(configLastModified) - 1);
-      configLastModified[sizeof(configLastModified) - 1] = '\0';
-    }
+    // Consolidated parsing using applyConfigJson (v1.5.5)
+    applyConfigJson(doc.as<JsonObject>());
 
-    // Parse presets
-    JsonArray presets = doc["presets"];
-    if (!presets.isNull()) {
-      Serial.println("Parsing presets...");
-      for (int p = 0; p < 4 && p < (int)presets.size(); p++) {
-        JsonObject pObj = presets[p];
-
-        strncpy(presetNames[p], pObj["name"] | "Preset", 20);
-        presetNames[p][20] = '\0';
-
-        const char *pmStr = pObj["presetLedMode"] | "NORMAL";
-        if (strcmp(pmStr, "SELECTION") == 0)
-          presetLedModes[p] = PRESET_LED_SELECTION;
-        else if (strcmp(pmStr, "HYBRID") == 0)
-          presetLedModes[p] = PRESET_LED_HYBRID;
-        else
-          presetLedModes[p] = PRESET_LED_NORMAL;
-
-        // Sync Mode setting (supports legacy syncSpm boolean + new syncMode
-        // string)
-        if (pObj.containsKey("syncMode")) {
-          const char *syncStr = pObj["syncMode"] | "NONE";
-          if (strcmp(syncStr, "SPM") == 0)
-            presetSyncMode[p] = SYNC_SPM;
-          else if (strcmp(syncStr, "GP5") == 0)
-            presetSyncMode[p] = SYNC_GP5;
-          else
-            presetSyncMode[p] = SYNC_NONE;
-        } else {
-          // Legacy: syncSpm boolean (true = SYNC_SPM)
-          presetSyncMode[p] = (pObj["syncSpm"] | false) ? SYNC_SPM : SYNC_NONE;
-        }
-
-        JsonArray buttons = pObj["buttons"];
-        if (buttons.isNull())
-          continue;
-
-        int btnCount = min((int)buttons.size(), (int)systemConfig.buttonCount);
-        for (int b = 0; b < btnCount; b++) {
-          JsonObject bObj = buttons[b];
-          ButtonConfig &cfg = buttonConfigs[p][b];
-
-          strncpy(cfg.name, bObj["name"] | "BTN", 20);
-          cfg.name[20] = '\0';
-
-          const char *lmStr = bObj["ledMode"] | "MOMENTARY";
-          cfg.ledMode =
-              (strcmp(lmStr, "TOGGLE") == 0) ? LED_TOGGLE : LED_MOMENTARY;
-          cfg.inSelectionGroup = bObj["inSelectionGroup"] | false;
-          cfg.messageCount = 0;
-
-          JsonArray msgs = bObj["messages"];
-          if (!msgs.isNull()) {
-            for (int m = 0; m < (int)msgs.size() && m < MAX_ACTIONS_PER_BUTTON;
-                 m++) {
-              JsonObject mObj = msgs[m];
-              ActionMessage &msg = cfg.messages[m];
-              memset(&msg, 0, sizeof(ActionMessage));
-
-              const char *actStr = mObj["action"] | "PRESS";
-              if (strcmp(actStr, "PRESS") == 0)
-                msg.action = ACTION_PRESS;
-              else if (strcmp(actStr, "2ND_PRESS") == 0)
-                msg.action = ACTION_2ND_PRESS;
-              else if (strcmp(actStr, "RELEASE") == 0)
-                msg.action = ACTION_RELEASE;
-              else if (strcmp(actStr, "2ND_RELEASE") == 0)
-                msg.action = ACTION_2ND_RELEASE;
-              else if (strcmp(actStr, "LONG_PRESS") == 0)
-                msg.action = ACTION_LONG_PRESS;
-              else if (strcmp(actStr, "2ND_LONG_PRESS") == 0)
-                msg.action = ACTION_2ND_LONG_PRESS;
-              else if (strcmp(actStr, "DOUBLE_TAP") == 0)
-                msg.action = ACTION_DOUBLE_TAP;
-              else if (strcmp(actStr, "COMBO") == 0)
-                msg.action = ACTION_COMBO;
-              else
-                msg.action = ACTION_NO_ACTION;
-
-              msg.type = parseCommandType(mObj["type"] | "OFF");
-              msg.channel = mObj["channel"] | 1;
-              msg.data1 = mObj["data1"] | 0;
-              msg.data2 = mObj["data2"] | 0;
-              hexToRgb(mObj["rgb"] | "#bb86fc", msg.rgb);
-
-              // Parse action-specific data
-              if (msg.action == ACTION_LONG_PRESS ||
-                  msg.action == ACTION_2ND_LONG_PRESS) {
-                msg.longPress.holdMs = mObj["holdMs"] | 500; // Default 500ms
-              }
-              if (msg.action == ACTION_COMBO) {
-                msg.combo.partner = mObj["partner"] | 0;
-              }
-              // Parse label for ALL actions (not just COMBO)
-              const char *label = mObj["label"] | "";
-              strncpy(msg.label, label, 5);
-              msg.label[5] = '\0';
-              if (msg.type == TAP_TEMPO) {
-                msg.tapTempo.rhythmPrev = mObj["rhythmPrev"] | 0;
-                msg.tapTempo.rhythmNext = mObj["rhythmNext"] | 4;
-                msg.tapTempo.tapLock = mObj["tapLock"] | 7;
-              }
-              if (msg.type == SYSEX) {
-                const char *hex = mObj["sysex"] | "";
-                size_t len = strlen(hex);
-                msg.sysex.length = 0;
-                for (size_t s = 0; s + 1 < len && msg.sysex.length < 48;
-                     s += 2) {
-                  char h[3] = {hex[s], hex[s + 1], 0};
-                  msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
-                }
-              }
-
-              cfg.messageCount++;
-            }
-          }
-        }
-        yield();
-      }
-      savePresets();
-      Serial.println("Presets saved!");
-    }
-
-    // CRITICAL: Ensure systemPrefs is fully closed before opening with new
-    // namespace
-    systemPrefs.end(); // Force close any open handle
-    delay(300);        // Longer delay for NVS to settle
-    yield();
-
-    // Parse system config
-    JsonObject sys = doc["system"];
-    if (!sys.isNull()) {
-      Serial.println("Parsing system config...");
-      if (sys.containsKey("bleName")) {
-        strncpy(systemConfig.bleDeviceName, sys["bleName"], 23);
-      }
-      if (sys.containsKey("apSSID")) {
-        strncpy(systemConfig.apSSID, sys["apSSID"], 23);
-      }
-      if (sys.containsKey("apPass")) {
-        strncpy(systemConfig.apPassword, sys["apPass"], 15);
-      }
-      if (sys.containsKey("buttonCount"))
-        systemConfig.buttonCount = sys["buttonCount"];
-      if (sys.containsKey("ledPin"))
-        systemConfig.ledPin = sys["ledPin"];
-      if (sys.containsKey("ledsPerButton"))
-        systemConfig.ledsPerButton = sys["ledsPerButton"];
-      if (sys.containsKey("brightness"))
-        ledBrightnessOn = sys["brightness"];
-      if (sys.containsKey("brightnessDim"))
-        ledBrightnessDim = sys["brightnessDim"];
-      if (sys.containsKey("brightnessTap"))
-        ledBrightnessTap = sys["brightnessTap"];
-
-      // Parse OLED Configuration (v1.5 - 128x32 support)
-      if (sys.containsKey("oled")) {
-        JsonObject oled = sys["oled"];
-
-        if (oled.containsKey("type")) {
-          String typeStr = oled["type"].as<String>();
-          if (typeStr == "128x32")
-            oledConfig.type = OLED_128X32;
-          else if (typeStr == "128x128" || typeStr == "TFT")
-            oledConfig.type = TFT_128X128;
-          else if (typeStr == "128x160")
-            oledConfig.type = TFT_128X160;
-          else
-            oledConfig.type = OLED_128X64;
-        }
-        // Convert rotation degrees (0, 90, 180, 270) to index (0, 1, 2, 3)
-        int rotDeg = oled["rotation"] | 0;
-        if (rotDeg >= 270)
-          oledConfig.rotation = 3;
-        else if (rotDeg >= 180)
-          oledConfig.rotation = 2;
-        else if (rotDeg >= 90)
-          oledConfig.rotation = 1;
-        else
-          oledConfig.rotation = 0;
-
-        // Per-screen settings
-        if (oled.containsKey("screens")) {
-          JsonObject screens = oled["screens"];
-
-          // Main screen
-          if (screens.containsKey("main")) {
-            JsonObject main = screens["main"];
-            oledConfig.main.labelSize = main["labelSize"] | 1;
-            oledConfig.main.titleSize = main["titleSize"] | 2;
-            oledConfig.main.statusSize = main["statusSize"] | 1;
-            oledConfig.main.bpmSize = main["bpmSize"] | 1;
-            oledConfig.main.topRowY = main["topRowY"] | 0;
-            oledConfig.main.titleY = main["titleY"] | 14;
-            oledConfig.main.statusY = main["statusY"] | 32;
-            oledConfig.main.bpmY = main["bpmY"] | 32;
-            oledConfig.main.bottomRowY = main["bottomRowY"] | 56;
-            oledConfig.main.showBpm =
-                main.containsKey("showBpm") ? main["showBpm"].as<bool>() : true;
-            oledConfig.main.showAnalog = main["showAnalog"] | false;
-            oledConfig.main.showStatus = main.containsKey("showStatus")
-                                             ? main["showStatus"].as<bool>()
-                                             : true;
-            oledConfig.main.showTopRow = main.containsKey("showTopRow")
-                                             ? main["showTopRow"].as<bool>()
-                                             : true;
-            oledConfig.main.showBottomRow =
-                main.containsKey("showBottomRow")
-                    ? main["showBottomRow"].as<bool>()
-                    : true;
-            oledConfig.main.titleAlign = main["titleAlign"] | 1;
-            oledConfig.main.statusAlign = main["statusAlign"] | 0;
-            oledConfig.main.bpmAlign = main["bpmAlign"] | 1;
-            // Row maps
-            if (main.containsKey("topRowMap")) {
-              strlcpy(oledConfig.main.topRowMap, main["topRowMap"] | "5,6,7,8",
-                      sizeof(oledConfig.main.topRowMap));
-            }
-            if (main.containsKey("bottomRowMap")) {
-              strlcpy(oledConfig.main.bottomRowMap,
-                      main["bottomRowMap"] | "1,2,3,4",
-                      sizeof(oledConfig.main.bottomRowMap));
-            }
-            // TFT Color Strip settings (v1.5.2)
-            oledConfig.main.showColorStrips = main["showColorStrips"] | false;
-            oledConfig.main.colorStripHeight = main["colorStripHeight"] | 4;
-            oledConfig.main.topRowAlign = main["topRowAlign"] | 0;
-            oledConfig.main.bottomRowAlign = main["bottomRowAlign"] | 0;
-          }
-
-          // Menu screen
-          if (screens.containsKey("menu")) {
-            JsonObject menu = screens["menu"];
-            oledConfig.menu.labelSize = menu["itemSize"] | 1;
-            oledConfig.menu.titleSize = menu["headerSize"] | 1;
-            oledConfig.menu.topRowY = menu["headerY"] | 0;
-            oledConfig.menu.titleY = menu["itemStartY"] | 14;
-          }
-
-          // Tap tempo screen
-          if (screens.containsKey("tap")) {
-            JsonObject tap = screens["tap"];
-            oledConfig.tap.labelSize = tap["labelSize"] | 1;
-            oledConfig.tap.titleSize = tap["bpmSize"] | 3;
-            oledConfig.tap.statusSize = tap["patternSize"] | 1;
-            oledConfig.tap.topRowY = tap["labelTopY"] | 0;
-            oledConfig.tap.titleY = tap["bpmY"] | 16;
-            oledConfig.tap.statusY = tap["patternY"] | 46;
-            oledConfig.tap.bottomRowY = tap["labelBottomY"] | 56;
-          }
-
-          // Overlay screen
-          if (screens.containsKey("overlay")) {
-            JsonObject overlay = screens["overlay"];
-            oledConfig.overlay.titleSize = overlay["textSize"] | 2;
-          }
-        }
-
-        Serial.printf("Parsed OLED config: type=%d, rotation=%d\n",
-                      oledConfig.type, oledConfig.rotation);
-      }
-
-      // Parse Global Special Actions (Combos)
-      if (sys.containsKey("globalSpecialActions")) {
-        JsonArray gsaArr = sys["globalSpecialActions"];
-        Serial.printf("Parsing %d global special actions...\n", gsaArr.size());
-        for (int i = 0; i < gsaArr.size() && i < systemConfig.buttonCount;
-             i++) {
-          JsonObject gsaObj = gsaArr[i];
-          GlobalSpecialAction &gsa = globalSpecialActions[i];
-          ActionMessage &msg = gsa.comboAction;
-
-          gsa.hasCombo = gsaObj["enabled"] | false;
-          msg.action = parseActionType(gsaObj["action"] | "PRESS");
-          gsa.partner = gsaObj["partner"] | -1;
-          msg.type = parseCommandType(gsaObj["type"] | "OFF");
-          msg.channel = gsaObj["channel"] | 1;
-          msg.data1 = gsaObj["data1"] | 0;
-          msg.data2 = gsaObj["data2"] | 0;
-          hexToRgb(gsaObj["rgb"] | "#bb86fc", msg.rgb);
-
-          const char *label = gsaObj["label"] | "";
-          strncpy(msg.label, label, 5);
-          msg.label[5] = '\0';
-
-          if (msg.type == TAP_TEMPO) {
-            msg.tapTempo.rhythmPrev = gsaObj["rhythmPrev"] | 0;
-            msg.tapTempo.rhythmNext = gsaObj["rhythmNext"] | 4;
-            msg.tapTempo.tapLock = gsaObj["tapLock"] | 7;
-          }
-
-          if (msg.action == ACTION_LONG_PRESS ||
-              msg.action == ACTION_2ND_LONG_PRESS) {
-            msg.longPress.holdMs = gsaObj["holdMs"] | 500;
-          }
-
-          if (msg.type == SYSEX) {
-            const char *hex = gsaObj["sysex"] | "";
-            size_t len = strlen(hex);
-            msg.sysex.length = 0;
-            for (size_t s = 0; s + 1 < len && msg.sysex.length < 48; s += 2) {
-              char h[3] = {hex[s], hex[s + 1], 0};
-              msg.sysex.data[msg.sysex.length++] = strtol(h, NULL, 16);
-            }
-          }
-        }
-      }
-
-      Serial.printf("Before saveSystemSettings - Free heap: %d\n",
-                    ESP.getFreeHeap());
-      saveSystemSettings();
-    }
+    Serial.println("Saving configuration...");
+    savePresets();
+    saveSystemSettings();
+    saveAnalogInputs();
+    Serial.println("Configuration saved!");
 
     currentPreset = 0;
     pendingDisplayUpdate = true;
@@ -2432,6 +2116,9 @@ bool applyConfigJson(JsonObject doc) {
           presetSyncMode[p] = SYNC_GP5;
         else
           presetSyncMode[p] = SYNC_NONE;
+      } else if (pObj.containsKey("syncSpm")) {
+        // Legacy support: syncSpm boolean
+        presetSyncMode[p] = (pObj["syncSpm"] | false) ? SYNC_SPM : SYNC_NONE;
       }
 
       // Buttons
@@ -2844,12 +2531,19 @@ bool applyConfigJson(JsonObject doc) {
         acfg.minVal = aObj["minVal"];
       if (aObj.containsKey("maxVal"))
         acfg.maxVal = aObj["maxVal"];
+      else if (acfg.maxVal == 0)
+        acfg.maxVal = 4095;
       if (aObj.containsKey("inverted"))
         acfg.inverted = aObj["inverted"];
       if (aObj.containsKey("emaAlpha"))
         acfg.emaAlpha = aObj["emaAlpha"];
+      else if (acfg.emaAlpha == 0)
+        acfg.emaAlpha = 0.05f; // DEFAULT_EMA_ALPHA
+
       if (aObj.containsKey("hysteresis"))
         acfg.hysteresis = aObj["hysteresis"];
+      else if (acfg.hysteresis == 0)
+        acfg.hysteresis = 3; // DEFAULT_HYSTERESIS
 
       JsonArray amsgs = aObj["messages"];
       if (!amsgs.isNull()) {
