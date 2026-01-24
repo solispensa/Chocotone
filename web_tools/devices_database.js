@@ -541,55 +541,123 @@ if (typeof window !== 'undefined') {
 // ===========================================================================
 const FULL_CONFIGS = {
     "ESP32-S3 Default (8-btn)": {
-        description: "Recommended pinout for ESP32-S3 (N16R8) - Safe for WiFi/BLE",
-        system: {
-            bleDeviceName: "CHOCOTONE S3",
-            apSSID: "CHOCOTONE_S3",
-            apPassword: "12345678",
-            buttonCount: 8,
-            buttonPins: "38,39,40,41,42,21,8,9", // S3 Defaults
-            ledPin: 48, // Built-in RGB or External
-            ledsPerButton: 1,
-            ledMap: "0,1,2,3,4,5,6,7", // Linear mapping
-            encoderA: 16,
-            encoderB: 17,
-            encoderBtn: 18,
-            bleMode: "CLIENT",
-            brightness: 220,
-            brightnessDim: 20,
-            brightnessTap: 240, // New field
-            analogInputCount: 4, // Enabled (Beta)
-            debugAnalogIn: false,
-            batteryAdcPin: 3, // ADC1 Ch3 (GPIO 3) safer for S3
-            oled: {
-                type: "128x64",
-                rotation: 0,
-                sdaPin: 8,
-                sclPin: 9,
-                csPin: 10,
-                dcPin: 13,
-                rstPin: 14,
-                mosiPin: 11,
-                sclkPin: 12,
-                ledPin: 15,
-                screens: {
-                    main: { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showStatus: true, showTopRow: true, showBottomRow: true, topRowMap: "5,6,7,8", bottomRowMap: "1,2,3,4" }
-                }
-            }
-        },
-        presets: [
+        "description": "Recommended pinout for ESP32-S3 (N16R8) - Safe for WiFi/BLE",
+        "configName": "ESP32S3 TEMPLATE",
+        "lastModified": "2026-01-24 11:59:37",
+        "presets": [
             {
-                name: "S3 DEMO", presetLedMode: "NORMAL", syncMode: "NONE", buttons: [
-                    { name: "B1", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 10, data2: 127, rgb: "#ff0000" }] },
-                    { name: "B2", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 11, data2: 127, rgb: "#00ff00" }] },
-                    { name: "B3", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 12, data2: 127, rgb: "#0000ff" }] },
-                    { name: "B4", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 13, data2: 127, rgb: "#ffff00" }] },
-                    { name: "B5", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 14, data2: 127, rgb: "#00ffff" }] },
-                    { name: "B6", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 15, data2: 127, rgb: "#ff00ff" }] },
-                    { name: "B7", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 16, data2: 127, rgb: "#ffffff" }] },
-                    { name: "B8", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 17, data2: 127, rgb: "#888888" }] }
+                "name": "STOMP",
+                "syncMode": "SPM",
+                "buttons": [
+                    { "name": "NR", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 43, "data2": 127, "rgb": "#ffffff" }, { "action": "2ND_PRESS", "type": "CC", "data1": 43, "rgb": "#ffffff" }] },
+                    { "name": "FX1", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 44, "data2": 127, "rgb": "#3f67ff" }, { "action": "2ND_PRESS", "type": "CC", "data1": 44, "rgb": "#3f67ff" }] },
+                    { "name": "DRV", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 45, "data2": 127, "rgb": "#fc2c00" }, { "action": "2ND_PRESS", "type": "CC", "data1": 45, "rgb": "#fc2c00" }] },
+                    { "name": "TAP", "messages": [{ "action": "PRESS", "type": "TAP_TEMPO", "data2": 127, "rgb": "#ffffff" }] },
+                    { "name": "EQ", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 48, "data2": 127, "rgb": "#0af500" }, { "action": "2ND_PRESS", "type": "CC", "data1": 48, "rgb": "#0af500" }] },
+                    { "name": "FX2", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 49, "data2": 127, "rgb": "#11f3ff" }, { "action": "2ND_PRESS", "type": "CC", "data1": 49, "rgb": "#11f3ff" }] },
+                    { "name": "DLY", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 50, "data2": 127, "rgb": "#332aff" }, { "action": "2ND_PRESS", "type": "CC", "data1": 50, "rgb": "#332aff" }] },
+                    { "name": "RVB", "ledMode": "TOGGLE", "messages": [{ "action": "PRESS", "type": "CC", "data1": 51, "data2": 127, "rgb": "#8400f7" }, { "action": "2ND_PRESS", "type": "CC", "data1": 51, "rgb": "#8400f7" }] }
+                ]
+            },
+            {
+                "name": "BANKS 1-8",
+                "presetLedMode": "SELECTION",
+                "buttons": [
+                    { "name": "B1", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 1, "rgb": "#ffffff" }] },
+                    { "name": "B2", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 2, "rgb": "#ffffff" }] },
+                    { "name": "B3", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 3, "rgb": "#ffffff" }] },
+                    { "name": "B4", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 4, "rgb": "#ffffff" }] },
+                    { "name": "B5", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 5, "rgb": "#0af500" }] },
+                    { "name": "B6", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 6, "rgb": "#0af500" }] },
+                    { "name": "B7", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 7, "rgb": "#0af500" }, { "action": "COMBO", "partner": 7, "type": "WIFI_TOGGLE" }] },
+                    { "name": "B8", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 8, "rgb": "#0af500" }] }
+                ]
+            },
+            {
+                "name": "BANKS 9-16",
+                "presetLedMode": "SELECTION",
+                "buttons": [
+                    { "name": "B9", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 9, "rgb": "#11f3ff" }] },
+                    { "name": "B10", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 10, "rgb": "#11f3ff" }] },
+                    { "name": "B11", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 11, "rgb": "#11f3ff" }] },
+                    { "name": "B12", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 12, "rgb": "#11f3ff" }] },
+                    { "name": "B13", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 13, "rgb": "#aa00ff" }] },
+                    { "name": "B14", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 14, "rgb": "#aa00ff" }] },
+                    { "name": "B15", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 15, "rgb": "#aa00ff" }, { "action": "COMBO", "partner": 7, "type": "WIFI_TOGGLE" }] },
+                    { "name": "B16", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 16, "rgb": "#aa00ff" }] }
+                ]
+            },
+            {
+                "name": "Note",
+                "presetLedMode": "SELECTION",
+                "buttons": [
+                    { "name": "1st", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 40, "rgb": "#fd0000" }] },
+                    { "name": "2nd", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 41, "rgb": "#fd0000" }] },
+                    { "name": "3rd", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 42, "rgb": "#fd0000" }] },
+                    { "name": "4th", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 43, "rgb": "#fd0000" }] },
+                    { "name": "5th", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 44, "rgb": "#fd0000" }] },
+                    { "name": "6th", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 45, "rgb": "#fd0000" }] },
+                    { "name": "7th", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 46, "rgb": "#fd0000" }] },
+                    { "name": "8up", "messages": [{ "action": "PRESS", "type": "CC", "data1": 1, "data2": 47, "rgb": "#fd0000" }] }
                 ]
             }
+        ],
+        "currentPreset": 0,
+        "presetCount": 4,
+        "system": {
+            "bleDeviceName": "CHOCOTONE S3",
+            "apSSID": "CHOCOTONE_S3",
+            "apPassword": "12345678",
+            "buttonCount": 8,
+            "buttonPins": "38,39,40,41,42,21,8,9",
+            "ledPin": 48,
+            "ledMap": "0,1,2,3,4,5,6,7",
+            "encoderA": 16,
+            "encoderB": 17,
+            "encoderBtn": 18,
+            "bleMode": "CLIENT",
+            "brightness": 220,
+            "brightnessDim": 20,
+            "brightnessTap": 240,
+            "analogInputCount": 4,
+            "batteryAdcPin": 3,
+            "oled": {
+                "type": "128x128",
+                "sdaPin": -1,
+                "sclPin": -1,
+                "csPin": 10,
+                "dcPin": 13,
+                "rstPin": 14,
+                "mosiPin": 11,
+                "sclkPin": 12,
+                "ledPin": 15,
+                "screens": {
+                    "main": {
+                        "topRowY": 4,
+                        "titleY": 59,
+                        "statusY": 44,
+                        "bpmY": 32,
+                        "bottomRowY": 117,
+                        "topRowMap": "5,6,7,8",
+                        "bottomRowMap": "1,2,3,4",
+                        "showColorStrips": true,
+                        "statusAlign": 1,
+                        "showBattery": true,
+                        "batteryX": 57,
+                        "batteryY": 86
+                    }
+                }
+            },
+            "globalSpecialActions": [
+                { "action": "LONG_PRESS", "type": "PRESET_DOWN", "channel": 1, "data1": 0, "data2": 0, "holdMs": 700, "label": "", "enabled": true, "partner": -1, "index": 4 },
+                { "action": "LONG_PRESS", "type": "PRESET_UP", "channel": 1, "data1": 0, "data2": 0, "holdMs": 700, "label": "", "enabled": true, "partner": -1, "index": 7 }
+            ]
+        },
+        "analogInputs": [
+            { "index": 0, "pin": 4, "name": "A1", "rgb": "#f59e0b", "messages": [{ "type": "SYSEX_SCROLL", "data1": 1 }] },
+            { "index": 1, "pin": 5, "name": "A2", "rgb": "#22c55e", "messages": [{ "type": "SYSEX_SCROLL", "data1": 2 }] },
+            { "index": 2, "pin": 7, "name": "A3", "rgb": "#3b82f6", "messages": [{ "type": "CC", "data1": 11 }] },
+            { "index": 3, "pin": 33, "name": "A4", "rgb": "#a855f7", "messages": [{ "type": "CC", "data1": 11 }] }
         ]
     },
     "Default (8-btn SPM)": {

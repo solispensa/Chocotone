@@ -116,3 +116,36 @@ GPIO 13   │●← Button 4                 ●│ GPIO 2   ← TFT DC
           │         [USB Port]            │
           └───────────────────────────────┘
 ```
+
+## ESP32-S3 Wiring Guide (N16R8 / DevKitM)
+
+**Safe Pinout (WiFi/BLE Compatible)**
+
+This layout matches the **"ESP32-S3 Default (8-btn)"** editor template.
+
+| Component | Pin Function | ESP32-S3 GPIO | Notes |
+|-----------|--------------|---------------|-------|
+| **Buttons** | Button 1 | GPIO 38 | |
+| | Button 2 | GPIO 39 | |
+| | Button 3 | GPIO 40 | |
+| | Button 4 | GPIO 41 | |
+| | Button 5 | GPIO 42 | |
+| | Button 6 | GPIO 21 | |
+| | Button 7 | GPIO 8 | |
+| | Button 8 | GPIO 9 | |
+| **Encoder** | A | GPIO 16 | |
+| | B | GPIO 17 | |
+| | Btn | GPIO 18 | |
+| **Display** | CS | GPIO 10 | SPI (FSPI) |
+| (128x128) | MOSI | GPIO 11 | |
+| | SCLK | GPIO 12 | |
+| | DC | GPIO 13 | |
+| | RST | GPIO 14 | |
+| | LED | GPIO 15 | Backlight |
+| **LED** | WS2812 DIN | GPIO 48 | Built-in RGB (DevKit) |
+| **Power** | Battery ADC | GPIO 3 | ADC1 Ch3 |
+| **Analog** | A1 | GPIO 4 | ADC1 Ch4 |
+| | A2 | GPIO 5 | ADC1 Ch5 |
+| | A3 | GPIO 7 | ADC1 Ch7 |
+| | A4 | GPIO 33 | *Verify PSRAM conflict if N16R8* |
+
