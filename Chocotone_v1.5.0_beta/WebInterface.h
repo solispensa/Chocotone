@@ -4,9 +4,10 @@
 #include "Globals.h"
 #include "UI_Display.h"
 #include <ArduinoJson.h>
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
 #include <BluetoothSerial.h>
+#endif
 #include <WiFi.h>
-
 
 void handleRoot();
 void handleSave();

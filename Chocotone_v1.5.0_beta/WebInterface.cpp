@@ -1,14 +1,18 @@
 #include "WebInterface.h"
 #include "AnalogInput.h"
 #include "BleMidi.h"
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
 #include "BluetoothSerial.h"
+#endif
 #include "Storage.h"
 #include "UI_Display.h"
 #include <ArduinoJson.h>
 #include <WebServer.h> // Ensure WebServer is included
 
 // Bluetooth Serial (SPP) for wireless editor connection
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
 BluetoothSerial SerialBT;
+#endif
 
 // Minimal WiFi page - just import/export (full editing via
 // offline_editor_v2.html + Serial)
@@ -60,6 +64,47 @@ xhr.onerror=function(){status('Device rebooting...',true);};xhr.send(fd);}
 window.onload=doExport;
 </script></body></html>
 )rawliteral";
+
+// Helper: Check heap and print connection status
+void checkHeapStatus() {
+  uint32_t free = ESP.getFreeHeap();
+  uint32_t max_free = ESP.getMaxAllocHeap();
+  Serial.printf("[SYSTEM] Free Heap: %d bytes (Max Block: %d)\n", free,
+                max_free);
+
+  if (free < 20000) {
+    Serial.println(
+        "⚠️  WARNING: Low Memory! WiFi/BLE stability may be affected.");
+  }
+}
+
+// Return System Info as JSON (Hardware aware)
+void handleSysInfo() {
+  String json = "{";
+
+  // Chip Model
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  json += "\"chip\":\"ESP32-S3\",";
+  json += "\"usb_midi\":true,";
+  json += "\"safe_pins\":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,33,34,"
+          "35,36,37,38,39,40,41,42],"; // S3 Safe Pins
+#else
+  json += "\"chip\":\"ESP32\",";
+  json += "\"usb_midi\":false,";
+  json +=
+      "\"safe_pins\":[12,13,14,15,16,17,18,19,21,22,23,25,26,27,32,33],"; // Classical
+                                                                          // ESP32
+                                                                          // Safe
+                                                                          // Pins
+#endif
+
+  json += "\"heap\":" + String(ESP.getFreeHeap()) + ",";
+  json += "\"version\":\"1.5.0-beta\",";
+  json += "\"ble_mode\":" + String((int)systemConfig.bleMode);
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
 
 // Request throttling to prevent crashes from concurrent or rapid requests
 static volatile bool requestInProgress = false;
@@ -1517,6 +1562,7 @@ void setup_web_server() {
   server.collectHeaders(headerKeys, 2);
 
   server.on("/", HTTP_GET, handleRoot);
+  server.on("/sysinfo", HTTP_GET, handleSysInfo);
   server.on("/save", HTTP_POST, handleSave);
   server.on("/saveSystem", HTTP_POST, handleSaveSystem);
   server.on("/export", HTTP_GET, handleExport);
@@ -3287,7 +3333,9 @@ void handleSerialConfig() {
 
 static String btSerialBuffer = "";
 
+// Bluetooth Serial Startup
 void turnBtSerialOn() {
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
   if (isBtSerialOn)
     return;
   if (isWifiOn) {
@@ -3368,9 +3416,13 @@ void turnBtSerialOn() {
   Serial.flush();
 
   displayOLED();
+#else
+  Serial.println("BT Serial not supported on ESP32-S3");
+#endif
 }
 
 void turnBtSerialOff() {
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
   if (!isBtSerialOn)
     return;
 
@@ -3401,10 +3453,12 @@ void turnBtSerialOff() {
   Serial.flush();
 
   displayOLED();
+#endif
 }
 
 // Handle Bluetooth Serial config commands - mirrors handleSerialConfig()
 void handleBtSerialConfig() {
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
   if (!isBtSerialOn)
     return;
 
@@ -3942,4 +3996,5 @@ void handleBtSerialConfig() {
       }
     }
   }
+#endif
 }

@@ -25,34 +25,38 @@ WebServer server(80);
 // ============================================
 
 SystemConfig systemConfig = {
-    DEFAULT_BLE_NAME,                       // bleDeviceName[24]
-    DEFAULT_AP_SSID,                        // apSSID[24]
-    DEFAULT_AP_PASS,                        // apPassword[16]
-    DEFAULT_BUTTON_COUNT,                   // buttonCount
-    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0}, // buttonPins[10] (original)
-    NEOPIXEL_PIN,                           // ledPin
-    DEFAULT_ENCODER_A,                      // encoderA (18)
-    DEFAULT_ENCODER_B,                      // encoderB (19)
-    DEFAULT_ENCODER_BTN,                    // encoderBtn (23)
-    false,                                  // wifiOnAtBoot
-    BLE_CLIENT_ONLY,                        // bleMode
-    1,                                      // ledsPerButton
-    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9},         // ledMap[10]
-    DEVICE_SPM,                             // targetDevice
-    1,                                      // midiChannel
-    {},                                     // multiplexer (zeroed)
-    false,                                  // debugAnalogIn
-    0,                                      // analogInputCount
-    0,                                      // batteryAdcPin (0=disabled)
-    // Display pins
-    21, // oledSdaPin
-    22, // oledSclPin
-    15, // tftCsPin
-    2,  // tftDcPin
-    4,  // tftRstPin
-    23, // tftMosiPin
-    18, // tftSclkPin
-    32  // tftLedPin
+    DEFAULT_BLE_NAME,     // bleDeviceName[24]
+    DEFAULT_AP_SSID,      // apSSID[24]
+    DEFAULT_AP_PASS,      // apPassword[16]
+    DEFAULT_BUTTON_COUNT, // buttonCount
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+    {38, 39, 40, 41, 42, 21, 8, 9, 0, 0}, // buttonPins (S3 Optimized)
+#else
+    {14, 27, 26, 25, 33, 32, 16, 17, 0, 0}, // buttonPins (Standard Legacy)
+#endif
+    NEOPIXEL_PIN,                   // ledPin
+    DEFAULT_ENCODER_A,              // encoderA (18)
+    DEFAULT_ENCODER_B,              // encoderB (19)
+    DEFAULT_ENCODER_BTN,            // encoderBtn (23)
+    false,                          // wifiOnAtBoot
+    BLE_CLIENT_ONLY,                // bleMode
+    1,                              // ledsPerButton
+    {0, 1, 2, 3, 7, 6, 5, 4, 8, 9}, // ledMap[10]
+    DEVICE_SPM,                     // targetDevice
+    1,                              // midiChannel
+    {},                             // multiplexer (zeroed)
+    false,                          // debugAnalogIn
+    0,                              // analogInputCount
+    0,                              // batteryAdcPin (0=disabled)
+    // Display pins (Use Config.h macros)
+    OLED_SDA_PIN, // oledSdaPin
+    OLED_SCL_PIN, // oledSclPin
+    TFT_CS,       // tftCsPin
+    TFT_DC,       // tftDcPin
+    TFT_RST,      // tftRstPin
+    TFT_MOSI,     // tftMosiPin
+    TFT_SCLK,     // tftSclkPin
+    TFT_LED       // tftLedPin
 };
 
 bool isWifiOn = false;
@@ -66,15 +70,15 @@ OledConfig oledConfig = {
     OLED_NONE, // type - No display by default (prevents I2C errors)
     0,         // rotation (0°)
     // I2C pins (for OLED displays)
-    21, // sdaPin
-    22, // sclPin
+    OLED_SDA_PIN, // sdaPin
+    OLED_SCL_PIN, // sclPin
     // SPI pins (for TFT displays)
-    15, // csPin
-    2,  // dcPin
-    4,  // rstPin
-    23, // mosiPin
-    18, // sclkPin
-    32, // ledPin (backlight)
+    TFT_CS,   // csPin
+    TFT_DC,   // dcPin
+    TFT_RST,  // rstPin
+    TFT_MOSI, // mosiPin
+    TFT_SCLK, // sclkPin
+    TFT_LED,  // ledPin (backlight)
     // Main screen settings
     {
         1,         // labelSize

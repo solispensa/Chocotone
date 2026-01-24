@@ -36,7 +36,7 @@
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
 // ============================================
 // ESP32-S3 DEFAULT PINOUT (Safe & WiFi-Compatible)
-// Avoids: Strapping pins (0, 45, 46) and Flash/PSRAM (26-32)
+// Avoids: Strapping (0,45,46), Flash/PSRAM (26-32 + 33-37 for Octal)
 // Uses: ADC1 for Analog/Battery to work with WiFi
 // ============================================
 
@@ -45,24 +45,25 @@
 #define ENCODER_B_PIN 17
 #define ENCODER_BUTTON_PIN 18
 
-// I2C Display (OLED) - Using commonly available pins
+// I2C Display (OLED)
 #define OLED_SDA_PIN 8
 #define OLED_SCL_PIN 9
 
-// LED (Built-in RGB on many DevKits is 48, using safe default)
+// LED
 #define NEOPIXEL_PIN 48
 
-// TFT SPI Pins (Mapped to FSPI for speed)
+// TFT SPI Pins (FSPI)
 #define TFT_CS 10
 #define TFT_RST 14
 #define TFT_DC 13
 #define TFT_MOSI 11
 #define TFT_SCLK 12
-#define TFT_LED 15 // PWM capable
+#define TFT_LED 15
 
-// Default Button Pins (8 Buttons on safe inputs)
-const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
-    33, 34, 35, 36, 37, 38, 39, 40, 0, 0, 0, 0, 0, 0, 0, 0};
+// Default Button Pins (Optimized: 38-42, 21, 8, 9)
+// Replaces 1/2 (UART) with 8/9 (formerly OLED)
+const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {38, 39, 40, 41, 42, 21, 8, 9,
+                                                  0,  0,  0,  0,  0,  0,  0, 0};
 
 // Default Configuration Constants
 #define DEFAULT_ENCODER_A 16

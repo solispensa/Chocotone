@@ -540,6 +540,58 @@ if (typeof window !== 'undefined') {
 // FULL CONFIGURATION TEMPLATES (Complete presets + system config)
 // ===========================================================================
 const FULL_CONFIGS = {
+    "ESP32-S3 Default (8-btn)": {
+        description: "Recommended pinout for ESP32-S3 (N16R8) - Safe for WiFi/BLE",
+        system: {
+            bleDeviceName: "CHOCOTONE S3",
+            apSSID: "CHOCOTONE_S3",
+            apPassword: "12345678",
+            buttonCount: 8,
+            buttonPins: "38,39,40,41,42,21,8,9", // S3 Defaults
+            ledPin: 48, // Built-in RGB or External
+            ledsPerButton: 1,
+            ledMap: "0,1,2,3,4,5,6,7", // Linear mapping
+            encoderA: 16,
+            encoderB: 17,
+            encoderBtn: 18,
+            bleMode: "CLIENT",
+            brightness: 220,
+            brightnessDim: 20,
+            brightnessTap: 240, // New field
+            analogInputCount: 4, // Enabled (Beta)
+            debugAnalogIn: false,
+            batteryAdcPin: 3, // ADC1 Ch3 (GPIO 3) safer for S3
+            oled: {
+                type: "128x64",
+                rotation: 0,
+                sdaPin: 8,
+                sclPin: 9,
+                csPin: 10,
+                dcPin: 13,
+                rstPin: 14,
+                mosiPin: 11,
+                sclkPin: 12,
+                ledPin: 15,
+                screens: {
+                    main: { labelSize: 1, titleSize: 2, statusSize: 1, topRowY: 0, titleY: 14, statusY: 44, bpmY: 32, bottomRowY: 56, showBpm: true, showStatus: true, showTopRow: true, showBottomRow: true, topRowMap: "5,6,7,8", bottomRowMap: "1,2,3,4" }
+                }
+            }
+        },
+        presets: [
+            {
+                name: "S3 DEMO", presetLedMode: "NORMAL", syncMode: "NONE", buttons: [
+                    { name: "B1", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 10, data2: 127, rgb: "#ff0000" }] },
+                    { name: "B2", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 11, data2: 127, rgb: "#00ff00" }] },
+                    { name: "B3", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 12, data2: 127, rgb: "#0000ff" }] },
+                    { name: "B4", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 13, data2: 127, rgb: "#ffff00" }] },
+                    { name: "B5", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 14, data2: 127, rgb: "#00ffff" }] },
+                    { name: "B6", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 15, data2: 127, rgb: "#ff00ff" }] },
+                    { name: "B7", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 16, data2: 127, rgb: "#ffffff" }] },
+                    { name: "B8", ledMode: "MOMENTARY", messages: [{ action: "PRESS", type: "CC", channel: 1, data1: 17, data2: 127, rgb: "#888888" }] }
+                ]
+            }
+        ]
+    },
     "Default (8-btn SPM)": {
         description: "Standard 8-button config for Sonicake Pocket Master",
         system: {

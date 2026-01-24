@@ -587,17 +587,17 @@ void sendMidiPC(byte ch, byte n) {
     ch = 1;
   if (ch > 16)
     ch = 16;
-  uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch - 1) & 0x0F)), n, 0};
+  uint8_t m[4] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch - 1) & 0x0F)), n};
 
   // Send to SPM via Client
   if (clientConnected && pRemoteCharacteristic) {
-    pRemoteCharacteristic->writeValue(m, 5, false);
+    pRemoteCharacteristic->writeValue(m, 4, false);
     Serial.printf("→ SPM: PC Ch%d N%d\n", ch, n);
   }
 
   // Send to DAW/App via Server
   if (serverConnected && pServerMidiCharacteristic) {
-    pServerMidiCharacteristic->setValue(m, 5);
+    pServerMidiCharacteristic->setValue(m, 4);
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: PC Ch%d N%d\n", ch, n);
   }
@@ -689,8 +689,13 @@ void sendSysex(const uint8_t *data, size_t length) {
   Serial.println();
 
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
-  // Send via Native USB (library handles packetization)
-  usbMidi.sendSysEx(length, data);
+  // Send via Native USB
+  // USBMIDI lib in ESP32 Core 3.x lacks sendSysEx helper and write(buf, len)
+  // overload Writing byte-by-byte allows the library's internal state machine
+  // to handle packetization
+  for (size_t i = 0; i < length; i++) {
+    usbMidi.write(data[i]);
+  }
 #endif
 }
 
