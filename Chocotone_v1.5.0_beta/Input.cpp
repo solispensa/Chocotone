@@ -525,83 +525,85 @@ void loop_presetMode() {
               continue;
             }
 
-            // Find the appropriate action based on toggle state
-            ActionMessage *action = nullptr;
-
-            DBG_INPUT("BTN %d: isAlternate=%d, has2nd=%d\n", i,
-                      config.isAlternate, hasAction(config, ACTION_2ND_PRESS));
-
+            // Determine the target action type based on toggle state
+            ActionType targetActionType = ACTION_PRESS;
             if (config.isAlternate) {
-              // Toggle mode - alternate between PRESS and 2ND_PRESS
-              action = findAction(config, ACTION_2ND_PRESS);
+              // Try 2ND_PRESS first, fallback to PRESS if no 2ND_PRESS
+              // configured
+              if (hasAction(config, ACTION_2ND_PRESS)) {
+                targetActionType = ACTION_2ND_PRESS;
+              }
+            }
+
+            DBG_INPUT("BTN %d: Target Action Type = %d\n", i, targetActionType);
+
+            // CHECK FOR LONG PRESS FIRST (Deferral Logic)
+            // If ANY long press action exists, we must defer the primary press
+            ActionType longPressType =
+                config.isAlternate ? ACTION_2ND_LONG_PRESS : ACTION_LONG_PRESS;
+            ActionMessage *longPress = findAction(config, longPressType);
+            if (!longPress) {
+              longPress = findAction(config, ACTION_LONG_PRESS);
+            }
+
+            // Global Long Press Override Check
+            bool hasGlobalLongPress = false;
+            if (globalSpecialActions[i].hasCombo &&
+                globalSpecialActions[i].partner == -1) {
+              const ActionMessage &globalMsg =
+                  globalSpecialActions[i].comboAction;
+              if (globalMsg.action == ACTION_LONG_PRESS ||
+                  globalMsg.action == ACTION_2ND_LONG_PRESS) {
+                hasGlobalLongPress = true;
+              }
+            }
+
+            if (longPress || hasGlobalLongPress) {
+              DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS: local=%d, "
+                        "global=%d)\n",
+                        i, longPress != nullptr, hasGlobalLongPress);
             } else {
-              action = findAction(config, ACTION_PRESS);
-            }
+              // EXECUTE ALL MATCHING ACTIONS
+              bool actionExecuted = false;
+              bool tapTempoHandled = false;
 
-            // Fallback to PRESS if no 2ND_PRESS found
-            if (!action) {
-              action = findAction(config, ACTION_PRESS);
-            }
+              for (int m = 0; m < config.messageCount; m++) {
+                ActionMessage &msg = config.messages[m];
+                if (msg.action == targetActionType) {
 
-            if (action) {
-              DBG_INPUT("BTN %d: action type=%d, data1=%d, data2=%d\n", i,
-                        action->type, action->data1, action->data2);
+                  if (msg.type == TAP_TEMPO) {
+                    if (!tapTempoHandled) { // Only handle tap once per press
+                      handleTapTempo(i);
+                      tapTempoHandled = true;
+                    }
+                  } else {
+                    // Display logic (use label from first executed action)
+                    if (!actionExecuted) {
+                      if (msg.label[0] != '\0') {
+                        strncpy(buttonNameToShow, msg.label, 20);
+                      } else {
+                        strncpy(buttonNameToShow, config.name, 20);
+                      }
+                      buttonNameToShow[20] = '\0';
+                      buttonNameDisplayUntil = millis() + 1000;
+                      safeDisplayOLED();
+                    }
 
-              // Check if button has LONG_PRESS - if so, defer PRESS to release
-              ActionType longPressType = config.isAlternate
-                                             ? ACTION_2ND_LONG_PRESS
-                                             : ACTION_LONG_PRESS;
-              ActionMessage *longPress = findAction(config, longPressType);
-              if (!longPress) {
-                longPress = findAction(config, ACTION_LONG_PRESS);
-              }
-
-              // Also check for GLOBAL LONG_PRESS override
-              bool hasGlobalLongPress = false;
-              if (globalSpecialActions[i].hasCombo &&
-                  globalSpecialActions[i].partner == -1) {
-                const ActionMessage &globalMsg =
-                    globalSpecialActions[i].comboAction;
-                if (globalMsg.action == ACTION_LONG_PRESS ||
-                    globalMsg.action == ACTION_2ND_LONG_PRESS) {
-                  hasGlobalLongPress = true;
+                    executeActionMessage(msg);
+                    actionExecuted = true;
+                  }
                 }
               }
 
-              if (longPress || hasGlobalLongPress) {
-                // Has long press configured (local or global) - DON'T fire
-                // PRESS now. Also DON'T show overlay yet.
-                // It will fire on release if held time < holdMs threshold
-                DBG_INPUT("BTN %d: Deferring PRESS (has LONG_PRESS: local=%d, "
-                          "global=%d)\n",
-                          i, longPress != nullptr, hasGlobalLongPress);
-              } else if (action->type == TAP_TEMPO) {
-                handleTapTempo(i);
-              } else {
-                // No LONG_PRESS configured - fire PRESS immediately
-                // Display action label if set, otherwise use button name
-                if (action->label[0] != '\0') {
-                  strncpy(buttonNameToShow, action->label, 20);
-                } else {
-                  strncpy(buttonNameToShow, config.name, 20);
-                }
-                buttonNameToShow[20] = '\0';
-                buttonNameDisplayUntil = millis() + 1000;
-                safeDisplayOLED();
-
-                executeActionMessage(*action);
-
-                // GP5 Sync: Request state after any button action to keep LEDs
-                // synced
+              if (actionExecuted) {
+                // GP5 Sync Request
                 if (presetSyncMode[currentPreset] == SYNC_GP5 &&
                     clientConnected) {
-                  delay(100); // Give GP5 time to process the command
+                  delay(100);
                   requestPresetState();
                 }
 
-                // Toggle alternate state if button has 2ND_PRESS
-                // In sync mode, still toggle locally because the button sends
-                // a toggle command to the device, and we need to track state
+                // Toggle Alternate State (only once per press)
                 if (hasAction(config, ACTION_2ND_PRESS)) {
                   config.isAlternate = !config.isAlternate;
                   ledToggleState[i] = config.isAlternate;
@@ -609,9 +611,10 @@ void loop_presetMode() {
                             config.isAlternate, ledToggleState[i]);
                   updateLeds();
                 }
+              } else {
+                DBG_INPUT("BTN %d: NO ACTION FOUND for type %d\n", i,
+                          targetActionType);
               }
-            } else {
-              DBG_INPUT("BTN %d: NO ACTION FOUND!\n", i);
             }
           }
         }
@@ -731,13 +734,20 @@ void loop_presetMode() {
           // Check for RELEASE or 2ND_RELEASE action based on isAlternate state
           ActionType releaseType =
               config.isAlternate ? ACTION_2ND_RELEASE : ACTION_RELEASE;
-          ActionMessage *releaseAction = findAction(config, releaseType);
-          if (!releaseAction) {
-            // Fallback: try the regular RELEASE action if 2ND_RELEASE not found
-            releaseAction = findAction(config, ACTION_RELEASE);
+
+          // Check if we need to fallback: if target is 2ND_RELEASE but none
+          // exists, try RELEASE
+          if (releaseType == ACTION_2ND_RELEASE &&
+              !hasAction(config, ACTION_2ND_RELEASE)) {
+            releaseType = ACTION_RELEASE;
           }
-          if (releaseAction) {
-            executeActionMessage(*releaseAction);
+
+          // Execute ALL matching release actions
+          for (int m = 0; m < config.messageCount; m++) {
+            ActionMessage &msg = config.messages[m];
+            if (msg.action == releaseType) {
+              executeActionMessage(msg);
+            }
           }
 
           // Handle NOTE_MOMENTARY note off

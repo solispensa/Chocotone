@@ -10,27 +10,15 @@
 // #define DEBUG_BLE    // BLE connection logging
 // #define DEBUG_MIDI   // MIDI message logging
 
-// Pin Definitions
-#define ENCODER_A_PIN 18
-#define ENCODER_B_PIN 19
-#define ENCODER_BUTTON_PIN 23 // Restored from 5
-#define OLED_SDA_PIN 21
-#define OLED_SCL_PIN 22
-#define NEOPIXEL_PIN 5 // Restored from 4
+// ============================================
+// COMMON CONSTANTS
+// ============================================
 
 // Constants
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define SCREEN_HEIGHT_160 160 // For ST7735 1.8" TFT displays
 #define OLED_RESET -1
-
-// TFT SPI Pins (ST7735)
-#define TFT_CS 15
-#define TFT_RST 4
-#define TFT_DC 2    // A0
-#define TFT_MOSI 23 // SDA (Data)
-#define TFT_SCLK 18 // SCL (Clock)
-#define TFT_LED 32  // Backlight
 
 // v2.0 Dynamic Button Configuration
 #define MAX_BUTTONS 16                   // Maximum supported buttons
@@ -41,6 +29,67 @@
 #define ENCODER_BUTTON_DEBOUNCE_DELAY                                          \
   100 // Increased from 50 for noise immunity
 
+// ============================================
+// HARDWARE PROFILES
+// ============================================
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+// ============================================
+// ESP32-S3 DEFAULT PINOUT (Safe & WiFi-Compatible)
+// Avoids: Strapping pins (0, 45, 46) and Flash/PSRAM (26-32)
+// Uses: ADC1 for Analog/Battery to work with WiFi
+// ============================================
+
+// Encoder (Safe GPIOs)
+#define ENCODER_A_PIN 16
+#define ENCODER_B_PIN 17
+#define ENCODER_BUTTON_PIN 18
+
+// I2C Display (OLED) - Using commonly available pins
+#define OLED_SDA_PIN 8
+#define OLED_SCL_PIN 9
+
+// LED (Built-in RGB on many DevKits is 48, using safe default)
+#define NEOPIXEL_PIN 48
+
+// TFT SPI Pins (Mapped to FSPI for speed)
+#define TFT_CS 10
+#define TFT_RST 14
+#define TFT_DC 13
+#define TFT_MOSI 11
+#define TFT_SCLK 12
+#define TFT_LED 15 // PWM capable
+
+// Default Button Pins (8 Buttons on safe inputs)
+const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
+    33, 34, 35, 36, 37, 38, 39, 40, 0, 0, 0, 0, 0, 0, 0, 0};
+
+// Default Configuration Constants
+#define DEFAULT_ENCODER_A 16
+#define DEFAULT_ENCODER_B 17
+#define DEFAULT_ENCODER_BTN 18
+
+#else
+// ============================================
+// STANDARD ESP32 DEFAULT PINOUT (Legacy)
+// ============================================
+
+// Pin Definitions
+#define ENCODER_A_PIN 18
+#define ENCODER_B_PIN 19
+#define ENCODER_BUTTON_PIN 23 // Restored from 5
+#define OLED_SDA_PIN 21
+#define OLED_SCL_PIN 22
+#define NEOPIXEL_PIN 5 // Restored from 4
+
+// TFT SPI Pins (ST7735)
+#define TFT_CS 15
+#define TFT_RST 4
+#define TFT_DC 2    // A0
+#define TFT_MOSI 23 // SDA (Data)
+#define TFT_SCLK 18 // SCL (Clock)
+#define TFT_LED 32  // Backlight
+
 // Default Button Pins (verified correct: 14,27,26,25,33,32,16,17)
 const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
     14, 27, 26, 25, 33, 32, 16, 17, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -49,6 +98,8 @@ const uint8_t DEFAULT_BUTTON_PINS[MAX_BUTTONS] = {
 #define DEFAULT_ENCODER_A 18
 #define DEFAULT_ENCODER_B 19
 #define DEFAULT_ENCODER_BTN 23
+
+#endif
 
 // Default Settings
 // These are initial default values used on first boot.

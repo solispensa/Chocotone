@@ -10,6 +10,11 @@
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include <BLEServer.h>
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <USB.h>
+#include <USBMIDI.h>
+extern USBMIDI usbMidi; // Defined in .ino
+#endif
 
 #define MIDI_SERVICE_UUID "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
@@ -518,6 +523,11 @@ void sendMidiNoteOn(byte ch, byte n, byte v) {
   if (!clientConnected && !serverConnected) {
     Serial.println("! No BLE devices connected");
   }
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  usbMidi.noteOn(n, v, ch);
+  Serial.printf("→ USB: Note On Ch%d N%d V%d\n", ch, n, v);
+#endif
 }
 
 void sendMidiNoteOff(byte ch, byte n, byte v) {
@@ -539,6 +549,11 @@ void sendMidiNoteOff(byte ch, byte n, byte v) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: Note Off Ch%d N%d V%d\n", ch, n, v);
   }
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  usbMidi.noteOff(n, v, ch);
+  Serial.printf("→ USB: Note Off Ch%d N%d V%d\n", ch, n, v);
+#endif
 }
 
 void sendMidiCC(byte ch, byte n, byte v) {
@@ -560,6 +575,11 @@ void sendMidiCC(byte ch, byte n, byte v) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: CC Ch%d N%d V%d\n", ch, n, v);
   }
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  usbMidi.controlChange(n, v, ch);
+  Serial.printf("→ USB: CC Ch%d N%d V%d\n", ch, n, v);
+#endif
 }
 
 void sendMidiPC(byte ch, byte n) {
@@ -581,6 +601,11 @@ void sendMidiPC(byte ch, byte n) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: PC Ch%d N%d\n", ch, n);
   }
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  usbMidi.programChange(n, ch);
+  Serial.printf("→ USB: PC Ch%d N%d\n", ch, n);
+#endif
 }
 
 void sendDelayTime(int delayMs) {
@@ -662,6 +687,11 @@ void sendSysex(const uint8_t *data, size_t length) {
   if (length > 20)
     Serial.print("...");
   Serial.println();
+
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // Send via Native USB (library handles packetization)
+  usbMidi.sendSysEx(length, data);
+#endif
 }
 
 // ============================================

@@ -10,6 +10,12 @@
 #include <SPI.h> // For TFT displays
 #include <Wire.h>
 
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+#include <USB.h>
+#include <USBMIDI.h>
+USBMIDI usbMidi;
+#endif
+
 // ============================================================================
 // PIN CONFLICT RESOLUTION FOR TFT/OLED AUTO-SWITCHING
 // ============================================================================
@@ -26,21 +32,33 @@ bool isPinInArray(uint8_t pin, uint8_t *arr, int len) {
 // Find an available GPIO pin not in the avoid list
 uint8_t findAvailablePin(uint8_t *avoid, int avoidLen) {
   // Safe GPIO pins for reassignment (excluding input-only for outputs)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // S3 Safe Pins (Avoids 0, 45, 46 strapping & 26-32 Flash/PSRAM)
+  uint8_t safePins[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+  int safeCount = 14;
+#else
+  // Original ESP32 Safe Pins
   uint8_t safePins[] = {12, 13, 14, 25, 26, 27, 33};
+  int safeCount = 7;
+#endif
 
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < safeCount; i++) {
     if (!isPinInArray(safePins[i], avoid, avoidLen)) {
       return safePins[i];
     }
   }
 
   // If all safe pins taken, try input-only pins (for buttons only)
+  // S3 doesn't have "input only" pins in the same way, but keeping structure
+  // for legacy
+#if !defined(CONFIG_IDF_TARGET_ESP32S3)
   uint8_t inputOnlyPins[] = {34, 35, 36, 39};
   for (int i = 0; i < 4; i++) {
     if (!isPinInArray(inputOnlyPins[i], avoid, avoidLen)) {
       return inputOnlyPins[i];
     }
   }
+#endif
 
   return 0; // No available pin (should never happen)
 }
@@ -131,6 +149,12 @@ void resolveDisplayPinConflicts() {
 }
 
 void setup() {
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // Enable Native USB for CDC (Serial) and MIDI
+  USB.begin();
+  usbMidi.begin();
+#endif
+
   Serial.begin(115200);
   delay(100); // Power stabilization delay
   Serial.println("\n\n=== CHOCOTONE MIDI Controller Firmware Starting ===");
