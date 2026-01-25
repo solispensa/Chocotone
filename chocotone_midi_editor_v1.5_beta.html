@@ -868,6 +868,9 @@
                     if (inp.inputMode === undefined) inp.inputMode = 0;
                     if (!inp.rgb) inp.rgb = '#f59e0b';
                     if (inp.source === undefined) inp.source = 'gpio';
+                    // Fix for firmware bug: Convert 255 ("No LED" safe value) back to -1 for Editor UI
+                    if (inp.ledIndex === 255) inp.ledIndex = -1;
+
                     if (inp.messages) {
                         for (var m = 0; m < inp.messages.length; m++) {
                             var amsg = inp.messages[m];
@@ -3251,7 +3254,14 @@
                         if (inp.source === 'gpio') delete inp.source;
                         if (inp.actionType === 'linear_linear' || inp.actionType === 'linear') delete inp.actionType;
                         if (inp.inverted === false) delete inp.inverted;
-                        if (inp.ledIndex === -1 || inp.ledIndex === undefined) delete inp.ledIndex;
+
+                        // Fix for firmware bug: Explicitly send 255 for "No LED" instead of deleting it.
+                        // Limits: Firmware checks 'if (ledIndex < 10)'. -1 passes this check (bug).
+                        // 255 is safe (255 < 10 is false).
+                        if (inp.ledIndex === -1 || inp.ledIndex === undefined) {
+                            inp.ledIndex = 255;
+                        }
+
                         if (inp.inputMode === 0) delete inp.inputMode;
                         if (inp.emaAlpha === 0.15) delete inp.emaAlpha;
                         if (inp.hysteresis === 2) delete inp.hysteresis;

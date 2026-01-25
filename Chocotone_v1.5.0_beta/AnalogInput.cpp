@@ -233,7 +233,7 @@ void processContinuous(AnalogInputConfig &cfg, uint16_t raw) {
     cfg.lastMidiValue = mapped;
 
     // LED Feedback (v1.5)
-    if (cfg.ledIndex < 10) { // Check if LED is assigned
+    if (cfg.ledIndex >= 0 && cfg.ledIndex < 10) { // Check if LED is assigned
       // Scale brightness based on value (0-127)
       uint8_t r = (uint16_t)cfg.rgb[0] * mapped / 127;
       uint8_t g = (uint16_t)cfg.rgb[1] * mapped / 127;
