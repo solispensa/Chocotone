@@ -3311,28 +3311,35 @@ void handleSerialConfig() {
         error = deserializeJson(doc, uploadBuffer);
         Serial.println("Using PSRAM for JSON parsing");
 #else
+        // MEMORY OPTIMIZATION FOR ESP32 CLASSIC:
+        // BLE consumes huge amount of RAM (30KB+). When parsing large JSON,
+        // we often run out of heap (NoMemory).
+        // Solution: Temporarily de-initialize BLE to free RAM.
+        // We are going to reboot anyway if valid, or we can restart BLE if
+        // invalid.
+
+        Serial.println("Releasing BLE memory for JSON parsing...");
+        BLEDevice::deinit(true);
+        delay(200); // Allow time for memory to be freed
+
         // ZERO-COPY IN-PLACE PARSING
         // By passing the mutable char* buffer, ArduinoJson modifies strings
-        // in-place This drastically reduces memory usage - no extra allocation
-        // for string copies
+        // in-place. This drastically reduces memory usage.
         size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
         Serial.printf("Largest free block: %d bytes\n", largestBlock);
 
         // For in-place parsing, we need memory for the JSON tree structure
         // Use largest available block minus margin for safety
-        size_t docSize = largestBlock - 512; // Leave 512 bytes margin
-        if (docSize > 16384)
-          docSize = 16384; // Cap at 16KB
-        if (docSize < 4096)
-          docSize = 4096; // Minimum 4KB
+        size_t docSize = largestBlock - 1024; // Leave 1KB margin
+        // If we have plenty of RAM (after freeing BLE), cap it reasonably
+        if (docSize > 32768)
+          docSize = 32768; // Cap at 32KB (should be plenty for 8KB JSON)
 
         DynamicJsonDocument doc(docSize);
         Serial.printf("Allocated DynamicJsonDocument(%d), heap now: %d\n",
                       docSize, ESP.getFreeHeap());
 
         // Pass mutable buffer for zero-copy/in-place parsing
-        // ArduinoJson will modify uploadBuffer directly (replacing quotes with
-        // nulls)
         error = deserializeJson(doc, uploadBuffer);
         Serial.println("Using zero-copy in-place JSON parsing");
 #endif
@@ -3343,6 +3350,17 @@ void handleSerialConfig() {
         if (error) {
           Serial.print("JSON_ERROR:");
           Serial.println(error.c_str());
+
+#ifndef BOARD_HAS_PSRAM
+          // If we failed and are on Classic ESP32, we killed BLE.
+          // We must restart it to keep device functional without reboot.
+          Serial.println("Parsing failed. Restoring BLE...");
+          setup_ble_midi();
+          if (systemConfig.bleMode == BLE_CLIENT_ONLY ||
+              systemConfig.bleMode == BLE_DUAL_MODE) {
+            doScan = true; // Will prompt loop to scan
+          }
+#endif
         } else {
           applyConfigJson(doc.as<JsonObject>());
 

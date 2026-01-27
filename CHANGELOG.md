@@ -9,6 +9,7 @@ All notable changes to the Chocotone MIDI Controller project will be documented 
 - **PC Message Parsing** - Fixed UI to show only "Program" field (Data 1) and hide unused Data 2 for Program Change messages.
 - **Global Actions Persistence** - Fixed Firmware bug where `globalSpecialActions` were not saving/loading due to incorrect JSON structure.
 - **System Settings Persistence** - Ensured `brightnessTap` and other new system properties are correctly saved and loaded.
+- **Config Upload Memory Fix** - Fixed `NoMemory` error on Classic ESP32 by temporarily de-initializing BLE during large config uploads to free heap.
 
 ### Changed
 - **Editor UI Improvements** - Renamed generic "D1/D2" labels to specific terms (Note/Vel, CC/Val, LSB/MSB) based on message type.
