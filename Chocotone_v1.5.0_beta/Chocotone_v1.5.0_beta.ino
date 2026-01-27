@@ -76,6 +76,7 @@ void findAvailablePins(uint8_t *out, int count, uint8_t *avoid, int avoidLen) {
 }
 
 // Resolve pin conflicts when TFT display is enabled
+// Resolve pin conflicts when TFT display is enabled
 void resolveDisplayPinConflicts() {
   if (oledConfig.type != TFT_128X128) {
     return; // No conflicts with I2C OLED
@@ -84,61 +85,56 @@ void resolveDisplayPinConflicts() {
   Serial.println("=== TFT Display Mode - Checking Pin Conflicts ===");
 
   // Get TFT pins being used
-  uint8_t tftPins[] = {systemConfig.tftCsPin,   systemConfig.tftDcPin,
-                       systemConfig.tftRstPin,  systemConfig.tftMosiPin,
-                       systemConfig.tftSclkPin, systemConfig.tftLedPin};
+  const int tftPinCount = 6;
+  uint8_t tftPins[tftPinCount] = {
+      systemConfig.tftCsPin,   systemConfig.tftDcPin,   systemConfig.tftRstPin,
+      systemConfig.tftMosiPin, systemConfig.tftSclkPin, systemConfig.tftLedPin};
 
   bool conflictsFound = false;
 
-  // Check encoder conflicts
-  bool encoderAConflict = isPinInArray(systemConfig.encoderA, tftPins, 6);
-  bool encoderBConflict = isPinInArray(systemConfig.encoderB, tftPins, 6);
-  bool encoderBtnConflict = isPinInArray(systemConfig.encoderBtn, tftPins, 6);
+  // Initialize avoid list with TFT pins
+  // Max size: 6 (TFT) + 3 (Enc) + 10 (Btns) + 1 (LED) = 20 is tight, let's use
+  // 32 safe buffer
+  uint8_t avoid[32];
+  int avoidLen = 0;
 
-  if (encoderAConflict || encoderBConflict || encoderBtnConflict) {
-    Serial.println("⚠️  Encoder pin conflict detected with TFT!");
-    Serial.printf("   Current: A=%d, B=%d, BTN=%d\n", systemConfig.encoderA,
-                  systemConfig.encoderB, systemConfig.encoderBtn);
+  // Add TFT pins to avoid list
+  memcpy(avoid, tftPins, tftPinCount * sizeof(uint8_t));
+  avoidLen = tftPinCount;
 
-    uint8_t newPins[3];
-    findAvailablePins(newPins, 3, tftPins, 6);
-    systemConfig.encoderA = newPins[0];
-    systemConfig.encoderB = newPins[1];
-    systemConfig.encoderBtn = newPins[2];
-
-    Serial.printf("✅ Auto-assigned encoder to: A=%d, B=%d, BTN=%d\n",
-                  newPins[0], newPins[1], newPins[2]);
-    conflictsFound = true;
-  }
-
-  // Check button conflicts
-  for (int i = 0; i < systemConfig.buttonCount; i++) {
-    if (isPinInArray(systemConfig.buttonPins[i], tftPins, 6)) {
-      uint8_t oldPin = systemConfig.buttonPins[i];
-
-      // Build combined avoid list (TFT pins + already assigned buttons)
-      uint8_t avoid[20];
-      memcpy(avoid, tftPins, 6 * sizeof(uint8_t));
-      int avoidLen = 6;
-      for (int j = 0; j < i; j++) {
-        avoid[avoidLen++] = systemConfig.buttonPins[j];
-      }
-
-      systemConfig.buttonPins[i] = findAvailablePin(avoid, avoidLen);
-      Serial.printf("⚠️  Button #%d conflict: GPIO %d → %d\n", i + 1, oldPin,
-                    systemConfig.buttonPins[i]);
+  // Helper to resolve a single pin
+  auto resolvePin = [&](uint8_t &pin, const char *name) {
+    // Check if pin conflicts with ANY used pin so far (TFT + previously checked
+    // items)
+    if (isPinInArray(pin, avoid, avoidLen)) {
+      uint8_t oldPin = pin;
+      pin = findAvailablePin(
+          avoid, avoidLen); // Find new pin avoiding all currently used
+      Serial.printf("⚠️  %s conflict: GPIO %d → %d\n", name, oldPin, pin);
       conflictsFound = true;
     }
+    // Add valid pin (whether old or newly assigned) to avoid list for
+    // subsequent checks
+    if (avoidLen < 32) {
+      avoid[avoidLen++] = pin;
+    }
+  };
+
+  // Resolve Encoder Pins Individually
+  // This preserves user swaps/assignments unless they specifically conflict
+  resolvePin(systemConfig.encoderA, "Encoder A");
+  resolvePin(systemConfig.encoderB, "Encoder B");
+  resolvePin(systemConfig.encoderBtn, "Encoder BTN");
+
+  // Resolve Button Pins
+  for (int i = 0; i < systemConfig.buttonCount; i++) {
+    char btnName[16];
+    snprintf(btnName, sizeof(btnName), "Button #%d", i + 1);
+    resolvePin(systemConfig.buttonPins[i], btnName);
   }
 
-  // Check LED pin conflict
-  if (isPinInArray(systemConfig.ledPin, tftPins, 6)) {
-    uint8_t oldPin = systemConfig.ledPin;
-    systemConfig.ledPin = findAvailablePin(tftPins, 6);
-    Serial.printf("⚠️  LED pin conflict: GPIO %d → %d\n", oldPin,
-                  systemConfig.ledPin);
-    conflictsFound = true;
-  }
+  // Resolve LED Pin
+  resolvePin(systemConfig.ledPin, "LED Pin");
 
   if (conflictsFound) {
     Serial.println("💾 Saving auto-resolved pin configuration...");
