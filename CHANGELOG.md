@@ -12,6 +12,7 @@ All notable changes to the Chocotone MIDI Controller project will be documented 
 
 ### Changed
 - **Editor UI Improvements** - Renamed generic "D1/D2" labels to specific terms (Note/Vel, CC/Val, LSB/MSB) based on message type.
+- **Cleanup** - Removed deprecated `chocotone_midi_editor_v1.5_redesign.html`.
 
 ## [v1.5.0-beta] - 2026-01-03
 
