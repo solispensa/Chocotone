@@ -2,6 +2,17 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
+## [v1.5.0-beta-patch-1] - 2026-01-27
+
+### Fixed
+- **LED Index Bug** - Fixed issue where "No LED" (-1) selection caused erratic behavior (Editor-side workaround using 255).
+- **PC Message Parsing** - Fixed UI to show only "Program" field (Data 1) and hide unused Data 2 for Program Change messages.
+- **Global Actions Persistence** - Fixed Firmware bug where `globalSpecialActions` were not saving/loading due to incorrect JSON structure.
+- **System Settings Persistence** - Ensured `brightnessTap` and other new system properties are correctly saved and loaded.
+
+### Changed
+- **Editor UI Improvements** - Renamed generic "D1/D2" labels to specific terms (Note/Vel, CC/Val, LSB/MSB) based on message type.
+
 ## [v1.5.0-beta] - 2026-01-03
 
 ### Added

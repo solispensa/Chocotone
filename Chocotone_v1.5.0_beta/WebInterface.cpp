@@ -2020,6 +2020,31 @@ String buildFullConfigJson() {
   json += "}"; // Close overlay
 
   // Global Special Actions (v1.5.1 - move inside system)
+  json += "}}}"; // Close screens, oled (Wait! We need to close screens and oled
+                 // BEFORE globalSpecialActions if we want it in system)
+
+  // FIX: Close oled and screens properly before adding globalSpecialActions to
+  // system We need to rewrite the closing logic. Current open scopes: system ->
+  // oled -> screens We want: system -> globalSpecialActions
+
+  // Actually, let's just close screens and oled here.
+  // json += "}}"; // Close screens, oled. System is still open.
+
+  // RE-WRITING THE BLOCK for clarity:
+  /*
+     The previous code was:
+     ... overlay ...
+     json += "}"; // close overlay
+     json += globalSpecialActions...
+     json += "}}}"; // close screens, oled, system
+
+     This put globalSpecialActions INSIDE screens.
+  */
+
+  // Correct implementation:
+  json += "}}"; // Close screens, oled (system still open)
+
+  // Global Special Actions (v1.5.1 - inside system)
   json += ",\"globalSpecialActions\":[";
   for (int i = 0; i < systemConfig.buttonCount; i++) {
     if (i > 0)
@@ -2027,8 +2052,7 @@ String buildFullConfigJson() {
     json += "{\"enabled\":";
     json += globalSpecialActions[i].hasCombo ? "true" : "false";
     json += ",\"partner\":";
-    json +=
-        String(globalSpecialActions[i].partner); // Use separate partner field
+    json += String(globalSpecialActions[i].partner);
     json += ",\"type\":\"";
     json += getCommandTypeString(globalSpecialActions[i].comboAction.type);
     json += "\",\"action\":\"";
@@ -2049,7 +2073,7 @@ String buildFullConfigJson() {
   }
   json += "]";
 
-  json += "}}}"; // Close screens, oled, system
+  json += "}"; // Close system
 
   // Analog Inputs
   json += ",\"analogInputs\":[";
@@ -2345,6 +2369,33 @@ bool applyConfigJson(JsonObject doc) {
         while (token != NULL && idx < 10) {
           systemConfig.multiplexer.buttonChannels[idx++] = atoi(token);
           token = strtok(NULL, ", ");
+        }
+      }
+    }
+
+    // Global Special Actions (v1.5.1)
+    if (sys.containsKey("globalSpecialActions")) {
+      JsonArray gsa = sys["globalSpecialActions"];
+      for (int i = 0; i < (int)gsa.size() && i < MAX_BUTTONS; i++) {
+        JsonObject gObj = gsa[i];
+        globalSpecialActions[i].hasCombo = gObj["enabled"] | false;
+        globalSpecialActions[i].partner = gObj["partner"] | -1;
+
+        // Action Message
+        globalSpecialActions[i].comboAction.action =
+            parseActionType(gObj["action"] | "COMBO");
+        globalSpecialActions[i].comboAction.type =
+            parseCommandType(gObj["type"] | "OFF");
+        globalSpecialActions[i].comboAction.channel = gObj["channel"] | 1;
+        globalSpecialActions[i].comboAction.data1 = gObj["data1"] | 0;
+        globalSpecialActions[i].comboAction.data2 = gObj["data2"] | 0;
+        globalSpecialActions[i].comboAction.longPress.holdMs =
+            gObj["holdMs"] | 500;
+
+        if (gObj.containsKey("label")) {
+          strncpy(globalSpecialActions[i].comboAction.label, gObj["label"] | "",
+                  5);
+          globalSpecialActions[i].comboAction.label[5] = '\0';
         }
       }
     }

@@ -715,7 +715,9 @@
                 encoderBtn: 23,
                 bleMode: "CLIENT",
                 brightness: 220,
+                brightnessTap: 255,
                 brightnessDim: 20,
+                globalSpecialActions: [],
                 // Analog Input System (v1.5)
                 analogInputCount: 0,
                 fsrThreshold: 100, // Default for FSR input mode
@@ -1588,13 +1590,25 @@
                 html += '<div class="field"><label>Ch</label><input type="number" min="1" max="16" value="' + (msg.channel || 1) + '" onchange="' + updFn + '(' + i + ',\'channel\',parseInt(this.value))"></div>';
                 // D1/D2 hidden for TAP_TEMPO
                 if (msg.type !== 'TAP_TEMPO') {
-                    // D1 as CC Picker dropdown for CC type
+                    // Determine labels
+                    var l1 = 'D1', l2 = 'D2';
+                    if (msg.type.startsWith('NOTE')) { l1 = 'Note'; l2 = 'Vel'; }
+                    if (msg.type === 'PITCH_BEND') { l1 = 'LSB'; l2 = 'MSB'; }
+                    if (msg.type === 'CC') { l2 = 'Val'; }
+
+                    // D1 Rendering
                     if (msg.type === 'CC') {
                         html += '<div class="field"><label>CC</label><select onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))">' + getCCPickerOptions(msg.data1 || 0) + '</select></div>';
+                    } else if (msg.type === 'PC') {
+                        html += '<div class="field"><label>Prog</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))"></div>';
                     } else {
-                        html += '<div class="field"><label>D1</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))"></div>';
+                        html += '<div class="field"><label>' + l1 + '</label><input type="number" min="0" max="127" value="' + (msg.data1 || 0) + '" onchange="' + updFn + '(' + i + ',\'data1\',parseInt(this.value))"></div>';
                     }
-                    html += '<div class="field"><label>D2</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="' + updFn + '(' + i + ',\'data2\',parseInt(this.value))"></div>';
+
+                    // D2 Rendering (Hidden for PC)
+                    if (msg.type !== 'PC') {
+                        html += '<div class="field"><label>' + l2 + '</label><input type="number" min="0" max="127" value="' + (msg.data2 || 0) + '" onchange="' + updFn + '(' + i + ',\'data2\',parseInt(this.value))"></div>';
+                    }
                 }
             }
             html += '<div class="field"><label>RGB</label><input type="color" value="' + (msg.rgb || '#bb86fc') + '" onchange="' + updFn + '(' + i + ',\'rgb\',this.value)"></div>';
@@ -3831,6 +3845,11 @@
                                 if (data.system.encoderBtn !== undefined) presetData.system.encoderBtn = data.system.encoderBtn;
                                 if (data.system.bleMode) presetData.system.bleMode = data.system.bleMode;
                                 if (data.system.brightness) presetData.system.brightness = data.system.brightness;
+                                if (data.system.brightnessTap !== undefined) presetData.system.brightnessTap = data.system.brightnessTap;
+                                if (data.system.brightnessDim !== undefined) presetData.system.brightnessDim = data.system.brightnessDim;
+                                if (data.system.fsrThreshold !== undefined) presetData.system.fsrThreshold = data.system.fsrThreshold;
+                                if (data.system.multiplexer) presetData.system.multiplexer = data.system.multiplexer;
+                                if (data.system.globalSpecialActions) presetData.system.globalSpecialActions = data.system.globalSpecialActions;
                                 if (data.system.analogInputCount !== undefined) presetData.system.analogInputCount = data.system.analogInputCount;
                                 if (data.system.debugAnalogIn !== undefined) presetData.system.debugAnalogIn = data.system.debugAnalogIn;
                                 if (data.system.batteryAdcPin !== undefined) presetData.system.batteryAdcPin = data.system.batteryAdcPin;
