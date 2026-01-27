@@ -14,7 +14,9 @@
 enum SysexScrollParamId : uint8_t {
   SYSEX_PARAM_NONE = 0,
   SYSEX_PARAM_PITCH_HIGH = 1,
-  SYSEX_PARAM_DRV_GAIN = 2
+  SYSEX_PARAM_DRV_GAIN = 2,
+  SYSEX_PARAM_DLY_FBK = 3,
+  SYSEX_PARAM_FX1_RATE = 4 // <-- Added
 };
 
 // PITCH - HIGH SysEx messages (Sonicake Pocket Master)
@@ -181,6 +183,12 @@ const uint8_t PROGMEM PITCH_HIGH_DATA[PITCH_HIGH_LIST_SIZE *
 // Include DRV_GAIN data (101 messages)
 #include "SysexScrollDrvGain.h"
 
+// Include DLY_FBK data (101 messages)
+#include "SysexScrollDlyFbk.h"
+
+// Include FX1_RATE data (100 messages)
+#include "SysexScrollFx1Rate.h"
+
 // Structure for SysEx scroll list metadata
 struct SysexScrollList {
   SysexScrollParamId id;
@@ -193,8 +201,10 @@ struct SysexScrollList {
 const SysexScrollList sysexScrollLists[] = {
     {SYSEX_PARAM_PITCH_HIGH, PITCH_HIGH_LIST_SIZE, PITCH_HIGH_MSG_LEN,
      PITCH_HIGH_DATA},
-    {SYSEX_PARAM_DRV_GAIN, DRV_GAIN_LIST_SIZE, DRV_GAIN_MSG_LEN,
-     DRV_GAIN_DATA}};
+    {SYSEX_PARAM_DRV_GAIN, DRV_GAIN_LIST_SIZE, DRV_GAIN_MSG_LEN, DRV_GAIN_DATA},
+    {SYSEX_PARAM_DLY_FBK, DLY_FBK_LIST_SIZE, DLY_FBK_MSG_LEN, DLY_FBK_DATA},
+    {SYSEX_PARAM_FX1_RATE, FX1_RATE_LIST_SIZE, FX1_RATE_MSG_LEN,
+     FX1_RATE_DATA}};
 
 const int SYSEX_SCROLL_LIST_COUNT =
     sizeof(sysexScrollLists) / sizeof(sysexScrollLists[0]);

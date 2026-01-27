@@ -47,24 +47,38 @@ For large parameter lists (50+ messages), create a separate header file to keep 
 // Description of this parameter
 
 #define YOUR_PARAM_LIST_SIZE 101  // Number of values (e.g., 0-100)
-#define YOUR_PARAM_MSG_LEN 41     // Message length (usually 41 bytes)
+#define YOUR_PARAM_MSG_LEN 40     // Length of EACH message (EXACT byte count)
 
 const uint8_t PROGMEM YOUR_PARAM_DATA[YOUR_PARAM_LIST_SIZE * YOUR_PARAM_MSG_LEN] = {
-  // 0: <paste hex string here>
-  0x80,0x80,0xF0,0x06,0x08,...,0xF7,0x00,  // Pad to 41 bytes
+  // 0: 0x80,0x80,F0,01,0B,...F7
+  0x80,0x80,0xF0,0x01,...,0xF7, 
   // 1: ...
-  // Repeat for all values
+  // Repeat for all values. 
 };
 ```
 
+> [!IMPORTANT]
+> **File Encoding**: The header file MUST be saved with **ASCII** or **UTF-8** encoding. If saved as UTF-16 (default for some Windows tools), the compiler will throw "stray '#'" errors.
+
 **Conversion tip:** Use this pattern to convert hex strings:
-- `8080F001...F7` → `0x80,0x80,0xF0,0x01,...,0xF7,0x00`
+- `8080F001...F7` → `0x80,0x80,0xF0,0x01,...,0xF7`
 - Each pair of hex chars = one byte
-- Pad with `0x00` at the end to reach MSG_LEN bytes
+- **DO NOT** add any trailing `0x00` padding after the `0xF7` terminator. The message length MUST be the exact number of bytes from the first `0x80` to the `0xF7`. 
+- Every message in the array must be identical in length (`YOUR_PARAM_MSG_LEN`).
 
 **Important:**
 - Each message MUST be exactly `YOUR_PARAM_MSG_LEN` bytes
 - The firmware finds the actual F7 terminator when sending
+
+## Step 3a: Verify Message Length
+
+Before proceeding, double-check your data:
+1.  Count the bytes in one of your hex strings (e.g., 40 bytes).
+2.  Ensure your `YOUR_PARAM_MSG_LEN` definition matches this EXACT count.
+3.  Ensure your array data does **not** have trailing `0x00` bytes unless they are part of the actual SysEx message before the F7.
+
+> [!WARNING]
+> Mismatched lengths or extra padding bytes (like `0xF7, 0x00`) will cause the firmware to send malformed SysEx messages.
 
 ## Step 4: Include and Register the List
 
@@ -97,14 +111,26 @@ const SYSEX_SCROLL_PARAMS = {
 };
 ```
 
-Edit `chocotone_midi_editor_v1.5_beta.html`, update the `sysexParamToId` mapping (around line 3189):
+Edit `chocotone_midi_editor_v1.5_beta.html`:
+
+1. Update the **single global** `sysexParamToId` mapping (found shortly after `fillEmptyPresets()`):
 
 ```javascript
 var sysexParamToId = {
     'PITCH - HIGH': 1,
     'DRV - GAIN': 2,
-    'YOUR NEW PARAM': 3  // <-- Add here, must match firmware enum value
+    'DLY - FBK': 3,
+    'YOUR NEW PARAM': 4  // <-- Add here, must match firmware enum
 };
+```
+
+> [!TIP]
+> This map is now used globally by `updMsg` and `updAnalogMsg` to synchronize parameter IDs during live edits.
+
+2. Update the `idToParam` maps inside `normalizeConfigData`. There are **two** identical locations (one for buttons, one for analog inputs) that ensure existing configs import correctly:
+
+```javascript
+var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'YOUR NEW PARAM' };
 ```
 
 ## Step 6: Recompile and Test
@@ -130,3 +156,5 @@ var sysexParamToId = {
 |-----------|-------------|---------------|-------------|
 | PITCH - HIGH | 1 | 25 (0-24) | Pitch shifter semitones |
 | DRV - GAIN | 2 | 101 (0-100) | Drive/Distortion gain level |
+| DLY - FBK | 3 | 101 (0-100) | Delay Feedback |
+| FX1 - RATE | 4 | 100 (0.1-10) | FX1 Modulation Rate |

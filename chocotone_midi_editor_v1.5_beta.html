@@ -822,6 +822,14 @@
         }
         fillEmptyPresets();
 
+        // Global map for SysEx Parameter IDs (Firmware mapping)
+        var sysexParamToId = {
+            'PITCH - HIGH': 1,
+            'DRV - GAIN': 2,
+            'DLY - FBK': 3,
+            'FX1 - RATE': 4
+        };
+
         // Normalize config data received from device (remap field names)
         // Firmware uses: color, partner (in combo)
         // Editor uses: rgb, partner
@@ -856,7 +864,7 @@
 
                         // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
                         if (msg.type === 'SYSEX_SCROLL' && !msg.sysexParam && msg.data1) {
-                            var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN' };
+                            var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE' };
                             msg.sysexParam = idToParam[msg.data1] || 'PITCH - HIGH';
                         }
                     }
@@ -881,7 +889,7 @@
 
                             // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
                             if (amsg.type === 'SYSEX_SCROLL' && !amsg.sysexParam && amsg.data1) {
-                                var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN' };
+                                var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE' };
                                 amsg.sysexParam = idToParam[amsg.data1] || 'PITCH - HIGH';
                             }
                         }
@@ -2098,8 +2106,22 @@
 
         function updBtn(k, v) { presetData.presets[presetData.currentPreset].buttons[selectedBtn][k] = v; render(); }
         function updMsg(idx, k, v) {
-            presetData.presets[presetData.currentPreset].buttons[selectedBtn].messages[idx][k] = v;
-            if (k === 'type' || k === 'action') render();
+            var btn = presetData.presets[presetData.currentPreset].buttons[selectedBtn];
+            if (btn && btn.messages && btn.messages[idx]) {
+                var msg = btn.messages[idx];
+                msg[k] = v;
+
+                // Sync data1 (paramId) when sysexParam changes or when type switches to SYSEX_SCROLL
+                if (k === 'sysexParam') {
+                    msg.data1 = sysexParamToId[v] || 1;
+                }
+                if (k === 'type' && v === 'SYSEX_SCROLL') {
+                    if (!msg.sysexParam) msg.sysexParam = 'PITCH - HIGH';
+                    msg.data1 = sysexParamToId[msg.sysexParam] || 1;
+                }
+
+                if (k === 'type' || k === 'action') render();
+            }
         }
         function addMsg() {
             var p = presetData.currentPreset;
@@ -2195,7 +2217,17 @@
         function updAnalogMsg(ainpIdx, msgIdx, k, v) {
             var ainp = presetData.analogInputs[ainpIdx];
             if (ainp && ainp.messages && ainp.messages[msgIdx]) {
-                ainp.messages[msgIdx][k] = v;
+                var msg = ainp.messages[msgIdx];
+                msg[k] = v;
+
+                // Sync data1 (paramId) when sysexParam changes or when type switches to SYSEX_SCROLL
+                if (k === 'sysexParam') {
+                    msg.data1 = sysexParamToId[v] || 1;
+                }
+                if (k === 'type' && v === 'SYSEX_SCROLL') {
+                    if (!msg.sysexParam) msg.sysexParam = 'PITCH - HIGH';
+                    msg.data1 = sysexParamToId[msg.sysexParam] || 1;
+                }
                 render();
             }
         }
@@ -3254,12 +3286,6 @@
 
             // Filter analog inputs - only include enabled ones with their index
             if (exportData.analogInputs) {
-                // Map sysexParam string to numeric ID for firmware (device-agnostic)
-                var sysexParamToId = {
-                    'PITCH - HIGH': 1,
-                    'DRV - GAIN': 2
-                };
-
                 exportData.analogInputs = exportData.analogInputs
                     .map(function (inp, idx) {
                         if (!inp.enabled) return null;
