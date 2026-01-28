@@ -827,7 +827,10 @@
             'PITCH - HIGH': 1,
             'DRV - GAIN': 2,
             'DLY - FBK': 3,
-            'FX1 - RATE': 4
+            'FX1 - RATE': 4,
+            'RVB - MIX': 5,
+            'AMP - GAIN': 6,
+            'PITCH - LOW': 7
         };
 
         // Normalize config data received from device (remap field names)
@@ -864,7 +867,7 @@
 
                         // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
                         if (msg.type === 'SYSEX_SCROLL' && !msg.sysexParam && msg.data1) {
-                            var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE' };
+                            var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE', 5: 'RVB - MIX', 6: 'AMP - GAIN', 7: 'PITCH - LOW' };
                             msg.sysexParam = idToParam[msg.data1] || 'PITCH - HIGH';
                         }
                     }
@@ -889,7 +892,7 @@
 
                             // Restore sysexParam from data1 for SYSEX_SCROLL (v1.5.5)
                             if (amsg.type === 'SYSEX_SCROLL' && !amsg.sysexParam && amsg.data1) {
-                                var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE' };
+                                var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'FX1 - RATE', 5: 'RVB - MIX', 6: 'AMP - GAIN', 7: 'PITCH - LOW' };
                                 amsg.sysexParam = idToParam[amsg.data1] || 'PITCH - HIGH';
                             }
                         }

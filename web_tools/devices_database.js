@@ -1080,7 +1080,10 @@ const SYSEX_SCROLL_PARAMS = {
     "PITCH - HIGH": new Array(25).fill(""),   // 25 values (0-24), Firmware ID: 1
     "DRV - GAIN": new Array(101).fill(""),    // 101 values (0-100), Firmware ID: 2
     "DLY - FBK": new Array(101).fill(""),     // 101 values (0-100), Firmware ID: 3
-    "FX1 - RATE": new Array(100).fill("")     // 100 values, Firmware ID: 4
+    "FX1 - RATE": new Array(100).fill(""),    // 100 values, Firmware ID: 4
+    "RVB - MIX": new Array(101).fill(""),      // 101 values, Firmware ID: 5
+    "AMP - GAIN": new Array(101).fill(""),     // 101 values, Firmware ID: 6
+    "PITCH - LOW": new Array(25).fill("")      // 25 values, Firmware ID: 7
 };
 
 // Get all available SysEx scroll parameter names

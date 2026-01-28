@@ -158,3 +158,6 @@ var idToParam = { 1: 'PITCH - HIGH', 2: 'DRV - GAIN', 3: 'DLY - FBK', 4: 'YOUR N
 | DRV - GAIN | 2 | 101 (0-100) | Drive/Distortion gain level |
 | DLY - FBK | 3 | 101 (0-100) | Delay Feedback |
 | FX1 - RATE | 4 | 100 (0.1-10) | FX1 Modulation Rate |
+| RVB - MIX | 5 | 101 (0-100) | Reverb Mix level |
+| AMP - GAIN | 6 | 101 (0-100) | Amplifier Gain level |
+| PITCH - LOW | 7 | 25 (-24 to 0) | Low Pitch Shifter |
