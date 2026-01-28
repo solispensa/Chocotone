@@ -12,8 +12,8 @@ Welcome! This guide will walk you through building and setting up your Chocotone
 
 | Item | What to Search | Approx. Cost |
 |------|----------------|--------------|
-| ESP32 Board | "ESP32 DevKit" or "ESP32 NodeMCU" | $5-10 |
-| OLED Display | "0.96 inch OLED I2C SSD1306" | $3-5 |
+| ESP32 Board | "ESP32 DevKit" (Classic) or "ESP32-S3 DevKit" (Best!) | $5-15 |
+| Display | "0.96 OLED I2C" or "1.44 TFT SPI ST7735" | $3-8 |
 | Rotary Encoder | "KY-040 Rotary Encoder" or "EC11" | $1-2 |
 | Tactile Buttons | "6x6mm tactile button" (get 10+) | $2-3 |
 | NeoPixel LEDs | "WS2812B LED strip" (8+ LEDs) | $3-8 |
@@ -34,8 +34,9 @@ Welcome! This guide will walk you through building and setting up your Chocotone
 **Key features:**
 - 🔵 **Bluetooth** - Connects wirelessly to your amp/pedal
 - 📶 **WiFi** - Configure settings from your phone/computer
-- ⚡ **Fast** - Responds instantly to button presses
-- 💰 **Cheap** - Only ~$5!
+- ⚡ **Fast** - Responds instantly to button presses.
+- 🔌 **USB MIDI (S3 Only)** - The newer **ESP32-S3** version acts as a true MIDI device on your computer!
+- 💰 **Cheap** - Only ~$5-10!
 
 The **firmware** is the software that runs on the ESP32 — it's what makes your Chocotone work. We've already written all the code for you!
 
@@ -107,7 +108,14 @@ The LED strip has 3 wires:
 2. **GND** (black/white) → Connect to ESP32 **GND**
 3. **DIN** (green) → Connect to ESP32 **GPIO 5**
 
-> ⚠️ **Important**: Make sure to connect to **DIN** (data in), not DOUT!
+### Step 7: Connect Analog Inputs (Expression Pedals)
+
+If you want to use an expression pedal (like a volume or wah pedal):
+- **VCC** → Connect to ESP32 **3.3V**
+- **GND** → Connect to ESP32 **GND**
+- **Signal** → Connect to an Analog Pin (e.g., **GPIO 36 or 39**)
+
+> 💡 **Tip**: We support **Custom Response Curves** (Linear, Log, Exp) so even a cheap pedal can feel like a high-end one!
 
 ---
 
@@ -128,6 +136,7 @@ This is the easiest part! We've created a web-based installer that works right i
 5. **Done!** Your OLED should show "Chocotone" when complete
 
 > 🌐 **Browser Support**: Use Chrome, Edge, or Brave. Firefox and Safari won't work.
+> 🔌 **ESP32-S3 Tip**: If you are using the S3 board, it will show up as "ESP32-S3 USB MIDI" on your computer once flashed!
 
 ### Method 2: Arduino IDE (Advanced)
 
@@ -217,6 +226,9 @@ Chocotone connects via **Bluetooth MIDI** and supports three connection modes:
 4. When connected, you'll see **"SPM:Y"** on the display
 
 Now press buttons on your Chocotone — they'll control your amp!
+
+### Native USB MIDI (ESP32-S3 only)
+If you have an **ESP32-S3**, you don't even need Bluetooth to control your DAW. Just plug in the USB cable and your computer will see "Chocotone USB MIDI" immediately.
 
 ### Connecting to DAW/Apps (SERVER Mode)
 

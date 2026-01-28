@@ -2,7 +2,10 @@
 
 ![Chocotone Header](images/chocotone_header.png)
 
-**A powerful, open-source ESP32-based BLE MIDI controller for wireless control of any BLE MIDI device, DAW, or mobile app.**
+**A powerful, open-source ESP32 and ESP32-S3 based MIDI controller. Configurable via web browser, supporting BLE MIDI and Native USB MIDI.**
+
+> [!NOTE]
+> 
 
 ![Version](https://img.shields.io/badge/version-1.5.0--beta-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -34,26 +37,30 @@
 ## Features
 
 ### Hardware
+- **ESP32-S3 Support (v1.5)** - Native USB MIDI support for lower latency and direct DAW connection
 - **Up to 16 Programmable Buttons** - Configurable button count with MIDI messages and LED feedback
-- **OLED Display (128x64)** - Real-time status, preset names, and menu system  
+- **OLED Display (128x64/128x32)** - Real-time status, preset names, and menu system  
 - **Rotary Encoder** - Navigation and parameter adjustment
 - **NeoPixel LEDs** - Visual feedback with customizable colors and brightness
   - Tap tempo blink feedback on all LEDs
 - **WiFi Access Point** - Wireless configuration via web browser
-- **Configurable GPIO** - Customize button pin assignments via web editor
 - **Analog Inputs (v1.5)** - Up to 16 analog inputs for expression pedals, pots, FSRs, piezo, switches
-  - Direct GPIO support (6 ADC1 pins) or multiplexer (CD74HC4067/CD74HC4051)
-  - Configurable signal processing: oversampling, smoothing, hysteresis
+  - Direct GPIO support or multiplexer (CD74HC4067/CD74HC4051)
+  - Configurable signal processing: oversampling, EMA smoothing, hysteresis
+  - Custom response curves: Linear, Logarithmic, or Exponential
   - Multi-message support with input/output range mapping
-- **128x32 OLED Support (v1.5)** - Compact displays with optimized layouts
 - **128x128 TFT SPI Color Display (v1.5)** - Full-color display showing color stripes for each control
-- **Battery Monitoring (v1.5)** - Voltage divider with two 100kΩ resistors (tested with 18650 Li-ion)
+- **Battery Monitoring (v1.5)** - Voltage divider for Li-ion battery tracking
 
 ### MIDI Capabilities
+- **Native USB MIDI (v1.5)** - Direct connection via USB on ESP32-S3 boards
 - **BLE MIDI Dual-Mode** - Connect to BLE devices AND accept connections from DAWs/Apps
   - CLIENT mode: Connect to external BLE MIDI devices (e.g., Sonicake Pocket Master)
   - SERVER mode: Accept connections from DAWs, mobile apps, or other BLE MIDI hosts
   - DUAL mode: Both client and server active simultaneously
+- **SysEx Scroll Commands (v1.5)** - Control complex parameters on Sonicake Pocket Master (Valeton GP5 in testing)
+  - **Whammy Mode for Pocket Master!** Use an expression pedal for PITCH - HIGH (0 to +24) and PITCH - LOW (-24 to 0) to play solos like Audioslave's "Like a Stone" for free! 🎸
+  - Supports: DRV - GAIN, DLY - FBK, FX1 - RATE, RVB - MIX, AMP - GAIN
 - **Multiple Message Types** - Note On/Off, CC, Program Change, SysEx
 - **Tap Tempo** - Built-in tap tempo with rhythm patterns (1/8, 1/8d, 1/4, 1/2)
   - Addressable buttons for rhythm navigation (prev/next)
@@ -103,9 +110,25 @@
 
 ### Pin Connections
 
-See [docs/WIRING.md](docs/WIRING.md) for detailed wiring diagrams.
+### Wiring Versions
 
-![Wiring Schematic](images/wiring_schematic_v2.png)
+#### V2 Wiring (Classic ESP32)
+Standard wiring for common ESP32 NodeMCU boards.
+![V2 Wiring Schematic](images/wiring_schematic_v2.png)
+
+#### V3 Wiring (ESP32-S3 Native USB)
+Optimized for the ESP32-S3, taking advantage of Native USB MIDI.
+![V3 Wiring Schematic](images/wiring_schematic_v3.png)
+
+**ESP32-S3 Native USB Pins:**
+On the ESP32-S3, the Native USB pins are hardware-level:
+- **USB D-**: GPIO 19
+- **USB D+**: GPIO 20
+- **USB VBUS/GND**: Follow your specific S3 board's pinout.
+
+The S3 variant allows Chocotone to be recognized as a true MIDI device by your computer, providing the lowest possible latency and maximum compatibility with modern DAWs without the need for additional MIDI-over-Serial drivers.
+
+#### ESP32 Pin Connections (I2C OLED)
 
 ```
 Component          | ESP32 Pin | Notes
@@ -124,6 +147,31 @@ Button 5           | GPIO 33   | INPUT_PULLUP
 Button 6           | GPIO 32   | INPUT_PULLUP
 Button 7           | GPIO 16   | INPUT_PULLUP
 Button 8           | GPIO 17   | INPUT_PULLUP
+```
+
+#### ESP32-S3 Pin Connections (SPI TFT)
+
+```
+Component          | ESP32-S3 Pin | Notes
+-------------------|--------------|------------------
+SPI CS             | GPIO 10      | FSPI CS
+SPI MOSI           | GPIO 11      | FSPI MOSI
+SPI SCLK           | GPIO 12      | FSPI SCLK
+SPI DC             | GPIO 13      | Data/Command
+SPI RST            | GPIO 14      | Reset
+SPI LED            | GPIO 15      | Backlight
+Encoder A          | GPIO 16      | 
+Encoder B          | GPIO 17      | 
+Encoder Button     | GPIO 18      | 
+NeoPixel Data      | GPIO 48      | Built-in RGB (DevKit)
+Button 1           | GPIO 38      | 
+Button 2           | GPIO 39      | 
+Button 3           | GPIO 40      | 
+Button 4           | GPIO 41      | 
+Button 5           | GPIO 42      | 
+Button 6           | GPIO 21      | 
+Button 7           | GPIO 8       | 
+Button 8           | GPIO 9       | 
 ```
 
 ### Power Consumption

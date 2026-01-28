@@ -14,13 +14,13 @@ Two hardware variants are available depending on your use case:
 
 | Qty | Component | Specification | Example Part | Approx. Cost |
 |-----|-----------|---------------|--------------|--------------|
-| 1 | ESP32 Development Board | Any ESP32 with BLE support | ESP32-DevKitC, ESP32-WROOM-32 | $5-10 |
-| 1 | OLED Display | 128x64, I2C, SSD1306 driver | 0.96" I2C OLED | $3-5 |
+| 1 | ESP32 Development Board | ESP32 or ESP32-S3 (for Native USB) | ESP32-DevKitC, ESP32-S3-DevKit-1 | $5-15 |
+| 1 | Display | 128x64 OLED (I2C) or 128x128 TFT (SPI) | 0.96" OLED or 1.44" TFT | $3-8 |
 | 1 | Rotary Encoder | EC11 type with push button | EC11 Encoder | $1-2 |
 | 8 | Tactile Buttons | 6x6mm or 12x12mm momentary | Standard tactile switches | $2-4 |
 | 8 | NeoPixel LEDs | WS2812B individual or strip | WS2812B LED Strip/Ring | $3-8 |
-| 2 | 10kΩ Resistors | 1/4W | For GPIO 34/35 pull-ups (recommended) | $0.50 |
-| 1 | 470Ω Resistor | 1/4W | Optional: NeoPixel data line | $0.10 |
+| - | Analog Inputs | Pots, Expression Pedals, FSR, Piezo | 10k Linear Pot, FSR402 | $2-15 |
+| 2 | 10kΩ Resistors | 1/4W | For GPIO 34/35 pull-ups (ESP32) | $0.50 |
 | - | Jumper Wires | 22-24 AWG, various lengths | Breadboard jumpers or custom | $2-5 |
 | 1 | Breadboard/PCB | For prototyping or permanent | Half+ breadboard or custom PCB | $2-10 |
 | 1 | Power Supply | USB 5V, 2A minimum | USB power supply | $3-5 |
@@ -55,32 +55,34 @@ Two hardware variants are available depending on your use case:
 ### ESP32 Development Board
 
 **Recommended Models:**
-- ESP32-DevKitC v4
-- ESP32-WROOM-32
-- Any generic ESP32 dev board with at least 30 GPIO pins
+- **ESP32-S3 DevKitC-1**: Best for modern builds with Native USB MIDI.
+- **ESP32-DevKitC v4**: Classic choice for BLE-only or Serial MIDI.
+- **ESP32-WROOM-32**: Standard module for custom PCBs.
 
 **Requirements:**
 - BLE (Bluetooth Low Energy) support
-- WiFi capability
-- Minimum 4MB flash
+- WiFi capability (for Web Config)
+- **ESP32-S3**: Specifically required for Native USB MIDI functionality.
+- Minimum 4MB flash (8MB+ recommended for S3 variants)
 - USB programming interface
 
 **Not Recommended:**
 - ESP32-C3 (different GPIO layout, may need pin changes)
 - ESP8266 (no BLE support)
 
-### OLED Display (SSD1306)
+### OLED Display (SSD1306) & TFT (ST7735)
 
-**Specifications:**
-- Size: 0.96" (128x64 pixels recommended)
+**OLED (I2C):**
+- Size: 0.96" (128x64 pixels) or 0.91" (128x32 pixels)
 - Interface: I2C (4-pin: VCC, GND, SCL, SDA)
 - Driver IC: SSD1306
-- Operating Voltage: 3.3V or 5V compatible
-- I2C Address: 0x3C (default)
+- Operating Voltage: 3.3V
 
-**Alternatives:**
-- 1.3" OLED displays work but may require different display library initialization
-- SH1106 driver displays work with minor code changes
+**TFT Color Display (SPI) - v1.5:**
+- Size: 1.44" or 1.77" (128x128 pixels)
+- Interface: SPI (MOSI, SCLK, CS, DC, RST)
+- Driver IC: ST7735
+- Features: Shows color-coded strips for each preset and button state.
 
 ### Rotary Encoder (EC11)
 
@@ -143,10 +145,12 @@ Two hardware variants are available depending on your use case:
 - Mounting: Panel mount or 1/4" jack connection
 - Cable: 22-24 AWG shielded recommended for lengths >1m
 
-**Notes:**
-- Buttons on GPIO 34 and 35 **strongly benefit from external 10kΩ pull-up resistors** (these pins are input-only)
-- Pull-ups are recommended for reliability, though some breadboard prototypes may work without them
-- All other button pins use internal pull-ups
+**Notes on Analog Inputs (v1.5):**
+- **Precision Signal Processing**: Includes oversampling and EMA smoothing to eliminate jitter from old pots.
+- **Support for FSR/Piezo**: Use pressure-sensitive pads or drum triggers.
+- **Response Curves**: Switch between Linear, Logarithmic, and Exponential for natural control (e.g., volume/wah).
+- **ESP32 Restrictions**: Buttons on GPIO 34 and 35 **strongly benefit from external 10kΩ pull-up resistors** as these are input-only.
+- **ESP32-S3 Note**: S3 internal pull-ups are generally stronger/better, but external ones are still safer for high-interference environments.
 
 ## Pin Assignment Reference
 

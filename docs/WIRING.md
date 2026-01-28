@@ -149,3 +149,13 @@ This layout matches the **"ESP32-S3 Default (8-btn)"** editor template.
 | | A3 | GPIO 7 | ADC1 Ch7 |
 | | A4 | GPIO 33 | *Verify PSRAM conflict if N16R8* |
 
+---
+
+## Wiring Schematics
+
+### V2 Wiring (Classic ESP32)
+![V2 Wiring](../images/wiring_schematic_v2.png)
+
+### V3 Wiring (ESP32-S3)
+![V3 Wiring](../images/wiring_schematic_v3.png)
+
