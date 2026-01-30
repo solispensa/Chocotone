@@ -351,7 +351,7 @@ void loop_presetMode() {
           // ===== CHECK GLOBAL ACTION FIRST =====
           bool comboFired = false;
 
-          if (globalSpecialActions[i].hasCombo) {
+          if (globalSpecialActions[i].hasCombo && !inTapTempoMode) {
             const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
             int8_t partner = globalSpecialActions[i].partner;
 
@@ -431,7 +431,7 @@ void loop_presetMode() {
             }
           }
           // Check reverse combo (partner has combo pointing to us)
-          if (!comboFired) {
+          if (!comboFired && !inTapTempoMode) {
             for (int p = 0; p < systemConfig.buttonCount; p++) {
               if (p != i && buttonPinActive[p] && !buttonComboChecked[p] &&
                   globalSpecialActions[p].hasCombo &&
@@ -506,8 +506,10 @@ void loop_presetMode() {
               }
             }
 
-            if (isTapControl)
+            if (isTapControl) {
+              buttonConsumed[i] = true;
               continue; // Skip normal button handling
+            }
           }
 
           // ===== NORMAL BUTTON PRESS (no combo, no tap control) =====
@@ -516,7 +518,8 @@ void loop_presetMode() {
             ActionMessage *doubleTapAction =
                 findAction(config, ACTION_DOUBLE_TAP);
             if (doubleTapAction &&
-                (now - lastButtonReleaseTime_pads[i] < 300)) {
+                (now - lastButtonReleaseTime_pads[i] < 300) &&
+                (!inTapTempoMode || doubleTapAction->type == TAP_TEMPO)) {
               DBG_INPUT("BTN %d: Double Tap detected\n", i);
               executeActionMessage(*doubleTapAction);
               // Block regular press
@@ -570,6 +573,9 @@ void loop_presetMode() {
               for (int m = 0; m < config.messageCount; m++) {
                 ActionMessage &msg = config.messages[m];
                 if (msg.action == targetActionType) {
+
+                  if (inTapTempoMode && msg.type != TAP_TEMPO)
+                    continue;
 
                   if (msg.type == TAP_TEMPO) {
                     if (!tapTempoHandled) { // Only handle tap once per press
@@ -672,7 +678,8 @@ void loop_presetMode() {
                 pressAction = findAction(config, ACTION_PRESS);
               }
 
-              if (pressAction && pressAction->type != TAP_TEMPO) {
+              if (pressAction && pressAction->type != TAP_TEMPO &&
+                  !inTapTempoMode) {
                 DBG_INPUT(
                     "BTN %d: Firing deferred PRESS on release (global=%d)\n", i,
                     hasGlobalLongPress);
@@ -746,6 +753,9 @@ void loop_presetMode() {
           for (int m = 0; m < config.messageCount; m++) {
             ActionMessage &msg = config.messages[m];
             if (msg.action == releaseType) {
+              if (inTapTempoMode && msg.type != TAP_TEMPO)
+                continue;
+
               executeActionMessage(msg);
             }
           }
@@ -758,7 +768,7 @@ void loop_presetMode() {
         } else {
           // Check for Global Override RELEASE or 2ND_RELEASE
           if (globalSpecialActions[i].hasCombo &&
-              globalSpecialActions[i].partner == -1) {
+              globalSpecialActions[i].partner == -1 && !inTapTempoMode) {
             const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
             ActionType releaseType = buttonConfigs[currentPreset][i].isAlternate
                                          ? ACTION_2ND_RELEASE
@@ -784,7 +794,7 @@ void loop_presetMode() {
     if (buttonPinActive[i] && !buttonHoldFired[i]) {
       // Check for Global Override ACTION_LONG_PRESS or 2ND_LONG_PRESS
       if (globalSpecialActions[i].hasCombo &&
-          globalSpecialActions[i].partner == -1) {
+          globalSpecialActions[i].partner == -1 && !inTapTempoMode) {
         const ActionMessage &comboMsg = globalSpecialActions[i].comboAction;
         ActionType holdType = buttonConfigs[currentPreset][i].isAlternate
                                   ? ACTION_2ND_LONG_PRESS
@@ -817,7 +827,7 @@ void loop_presetMode() {
           longPress = findAction(config, ACTION_LONG_PRESS);
         }
 
-        if (longPress) {
+        if (longPress && (!inTapTempoMode || longPress->type == TAP_TEMPO)) {
           unsigned long elapsed = millis() - buttonHoldStartTime[i];
           uint16_t threshold = longPress->longPress.holdMs > 0
                                    ? longPress->longPress.holdMs

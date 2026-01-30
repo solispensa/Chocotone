@@ -98,12 +98,18 @@ void resolveDisplayPinConflicts() {
   uint8_t avoid[32];
   int avoidLen = 0;
 
-  // Add TFT pins to avoid list
-  memcpy(avoid, tftPins, tftPinCount * sizeof(uint8_t));
-  avoidLen = tftPinCount;
+  // Add TFT pins to avoid list (ignoring 255/unused)
+  for (int i = 0; i < tftPinCount; i++) {
+    if (tftPins[i] != 255) {
+      avoid[avoidLen++] = tftPins[i];
+    }
+  }
 
   // Helper to resolve a single pin
   auto resolvePin = [&](uint8_t &pin, const char *name) {
+    if (pin == 255)
+      return; // Ignore unused pins
+
     // Check if pin conflicts with ANY used pin so far (TFT + previously checked
     // items)
     if (isPinInArray(pin, avoid, avoidLen)) {
@@ -136,9 +142,29 @@ void resolveDisplayPinConflicts() {
   // Resolve LED Pin
   resolvePin(systemConfig.ledPin, "LED Pin");
 
+  // Resolve Analog Inputs (GPIO only)
+  bool analogConflicts = false;
+  for (int i = 0; i < MAX_ANALOG_INPUTS; i++) {
+    AnalogInputConfig &cfg = analogInputs[i];
+    if (cfg.enabled && cfg.source == AIN_SOURCE_GPIO) {
+      char name[20];
+      snprintf(name, sizeof(name), "Analog %d", i + 1);
+      // Backup pin to check for change
+      uint8_t oldPin = cfg.pin;
+      resolvePin(cfg.pin, name);
+      if (cfg.pin != oldPin) {
+        analogConflicts = true;
+        conflictsFound = true;
+      }
+    }
+  }
+
   if (conflictsFound) {
     Serial.println("💾 Saving auto-resolved pin configuration...");
     saveSystemSettings(); // Save the resolved configuration
+    if (analogConflicts) {
+      saveAnalogInputs(); // Save resolved analog inputs
+    }
   } else {
     Serial.println("✅ No pin conflicts detected");
   }
