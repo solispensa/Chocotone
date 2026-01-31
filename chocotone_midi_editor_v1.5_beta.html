@@ -883,6 +883,20 @@
                     if (inp.source === undefined) inp.source = 'gpio';
                     // Fix for firmware bug: Convert 255 ("No LED" safe value) back to -1 for Editor UI
                     if (inp.ledIndex === 255) inp.ledIndex = -1;
+                    if (inp.ledIndex === undefined) inp.ledIndex = -1;
+
+                    // Convert firmware's numeric inputMode to editor's string actionType (v1.5.5 fix)
+                    // Firmware: inputMode = 0 (linear), 1 (log_linear), 2 (linear_log), 3 (joystick)
+                    // Editor: actionType = 'linear_linear', 'log_linear', 'linear_log', 'joystick'
+                    if (!inp.actionType && inp.inputMode !== undefined) {
+                        var modeMap = { 0: 'linear_linear', 1: 'log_linear', 2: 'linear_log', 3: 'joystick' };
+                        inp.actionType = modeMap[inp.inputMode] || 'linear_linear';
+                    }
+
+                    // Ensure actionOptions exists with defaults
+                    if (!inp.actionOptions) {
+                        inp.actionOptions = { curve: 0, center: 2048, deadzone: 50 };
+                    }
 
                     if (inp.messages) {
                         for (var m = 0; m < inp.messages.length; m++) {
@@ -896,6 +910,9 @@
                                 amsg.sysexParam = idToParam[amsg.data1] || 'PITCH - HIGH';
                             }
                         }
+                    } else {
+                        // Ensure messages array exists
+                        inp.messages = [];
                     }
                 }
             }
@@ -3858,6 +3875,8 @@
                             // Use config metadata from device if present
                             if (data.configName) presetData.configName = data.configName;
                             if (data.lastModified) presetData.lastModified = data.lastModified;
+                            // Merge preset count (v1.5.2)
+                            if (data.presetCount !== undefined) presetData.presetCount = data.presetCount;
                             presetData.presets = data.presets;
                             if (data.system) {
                                 // Merge system properties
@@ -4221,9 +4240,11 @@
                     // Use config metadata from device if present
                     if (data.configName) presetData.configName = data.configName;
                     if (data.lastModified) presetData.lastModified = data.lastModified;
+                    // Merge preset count (v1.5.2)
+                    if (data.presetCount !== undefined) presetData.presetCount = data.presetCount;
                     presetData.presets = data.presets;
                     if (data.system) {
-                        // Merge system properties individually
+                        // Merge system properties individually - COMPLETE list
                         if (data.system.bleDeviceName) presetData.system.bleDeviceName = data.system.bleDeviceName;
                         if (data.system.apSSID) presetData.system.apSSID = data.system.apSSID;
                         if (data.system.apPassword) presetData.system.apPassword = data.system.apPassword;
@@ -4239,11 +4260,30 @@
                         if (data.system.brightness) presetData.system.brightness = data.system.brightness;
                         if (data.system.brightnessDim !== undefined) presetData.system.brightnessDim = data.system.brightnessDim;
                         if (data.system.brightnessTap !== undefined) presetData.system.brightnessTap = data.system.brightnessTap;
+                        // Additional fields (matching USB handler)
+                        if (data.system.fsrThreshold !== undefined) presetData.system.fsrThreshold = data.system.fsrThreshold;
+                        if (data.system.multiplexer) presetData.system.multiplexer = data.system.multiplexer;
+                        if (data.system.globalSpecialActions) presetData.system.globalSpecialActions = data.system.globalSpecialActions;
+                        if (data.system.analogInputCount !== undefined) presetData.system.analogInputCount = data.system.analogInputCount;
+                        if (data.system.debugAnalogIn !== undefined) presetData.system.debugAnalogIn = data.system.debugAnalogIn;
+                        if (data.system.batteryAdcPin !== undefined) presetData.system.batteryAdcPin = data.system.batteryAdcPin;
+
+                        // Merge OLED config if present (v1.5 beta)
+                        if (data.system.oled) {
+                            if (!presetData.system.oled) presetData.system.oled = {};
+                            presetData.system.oled = JSON.parse(JSON.stringify(data.system.oled));
+                        }
+                    }
+                    // Merge Analog Inputs if present (v1.5 beta)
+                    if (data.analogInputs) {
+                        presetData.analogInputs = JSON.parse(JSON.stringify(data.analogInputs));
                     }
                     presetData.currentPreset = data.currentPreset || 0;
                     selectedBtn = 0;
                     showSystem = false;
+                    console.log('BLE Imported OLED config:', JSON.stringify(presetData.system.oled, null, 2));
                     render();
+                    setTimeout(renderOledPreview, 100); // Re-render OLED preview after DOM update
                     alert('Config loaded from device via Bluetooth!');
                 } else {
                     alert('BLE Error: No presets found in config');

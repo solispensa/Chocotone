@@ -2084,12 +2084,50 @@ String buildFullConfigJson() {
 
     json += "{\"enabled\":";
     json += cfg.enabled ? "true" : "false";
-    json += ",\"pin\":";
+    json += ",\"source\":\"";
+    json += (cfg.source == AIN_SOURCE_MUX) ? "mux" : "gpio";
+    json += "\",\"pin\":";
     json += String(cfg.pin);
     json += ",\"name\":\"";
     json += escapeJson(cfg.name);
     json += "\",\"inputMode\":";
     json += String(cfg.inputMode);
+
+    // Action/Curve Type (v1.5.5)
+    json += ",\"actionType\":\"";
+    const char *atStr = "linear_linear";
+    switch (cfg.actionType) {
+    case AIN_ACTION_LOG:
+      atStr = "log_linear";
+      break;
+    case AIN_ACTION_EXP:
+      atStr = "linear_log";
+      break;
+    case AIN_ACTION_JOYSTICK:
+      atStr = "joystick";
+      break;
+    default:
+      atStr = "linear_linear";
+      break;
+    }
+    json += atStr;
+    json += "\"";
+
+    // Curve parameters
+    json += ",\"curve\":";
+    json += String(cfg.curve, 2);
+    json += ",\"center\":";
+    json += String(cfg.center);
+    json += ",\"deadzone\":";
+    json += String(cfg.deadzone);
+
+    // LED Feedback
+    char hexColor[8];
+    rgbToHex(hexColor, sizeof(hexColor), cfg.rgb);
+    json += ",\"rgb\":\"";
+    json += hexColor;
+    json += "\",\"ledIndex\":";
+    json += String(cfg.ledIndex);
 
     json += ",\"piezoThreshold\":";
     json += String(cfg.piezoThreshold);
@@ -2611,6 +2649,13 @@ bool applyConfigJson(JsonObject doc) {
         if (ao.containsKey("deadzone"))
           acfg.deadzone = ao["deadzone"];
       }
+      // Also check top-level curve/center/deadzone (v1.5.5 export format)
+      if (aObj.containsKey("curve"))
+        acfg.curve = aObj["curve"];
+      if (aObj.containsKey("center"))
+        acfg.center = aObj["center"];
+      if (aObj.containsKey("deadzone"))
+        acfg.deadzone = aObj["deadzone"];
       if (aObj.containsKey("rgb"))
         hexToRgb(aObj["rgb"].as<String>(), acfg.rgb);
       if (aObj.containsKey("ledIndex"))
