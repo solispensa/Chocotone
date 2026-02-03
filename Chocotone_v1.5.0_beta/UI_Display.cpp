@@ -1188,8 +1188,8 @@ void updateLeds() {
   bool needsUpdate = false;
 
   // Update tap tempo blink timing (non-blocking state machine)
-  // Now uses rhythm-adjusted delay value and works in tap tempo mode too
-  if (currentMode == 0 && currentBPM > 0) {
+  // Only blink when actually in tap tempo mode (v1.5.5 fix)
+  if (currentMode == 0 && inTapTempoMode && currentBPM > 0) {
     // Calculate the FINAL delay ms (with rhythm pattern applied) - same as
     // sent to SPM
     float finalDelayMs =
