@@ -1243,6 +1243,10 @@ void updateLeds() {
 
     if (isTapTempo && tapBlinkState) {
       brightness = 255; // Full bright during flash
+    } else if (isTapTempo) {
+      // v1.5.5: TAP_TEMPO buttons always show at dim state when not blinking
+      // This ensures they're visible even when not in tap tempo mode
+      brightness = ledBrightnessDim > 0 ? ledBrightnessDim : 30;
     } else {
       // Determine LED active state based on preset LED mode
       bool ledActive;
