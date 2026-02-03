@@ -2250,9 +2250,13 @@ bool applyConfigJson(JsonObject doc) {
           }
           btn.inSelectionGroup = bObj["inSelectionGroup"] | false;
 
+          // v1.5.5: Initialize runtime state to prevent garbage values
+          btn.isAlternate = false; // Reset toggle state on config load
+          btn.messageCount =
+              0; // Reset message count (will increment if messages exist)
+
           JsonArray msgs = bObj["messages"];
           if (!msgs.isNull()) {
-            btn.messageCount = 0;
             for (JsonObject mObj : msgs) {
               if (btn.messageCount >= MAX_ACTIONS_PER_BUTTON)
                 break;
