@@ -1188,8 +1188,7 @@ void updateLeds() {
   bool needsUpdate = false;
 
   // Update tap tempo blink timing (non-blocking state machine)
-  // Only blink when actually in tap tempo mode (v1.5.5 fix)
-  if (currentMode == 0 && inTapTempoMode && currentBPM > 0) {
+  if (currentMode == 0 && currentBPM > 0) {
     // Calculate the FINAL delay ms (with rhythm pattern applied) - same as
     // sent to SPM
     float finalDelayMs =
@@ -1242,7 +1241,7 @@ void updateLeds() {
     int brightness;
 
     if (isTapTempo && tapBlinkState) {
-      brightness = 255; // Full bright during flash
+      brightness = ledBrightnessTap; // Use configured brightness during flash
     } else if (isTapTempo) {
       // v1.5.5: TAP_TEMPO buttons always show at dim state when not blinking
       // This ensures they're visible even when not in tap tempo mode

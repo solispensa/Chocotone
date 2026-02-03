@@ -237,24 +237,13 @@ ArduinoJson @ ^6.21.0
 
 ### 3. Initial Configuration
 
-1. **Power on the controller** - Should display "Starting..." then default preset
-2. **Access WiFi settings**:
-   - Long-press encoder button to enter menu
-   - Navigate to "Wi-Fi Config"
-   - Short-press to enable WiFi
-3. **Connect to WiFi**:
-   - Look for network: `CHOCOTONE`
-   - Password: `12345678` (change via web interface)
-4. **Open web interface**:
-   - Navigate to: `http://192.168.4.1`
-   - Configure MIDI mappings and settings
+1. **Connect via USB**: Connect the controller to your computer using a USB cable.
+2. **Open Online Editor**: Navigate to the [Chocotone Web Editor](https://solispensa.github.io/Chocotone/chocotone_midi_editor.html) using Chrome, Edge, or any Chromium-based browser.
+3. **Connect Device**: Click the **Connect** button in the editor and select your device from the popup list (it may appear as "Chocotone" or "ESP32").
+4. **Start Configuring**: Once connected, you can configure buttons, LEDs, and MIDI settings in real-time.
 
-> [!IMPORTANT]
-> Change the default WiFi password via the web interface for security:
-> 1. Connect to WiFi and open http://192.168.4.1
-> 2. Go to the **Settings** tab
-> 3. Update "WiFi Password" field
-> 4. Click "Save Settings"
+> [!NOTE]
+> The Online Web Editor communicates directly with your device via web-serial. No driver installation is needed for most modern systems.
 
 ## Usage Guide
 
