@@ -2244,6 +2244,9 @@ bool applyConfigJson(JsonObject doc) {
             btn.ledMode = (bObj["ledMode"].as<String>() == "TOGGLE")
                               ? LED_TOGGLE
                               : LED_MOMENTARY;
+          } else {
+            btn.ledMode =
+                LED_MOMENTARY; // v1.5.5: Default to MOMENTARY if not specified
           }
           btn.inSelectionGroup = bObj["inSelectionGroup"] | false;
 
