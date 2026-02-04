@@ -93,24 +93,10 @@ String bleConfigBuffer = ""; // Buffer for incoming config data
 volatile bool restartAdvertisingPending = false;
 
 class ServerCallbacks : public BLEServerCallbacks {
+  // v1.5.5: Minimal onConnect - let BLE stack handle everything naturally
   void onConnect(BLEServer *pServer, esp_ble_gatts_cb_param_t *param) {
     serverConnected = true;
-    Serial.println("BLE Server: Device connected (DAW/App)");
-
-    // Update connection parameters for stability
-    // Min interval: 15ms (12 * 1.25ms), Max interval: 30ms (24 * 1.25ms)
-    // Latency: 0 (respond to every packet)
-    // Timeout: 2000ms (200 * 10ms) - much longer than default
-    pServer->updateConnParams(param->connect.remote_bda, 12, 24, 0, 200);
-    Serial.println("BLE Server: Updated connection params (timeout=2s)");
-
-    // In DUAL mode, pause scanning briefly to stabilize the new connection
-    if (systemConfig.bleMode == BLE_DUAL_MODE) {
-      BLEScan *pScan = BLEDevice::getScan();
-      if (pScan) {
-        pScan->stop();
-      }
-    }
+    Serial.println("BLE Server: Device connected");
   }
 
   void onDisconnect(BLEServer *pServer) {
@@ -123,6 +109,10 @@ class ServerCallbacks : public BLEServerCallbacks {
       restartAdvertisingPending = true;
       Serial.println("BLE Server: Advertising restart pending...");
     }
+  }
+
+  void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param) {
+    Serial.printf("BLE Server: MTU changed to %d\n", param->mtu.mtu);
   }
 };
 
@@ -445,8 +435,11 @@ void startBleScan() {
 
   // In DUAL or SERVER mode, restart advertising after starting scan
   // ESP32 can interleave short scan windows with advertising intervals
-  if (systemConfig.bleMode == BLE_SERVER_ONLY ||
-      systemConfig.bleMode == BLE_DUAL_MODE) {
+  // ONLY restart if not already connected to a server to avoid destabilizing
+  // active connections
+  if ((systemConfig.bleMode == BLE_SERVER_ONLY ||
+       systemConfig.bleMode == BLE_DUAL_MODE) &&
+      !serverConnected) {
     BLEDevice::startAdvertising();
   }
 }
@@ -1080,7 +1073,7 @@ void checkForSysex() {
 }
 
 void handleBleConnection() {
-  // Handle deferred advertising restart (set by onDisconnect callback)
+  // 1. Handle deferred advertising restart (set by onDisconnect callback)
   if (restartAdvertisingPending) {
     restartAdvertisingPending = false;
     delay(50); // Small delay outside of callback context is safer

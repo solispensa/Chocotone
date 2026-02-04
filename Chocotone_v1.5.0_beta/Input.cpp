@@ -1009,13 +1009,13 @@ void handleMenuSelection() {
       currentMode = 0;
       safeDisplayOLED();
       updateLeds();
-      break;
-    case 1: // Exit without Saving
+      return; // Exit function to prevent displayMenu() at end
+    case 1:   // Exit without Saving
       currentMode = 0;
       safeDisplayOLED();
       updateLeds();
-      break;
-    case 2: // WiFi Toggle
+      return; // Exit function to prevent displayMenu() at end
+    case 2:   // WiFi Toggle
       if (isWifiOn) {
         turnWifiOff();
         delay(100);
@@ -1068,7 +1068,9 @@ void handleMenuSelection() {
     case 7:
       clearBLEBonds();
       currentMode = 0;
-      break;
+      safeDisplayOLED();
+      updateLeds();
+      return; // Exit function to prevent displayMenu() at end
     case 8:
       ESP.restart();
       break;

@@ -1386,7 +1386,7 @@ void blinkTapButton(int buttonIndex) {
 // ============================================================================
 
 bool checkOledHealth() {
-  static bool oledHealthy = true;
+  // NOTE: Uses global oledHealthy from Globals.cpp (not static local)
   static unsigned long lastOledCheck = 0;
 
   // TFT displays use SPI, not I2C - always consider them healthy
@@ -1458,11 +1458,9 @@ void recoverOled() {
 }
 
 void safeDisplayOLED() {
-  // Check OLED health before updating
-  if (checkOledHealth()) {
-    displayOLED();
-  }
-  // If unhealthy, recovery is already attempted by checkOledHealth()
+  // v1.5.5: Removed I2C health check as it interferes with BLE scanning
+  // and causes display freezes. The OLED library handles errors internally.
+  displayOLED();
 }
 
 // Hardware Init
