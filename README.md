@@ -4,8 +4,8 @@
 
 **A powerful, open-source ESP32 and ESP32-S3 based MIDI controller. Configurable via web browser, supporting BLE MIDI and Native USB MIDI.**
 
-> [!NOTE]
-> 
+> [!WARNING]
+> **USB MIDI (ESP32-S3) is currently under maintenance.** There is a known hardware conflict between the RMT peripheral (used by NeoPixel LEDs) and the USB stack on ESP32-S3. BLE MIDI remains fully functional. We are actively investigating solutions.
 
 ![Version](https://img.shields.io/badge/version-1.5.0--beta-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
