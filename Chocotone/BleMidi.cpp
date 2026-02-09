@@ -11,7 +11,6 @@
 #include <BLEScan.h>
 #include <BLEServer.h>
 
-
 #define MIDI_SERVICE_UUID "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 #define MIDI_CHARACTERISTIC_UUID "7772e5db-3868-4112-a1a9-f2669d106bf3"
 
@@ -711,6 +710,9 @@ volatile bool sysexReceived = false;
 uint8_t sysexBuffer[256];
 size_t sysexLen = 0;
 
+// Deferred state request (when debounce blocks a request, retry later)
+volatile bool deferredStateRequest = false;
+
 void processBufferedSysex() {
   // Log incoming SysEx
   Serial.print("Received SysEx (");
@@ -1201,6 +1203,11 @@ void handleBleConnection() {
 static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic,
                            uint8_t *pData, size_t length, bool isNotify) {
   if (length > 0 && length < 256) {
+    // Skip if previous notification hasn't been processed yet
+    // This prevents a rapid second packet from overwriting the first
+    if (sysexReceived) {
+      return;
+    }
     memcpy(sysexBuffer, pData, length);
     sysexLen = length;
     sysexReceived = true;
@@ -1219,8 +1226,10 @@ void requestPresetState() {
 
   // Debounce - don't request too frequently
   if (millis() - lastSpmStateRequest < 500) {
+    deferredStateRequest = true; // Retry later instead of silently dropping
     return;
   }
+  deferredStateRequest = false;
   lastSpmStateRequest = millis();
 
   // Route to appropriate device based on sync mode

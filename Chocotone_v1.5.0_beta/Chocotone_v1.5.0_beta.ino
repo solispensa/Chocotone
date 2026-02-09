@@ -172,6 +172,10 @@ void resolveDisplayPinConflicts() {
 
 void setup() {
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
+  // Set USB device name BEFORE begin()
+  USB.productName("CHOCOTONE USB");
+  USB.manufacturerName("Solis Pensa");
+
   // Enable Native USB for CDC (Serial) and MIDI
   USB.begin();
   usbMidi.begin();
@@ -376,30 +380,48 @@ void setup() {
 
   // Initialize LEDs with resolved pin (may differ from compile-time
   // NEOPIXEL_PIN)
-  Serial.println("Initializing LEDs...");
-  Serial.printf("LED Pin: %d (resolved from potential conflicts)\n",
-                systemConfig.ledPin);
+  // USB MIDI MODE: Skip LED init entirely - RMT peripheral conflicts with USB
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.println("USB MIDI Mode: LEDs DISABLED (RMT/USB hardware conflict)");
+  } else {
+#endif
+    Serial.println("Initializing LEDs...");
+    Serial.printf("LED Pin: %d (resolved from potential conflicts)\n",
+                  systemConfig.ledPin);
 
-  // Reinitialize strip with the resolved pin
-  strip.updateType(NEO_GRB + NEO_KHZ800);
-  strip.updateLength(NUM_LEDS);
-  strip.setPin(systemConfig.ledPin);
-  strip.begin();
-  strip.show();
-  strip.setBrightness(ledBrightnessOn);
-  fillLoadingDot(5); // Dot 5: LEDs initialized
+    // Reinitialize strip with the resolved pin
+    strip.updateType(NEO_GRB + NEO_KHZ800);
+    strip.updateLength(NUM_LEDS);
+    strip.setPin(systemConfig.ledPin);
+    strip.begin();
+    strip.show();
+    strip.setBrightness(ledBrightnessOn);
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  }
+#endif
+  fillLoadingDot(5); // Dot 5: LEDs initialized (or skipped)
 
   // Initialize BLE (Client and/or Server based on bleMode)
-  Serial.println("Initializing BLE...");
-  setup_ble_midi();
-  fillLoadingDot(6); // Dot 6: BLE initialized
+  // USB MIDI MODE: Skip BLE entirely - we only need USB MIDI
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.println("USB MIDI Mode: BLE DISABLED");
+  } else {
+#endif
+    Serial.println("Initializing BLE...");
+    setup_ble_midi();
+    fillLoadingDot(6); // Dot 6: BLE initialized
 
-  // Start BLE Scan for SPM (only if Client or Dual mode)
-  if (systemConfig.bleMode == BLE_CLIENT_ONLY ||
-      systemConfig.bleMode == BLE_DUAL_MODE) {
-    Serial.println("Scanning for SPM...");
-    startBleScan();
+    // Start BLE Scan for SPM (only if Client or Dual mode)
+    if (systemConfig.bleMode == BLE_CLIENT_ONLY ||
+        systemConfig.bleMode == BLE_DUAL_MODE) {
+      Serial.println("Scanning for SPM...");
+      startBleScan();
+    }
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
   }
+#endif
 
   // Setup web server routes
   Serial.println("Setting up web server...");
@@ -505,6 +527,13 @@ void loop() {
     if (spmStateReceived && presetSyncMode[currentPreset] != SYNC_NONE) {
       spmStateReceived = false;
       applySpmStateToButtons();
+    }
+
+    // Retry deferred state requests (from debounce in requestPresetState)
+    extern volatile bool deferredStateRequest;
+    if (deferredStateRequest && clientConnected) {
+      deferredStateRequest = false;
+      requestPresetState();
     }
 
     // Read expression pedals and send MIDI CC

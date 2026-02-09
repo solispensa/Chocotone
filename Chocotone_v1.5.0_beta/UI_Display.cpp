@@ -39,10 +39,8 @@ void clearDisplayBuffer() {
 // ============================================
 
 // Read battery voltage and update percentage (0-100)
-// Uses voltage divider with 2x100k resistors (50%)
-// 18650: 4.2V=100%, 3.9V=75%, 3.7V=50%, 3.4V=25%, 3.0V=0%
-// After divider: 2.1V, 1.95V, 1.85V, 1.7V, 1.5V
-// ADC 12-bit (0-4095) with 3.3V ref: 2605, 2420, 2296, 2109, 1861
+// Auto-calibrates by tracking the highest and lowest ADC readings seen.
+// Percentage is linearly mapped between min and max.
 void updateBatteryLevel() {
   if (systemConfig.batteryAdcPin == 0)
     return;
@@ -59,25 +57,48 @@ void updateBatteryLevel() {
   }
   int rawAdc = adcSum / 16;
 
-  // Map ADC values to percentage based on 18650 discharge curve
-  // Calibrated for 2x100k voltage divider: 4.2V full → ~2250 ADC, 3.0V empty →
-  // ~1600 ADC
-  if (rawAdc >= 2250)
-    batteryPercent = 100;
-  else if (rawAdc >= 2150)
-    batteryPercent = 75 + ((rawAdc - 2150) * 25) / 100;
-  else if (rawAdc >= 2000)
-    batteryPercent = 50 + ((rawAdc - 2000) * 25) / 150;
-  else if (rawAdc >= 1800)
-    batteryPercent = 25 + ((rawAdc - 1800) * 25) / 200;
-  else if (rawAdc >= 1600)
-    batteryPercent = ((rawAdc - 1600) * 25) / 200;
-  else
-    batteryPercent = 0;
+  // Auto-calibrate: track highest and lowest readings
+  bool calibrationChanged = false;
+  if (rawAdc > batteryAdcMax) {
+    batteryAdcMax = rawAdc;
+    calibrationChanged = true;
+  }
+  if (rawAdc < batteryAdcMin) {
+    batteryAdcMin = rawAdc;
+    calibrationChanged = true;
+  }
 
-  // Debug output
-  Serial.printf("[BAT] Pin:%d ADC:%d -> %d%%\n", systemConfig.batteryAdcPin,
-                rawAdc, batteryPercent);
+  // Calculate percentage from calibrated range
+  int range = batteryAdcMax - batteryAdcMin;
+  if (range > 50) {
+    // Enough spread for meaningful percentage
+    batteryPercent = ((rawAdc - batteryAdcMin) * 100) / range;
+    if (batteryPercent > 100)
+      batteryPercent = 100;
+    if (batteryPercent < 0)
+      batteryPercent = 0;
+  } else {
+    // Not enough calibration data yet - show 100% until range builds up
+    batteryPercent = 100;
+  }
+
+  // Save calibration to NVS periodically (every 5 minutes) to avoid flash wear
+  static unsigned long lastCalibrationSave = 0;
+  if (calibrationChanged && (millis() - lastCalibrationSave > 300000)) {
+    lastCalibrationSave = millis();
+    Preferences prefs;
+    if (prefs.begin("midi_presets", false)) {
+      prefs.putInt("s_batMax", batteryAdcMax);
+      prefs.putInt("s_batMin", batteryAdcMin);
+      prefs.end();
+      Serial.printf("[BAT] Calibration saved: min=%d max=%d\n", batteryAdcMin,
+                    batteryAdcMax);
+    }
+  }
+
+  Serial.printf("[BAT] Pin:%d ADC:%d -> %d%% (range: %d-%d)\n",
+                systemConfig.batteryAdcPin, rawAdc, batteryPercent,
+                batteryAdcMin, batteryAdcMax);
 }
 
 // Draw battery icon at specified position with scale factor
@@ -671,24 +692,32 @@ void displayOLED() {
       displayPtr->setCursor((w - bw) / 2, statusLineY);
       displayPtr->print(btMsg);
     } else {
-      // Normal mode - show BLE state
-      const char *bleMode = bleConfigMode                             ? "EDIT"
-                            : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
-                            : systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER"
-                                                                      : "DUAL";
-      const char *bleState = clientConnected ? "Synced" : "Scanning";
-
-      // For SERVER mode or EDIT mode, don't show scanning
-      if (systemConfig.bleMode == BLE_SERVER_ONLY || bleConfigMode) {
-        bleState = clientConnected ? "Synced" : "";
-      }
-
+      // Normal mode - show connection state based on MIDI mode
       char statusLine[32];
-      if (strlen(bleState) > 0) {
-        snprintf(statusLine, sizeof(statusLine), "BLE:%s %s", bleMode,
-                 bleState);
+
+      // USB MIDI mode shows simple status
+      if (systemConfig.bleMode == MIDI_USB_ONLY) {
+        snprintf(statusLine, sizeof(statusLine), "USB MIDI");
       } else {
-        snprintf(statusLine, sizeof(statusLine), "BLE:%s", bleMode);
+        // BLE modes - show BLE state
+        const char *bleMode =
+            bleConfigMode                             ? "EDIT"
+            : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
+            : systemConfig.bleMode == BLE_SERVER_ONLY ? "SERVER"
+                                                      : "DUAL";
+        const char *bleState = clientConnected ? "Synced" : "Scanning";
+
+        // For SERVER mode or EDIT mode, don't show scanning
+        if (systemConfig.bleMode == BLE_SERVER_ONLY || bleConfigMode) {
+          bleState = clientConnected ? "Synced" : "";
+        }
+
+        if (strlen(bleState) > 0) {
+          snprintf(statusLine, sizeof(statusLine), "BLE:%s %s", bleMode,
+                   bleState);
+        } else {
+          snprintf(statusLine, sizeof(statusLine), "BLE:%s", bleMode);
+        }
       }
 
       // Apply status alignment (0=Left, 1=Center, 2=Right)
@@ -1001,12 +1030,13 @@ void displayMenu() {
   strncpy(menuItems[10], "Name Font Size", 25);
   snprintf(menuItems[11], 25, "Wifi %s at Boot",
            systemConfig.wifiOnAtBoot ? "ON" : "OFF");
-  // BLE Mode display - includes EDIT option for config mode
-  const char *bleModeStr = bleConfigMode                             ? "EDIT"
-                           : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
-                           : systemConfig.bleMode == BLE_DUAL_MODE   ? "DUAL"
-                                                                     : "SERVER";
-  snprintf(menuItems[12], 25, "BLE Mode: %s", bleModeStr);
+  // MIDI Mode display - includes USB option for ESP32-S3, EDIT for config mode
+  const char *midiModeStr = bleConfigMode                             ? "EDIT"
+                            : systemConfig.bleMode == MIDI_USB_ONLY   ? "USB"
+                            : systemConfig.bleMode == BLE_CLIENT_ONLY ? "CLIENT"
+                            : systemConfig.bleMode == BLE_DUAL_MODE   ? "DUAL"
+                                                                    : "SERVER";
+  snprintf(menuItems[12], 25, "MIDI Mode: %s", midiModeStr);
   snprintf(menuItems[13], 25, "Analog Debug %s",
            systemConfig.debugAnalogIn ? "ON" : "OFF");
 
@@ -1160,6 +1190,14 @@ void displayAnalogDebug() {
 }
 
 void updateLeds() {
+  // USB MIDI MODE: LEDs are disabled on ESP32-S3 (RMT/USB hardware conflict)
+  // strip.begin() was never called, so skip all LED processing
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    return; // LEDs disabled in USB MIDI mode
+  }
+#endif
+
   // WiFi-safe LED updates: use increased heap threshold and rate limiting
   // ESP32 RMT peripheral handles NeoPixel timing, but WiFi can still
   // interfere
@@ -1304,9 +1342,28 @@ void updateLeds() {
 
   // Only call strip.show() if something actually changed
   if (needsUpdate) {
+    // USB MIDI mode: Only update LEDs on preset change to avoid RMT/USB
+    // conflict
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+    if (systemConfig.bleMode == MIDI_USB_ONLY) {
+      if (usbMidiLedUpdatePending) {
+        yield();
+        strip.show();
+        yield();
+        usbMidiLedUpdatePending = false; // Reset flag after update
+      }
+      // Skip show() if not pending - LEDs only change on preset change in USB
+      // mode
+    } else {
+      yield(); // Give WiFi stack time before LED update
+      strip.show();
+      yield(); // Give WiFi stack time after LED update
+    }
+#else
     yield(); // Give WiFi stack time before LED update
     strip.show();
     yield(); // Give WiFi stack time after LED update
+#endif
   }
 }
 

@@ -2338,6 +2338,8 @@ bool applyConfigJson(JsonObject doc) {
         systemConfig.bleMode = BLE_SERVER_ONLY;
       else if (bm == "DUAL")
         systemConfig.bleMode = BLE_DUAL_MODE;
+      else if (bm == "USB")
+        systemConfig.bleMode = MIDI_USB_ONLY;
       else
         systemConfig.bleMode = BLE_CLIENT_ONLY;
     }
@@ -2993,9 +2995,13 @@ void handleSerialConfig() {
         Serial.print(",\"encoderBtn\":");
         Serial.print(systemConfig.encoderBtn);
         Serial.print(",\"bleMode\":\"");
-        Serial.print(systemConfig.bleMode == 0
-                         ? "CLIENT"
-                         : (systemConfig.bleMode == 1 ? "SERVER" : "DUAL"));
+        Serial.print(
+            systemConfig.bleMode == MIDI_USB_ONLY
+                ? "USB"
+                : (systemConfig.bleMode == BLE_SERVER_ONLY
+                       ? "SERVER"
+                       : (systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL"
+                                                                : "CLIENT")));
         Serial.print("\",\"brightness\":");
         Serial.print(ledBrightnessOn);
         Serial.print(",\"brightnessDim\":");
@@ -3784,9 +3790,13 @@ void handleBtSerialConfig() {
         SerialBT.print(",\"encoderBtn\":");
         SerialBT.print(systemConfig.encoderBtn);
         SerialBT.print(",\"bleMode\":\"");
-        SerialBT.print(systemConfig.bleMode == 0
-                           ? "CLIENT"
-                           : (systemConfig.bleMode == 1 ? "SERVER" : "DUAL"));
+        SerialBT.print(
+            systemConfig.bleMode == MIDI_USB_ONLY
+                ? "USB"
+                : (systemConfig.bleMode == BLE_SERVER_ONLY
+                       ? "SERVER"
+                       : (systemConfig.bleMode == BLE_DUAL_MODE ? "DUAL"
+                                                                : "CLIENT")));
         SerialBT.print("\",\"brightness\":");
         SerialBT.print(ledBrightnessOn);
         SerialBT.print(",\"brightnessDim\":");

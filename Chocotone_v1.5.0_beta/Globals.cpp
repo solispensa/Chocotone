@@ -11,6 +11,10 @@ ESP32Encoder encoder;
 Preferences systemPrefs;
 WebServer server(80);
 
+// USB MIDI mode: flag to allow LED update on preset change
+// Starts true so LEDs update on boot
+bool usbMidiLedUpdatePending = true;
+
 // ============================================
 // BLE GLOBALS
 // ============================================
@@ -253,6 +257,8 @@ unsigned long lastOledCheck = 0;
 
 uint8_t batteryPercent = 0;
 unsigned long lastBatteryRead = 0;
+int batteryAdcMax = 0;    // Auto-calibrated: starts at 0, first read sets it
+int batteryAdcMin = 4095; // Auto-calibrated: starts at max, first read sets it
 
 // ============================================
 // DEFERRED UPDATES

@@ -60,6 +60,7 @@ void executeActionMessage(const ActionMessage &msg) {
     currentPreset = (currentPreset + 1) % 4;
     saveCurrentPresetIndex();
     displayOLED();
+    usbMidiLedUpdatePending = true; // Allow LED update in USB MIDI mode
     updateLeds();
     if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected)
       requestPresetState();
@@ -77,6 +78,7 @@ void executeActionMessage(const ActionMessage &msg) {
     currentPreset = (currentPreset - 1 + 4) % 4;
     saveCurrentPresetIndex();
     displayOLED();
+    usbMidiLedUpdatePending = true; // Allow LED update in USB MIDI mode
     updateLeds();
     if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected)
       requestPresetState();
@@ -1093,8 +1095,7 @@ void handleMenuSelection() {
       systemConfig.wifiOnAtBoot = !systemConfig.wifiOnAtBoot;
       displayMenu();
       break;
-    case 12: // BLE Mode - cycles: CLIENT → SERVER → DUAL → EDIT → back to
-             // CLIENT
+    case 12: // MIDI Mode - cycles: CLIENT → SERVER → DUAL → USB → EDIT → CLIENT
       if (bleConfigMode) {
         // Currently in EDIT mode, go to CLIENT
         toggleBleConfigMode(); // Turn off config mode
@@ -1107,7 +1108,16 @@ void handleMenuSelection() {
         systemConfig.bleMode = BLE_DUAL_MODE;
         bleModeChanged = true;
       } else if (systemConfig.bleMode == BLE_DUAL_MODE) {
-        // Enter EDIT mode - no reboot required
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+        // ESP32-S3: Add USB MIDI option
+        systemConfig.bleMode = MIDI_USB_ONLY;
+        bleModeChanged = true;
+#else
+        // Non-S3: Skip USB mode, go to EDIT
+        toggleBleConfigMode(); // Turn on config mode
+#endif
+      } else if (systemConfig.bleMode == MIDI_USB_ONLY) {
+        // From USB mode, enter EDIT mode
         toggleBleConfigMode(); // Turn on config mode
       } else {
         // Any other mode, go to CLIENT
@@ -1191,6 +1201,7 @@ void handleEncoderButtonPress() {
           }
           saveCurrentPresetIndex();
           displayOLED();
+          usbMidiLedUpdatePending = true; // Allow LED update in USB MIDI mode
           updateLeds();
           if (presetSyncMode[currentPreset] != SYNC_NONE && clientConnected)
             requestPresetState();

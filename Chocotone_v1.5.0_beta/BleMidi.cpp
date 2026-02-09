@@ -497,6 +497,15 @@ void sendMidiNoteOn(byte ch, byte n, byte v) {
     ch = 1;
   if (ch > 16)
     ch = 16;
+
+  // USB MIDI: Send first, no Serial output (shares same USB interface)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    usbMidi.noteOn(n, v, ch);
+    return; // Skip BLE sends and Serial logging
+  }
+#endif
+
   uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x90 | ((ch - 1) & 0x0F)), n, v};
 
   // Send to SPM via Client (if connected)
@@ -516,11 +525,6 @@ void sendMidiNoteOn(byte ch, byte n, byte v) {
   if (!clientConnected && !serverConnected) {
     Serial.println("! No BLE devices connected");
   }
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  usbMidi.noteOn(n, v, ch);
-  Serial.printf("→ USB: Note On Ch%d N%d V%d\n", ch, n, v);
-#endif
 }
 
 void sendMidiNoteOff(byte ch, byte n, byte v) {
@@ -528,6 +532,15 @@ void sendMidiNoteOff(byte ch, byte n, byte v) {
     ch = 1;
   if (ch > 16)
     ch = 16;
+
+  // USB MIDI: Send first, no Serial output (shares same USB interface)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    usbMidi.noteOff(n, v, ch);
+    return;
+  }
+#endif
+
   uint8_t m[5] = {0x80, 0x80, (uint8_t)(0x80 | ((ch - 1) & 0x0F)), n, v};
 
   // Send to SPM via Client
@@ -542,11 +555,6 @@ void sendMidiNoteOff(byte ch, byte n, byte v) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: Note Off Ch%d N%d V%d\n", ch, n, v);
   }
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  usbMidi.noteOff(n, v, ch);
-  Serial.printf("→ USB: Note Off Ch%d N%d V%d\n", ch, n, v);
-#endif
 }
 
 void sendMidiCC(byte ch, byte n, byte v) {
@@ -554,6 +562,15 @@ void sendMidiCC(byte ch, byte n, byte v) {
     ch = 1;
   if (ch > 16)
     ch = 16;
+
+  // USB MIDI: Send first, no Serial output (shares same USB interface)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    usbMidi.controlChange(n, v, ch);
+    return;
+  }
+#endif
+
   uint8_t m[5] = {0x80, 0x80, (uint8_t)(0xB0 | ((ch - 1) & 0x0F)), n, v};
 
   // Send to SPM via Client
@@ -568,11 +585,6 @@ void sendMidiCC(byte ch, byte n, byte v) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: CC Ch%d N%d V%d\n", ch, n, v);
   }
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  usbMidi.controlChange(n, v, ch);
-  Serial.printf("→ USB: CC Ch%d N%d V%d\n", ch, n, v);
-#endif
 }
 
 void sendMidiPC(byte ch, byte n) {
@@ -580,6 +592,15 @@ void sendMidiPC(byte ch, byte n) {
     ch = 1;
   if (ch > 16)
     ch = 16;
+
+  // USB MIDI: Send first, no Serial output (shares same USB interface)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    usbMidi.programChange(n, ch);
+    return;
+  }
+#endif
+
   uint8_t m[4] = {0x80, 0x80, (uint8_t)(0xC0 | ((ch - 1) & 0x0F)), n};
 
   // Send to SPM via Client
@@ -594,11 +615,6 @@ void sendMidiPC(byte ch, byte n) {
     pServerMidiCharacteristic->notify();
     Serial.printf("→ DAW: PC Ch%d N%d\n", ch, n);
   }
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  usbMidi.programChange(n, ch);
-  Serial.printf("→ USB: PC Ch%d N%d\n", ch, n);
-#endif
 }
 
 void sendDelayTime(int delayMs) {
@@ -656,6 +672,16 @@ void sendDelayTime(int delayMs) {
 }
 
 void sendSysex(const uint8_t *data, size_t length) {
+  // USB MIDI: Send first, no Serial output (shares same USB interface)
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    for (size_t i = 0; i < length; i++) {
+      usbMidi.write(data[i]);
+    }
+    return; // Skip BLE and Serial logging
+  }
+#endif
+
   if (!clientConnected || !pRemoteCharacteristic)
     return;
 
@@ -680,16 +706,6 @@ void sendSysex(const uint8_t *data, size_t length) {
   if (length > 20)
     Serial.print("...");
   Serial.println();
-
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  // Send via Native USB
-  // USBMIDI lib in ESP32 Core 3.x lacks sendSysEx helper and write(buf, len)
-  // overload Writing byte-by-byte allows the library's internal state machine
-  // to handle packetization
-  for (size_t i = 0; i < length; i++) {
-    usbMidi.write(data[i]);
-  }
-#endif
 }
 
 // ============================================
@@ -768,6 +784,9 @@ void clearBLEBonds() {
 volatile bool sysexReceived = false;
 uint8_t sysexBuffer[256];
 size_t sysexLen = 0;
+
+// Deferred state request (when debounce blocks a request, retry later)
+volatile bool deferredStateRequest = false;
 
 void processBufferedSysex() {
 
@@ -1179,6 +1198,11 @@ void handleBleConnection() {
 static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic,
                            uint8_t *pData, size_t length, bool isNotify) {
   if (length > 0 && length < 256) {
+    // Skip if previous notification hasn't been processed yet
+    // This prevents a rapid second packet from overwriting the first
+    if (sysexReceived) {
+      return;
+    }
     memcpy(sysexBuffer, pData, length);
     sysexLen = length;
     sysexReceived = true;
@@ -1197,8 +1221,10 @@ void requestPresetState() {
 
   // Debounce - don't request too frequently
   if (millis() - lastSpmStateRequest < 500) {
+    deferredStateRequest = true; // Retry later instead of silently dropping
     return;
   }
+  deferredStateRequest = false;
   lastSpmStateRequest = millis();
 
   // Route to appropriate device based on sync mode

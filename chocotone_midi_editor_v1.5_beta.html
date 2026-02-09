@@ -1855,11 +1855,12 @@
             html += '<div class="msg-box"><div class="msg-title">Bluetooth / WiFi</div>';
             html += '<div class="row">';
             html += '<div class="field"><label>BLE Name</label><input type="text" value="' + sys.bleDeviceName + '" maxlength="20" onchange="updSys(\'bleDeviceName\',this.value)"></div>';
-            html += '<div class="field"><label>BLE Mode</label><select onchange="updSys(\'bleMode\',this.value)">';
-            html += '<option value="CLIENT"' + (sys.bleMode === 'CLIENT' ? ' selected' : '') + '>Client</option>';
-            html += '<option value="SERVER"' + (sys.bleMode === 'SERVER' ? ' selected' : '') + '>Server</option>';
-            html += '<option value="DUAL"' + (sys.bleMode === 'DUAL' ? ' selected' : '') + '>Dual</option>';
-            html += '<option value="EDIT"' + (sys.bleMode === 'EDIT' ? ' selected' : '') + '>Edit Mode (Preview)</option>';
+            html += '<div class="field"><label>MIDI Mode</label><select onchange="updSys(\'bleMode\',this.value)">';
+            html += '<option value="CLIENT"' + (sys.bleMode === 'CLIENT' ? ' selected' : '') + '>BLE Client</option>';
+            html += '<option value="SERVER"' + (sys.bleMode === 'SERVER' ? ' selected' : '') + '>BLE Server</option>';
+            html += '<option value="DUAL"' + (sys.bleMode === 'DUAL' ? ' selected' : '') + '>BLE Dual</option>';
+            html += '<option value="USB"' + (sys.bleMode === 'USB' ? ' selected' : '') + '>USB MIDI</option>';
+            html += '<option value="EDIT"' + (sys.bleMode === 'EDIT' ? ' selected' : '') + '>Edit Mode</option>';
             html += '</select></div>';
             html += '</div>';
             html += '<div class="row">';
@@ -3055,7 +3056,7 @@
 
                         var bleMode = (presetData.system.bleMode || 'CLIENT');
                         var bleSuffix = (bleMode === 'CLIENT' || bleMode === 'DUAL') ? ' Scanning' : '';
-                        var statusText = ts.showAnalog ? 'A1:127 A2:64' : ('BLE:' + bleMode + bleSuffix);
+                        var statusText = ts.showAnalog ? 'A1:127 A2:64' : (bleMode === 'USB' ? 'USB MIDI' : ('BLE:' + bleMode + bleSuffix));
 
                         if (statusAlign === 0) {
                             drawText(statusText, 0, bleY, statusSize);

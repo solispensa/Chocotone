@@ -19,12 +19,22 @@ enum DeviceType : uint8_t;
 // v3.0 ACTION-BASED DATA STRUCTURES
 // ============================================
 
-// BLE Mode Configuration
-enum BleMode {
-  BLE_CLIENT_ONLY, // Connect to SPM (current behavior)
-  BLE_SERVER_ONLY, // Accept connections from DAW/Apps
-  BLE_DUAL_MODE    // Both client and server active
+// MIDI Mode Configuration (was BleMode - now includes USB MIDI)
+enum MidiMode {
+  MIDI_BLE_CLIENT, // Connect to SPM (BLE client mode)
+  MIDI_BLE_SERVER, // Accept connections from DAW/Apps (BLE server mode)
+  MIDI_BLE_DUAL,   // Both BLE client and server active
+  MIDI_USB_ONLY // USB MIDI only (ESP32-S3) - LEDs update only on preset change
 };
+
+// Backward compatibility with existing code using BleMode
+#define BleMode MidiMode
+#define BLE_CLIENT_ONLY MIDI_BLE_CLIENT
+#define BLE_SERVER_ONLY MIDI_BLE_SERVER
+#define BLE_DUAL_MODE MIDI_BLE_DUAL
+
+// USB MIDI mode LED update flag - when true, LEDs will update once then reset
+extern bool usbMidiLedUpdatePending;
 
 // Extended MIDI Command Types
 enum MidiCommandType : uint8_t {
@@ -427,6 +437,8 @@ extern unsigned long lastOledCheck;
 
 extern uint8_t batteryPercent;        // Current battery level (0-100)
 extern unsigned long lastBatteryRead; // Last ADC read time
+extern int batteryAdcMax;             // Auto-calibrated max ADC reading
+extern int batteryAdcMin;             // Auto-calibrated min ADC reading
 
 // ============================================
 // DEFERRED UPDATES

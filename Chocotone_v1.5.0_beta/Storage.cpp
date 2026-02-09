@@ -62,6 +62,8 @@ void saveSystemSettings() {
   prefs.putBool("s_debugAin", systemConfig.debugAnalogIn);
   prefs.putUChar("s_ainCount", systemConfig.analogInputCount);
   prefs.putUChar("s_battPin", systemConfig.batteryAdcPin); // v1.5: Battery ADC
+  prefs.putInt("s_batMax", batteryAdcMax); // Auto-calibrated max
+  prefs.putInt("s_batMin", batteryAdcMin); // Auto-calibrated min
 
   Serial.printf("Saved OLED config: type=%d, rotation=%d\n", oledConfig.type,
                 oledConfig.rotation);
@@ -170,7 +172,9 @@ void loadSystemSettings() {
   systemConfig.debugAnalogIn = prefs.getBool("s_debugAin", false);
   systemConfig.analogInputCount = prefs.getUChar("s_ainCount", 0);
   systemConfig.batteryAdcPin =
-      prefs.getUChar("s_battPin", 0); // v1.5: Battery ADC
+      prefs.getUChar("s_battPin", 0);             // v1.5: Battery ADC
+  batteryAdcMax = prefs.getInt("s_batMax", 0);    // Auto-calibrated max
+  batteryAdcMin = prefs.getInt("s_batMin", 4095); // Auto-calibrated min
 
   yield(); // Feed watchdog before closing
   prefs.end();
