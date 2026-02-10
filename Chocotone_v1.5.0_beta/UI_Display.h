@@ -5,6 +5,10 @@
 
 void displayOLED();
 void displayMenu();
+void displayEditMenu(); // v1.5: On-device action editor
+void hsvToRgb(int h, int s, int v, uint8_t *r, uint8_t *g, uint8_t *b);
+void rgbToHsv(uint8_t r, uint8_t g, uint8_t b, int *h, int *s, int *v);
+
 void displayAnalogDebug(); // v1.5: Dedicated analog debug screen
 void updateLeds();
 void updateIndividualLed(uint8_t index, uint8_t r, uint8_t g, uint8_t b);

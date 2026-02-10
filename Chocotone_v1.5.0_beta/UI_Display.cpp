@@ -1,5 +1,6 @@
 #include "UI_Display.h"
 #include "AnalogInput.h"
+#include "SysexScrollData.h"
 #include <SPI.h> // For TFT displays
 #include <Wire.h>
 
@@ -1016,7 +1017,7 @@ void displayMenu() {
   displayPtr->setTextSize(itemSize);
 
   // Build menu items dynamically to show status
-  char menuItems[14][25]; // Array to hold menu item strings
+  char menuItems[15][25]; // Array to hold menu item strings
   strncpy(menuItems[0], "Save and Exit", 25);
   strncpy(menuItems[1], "Exit without Saving", 25);
   snprintf(menuItems[2], 25, "Wi-Fi LoadCfg (%s)", isWifiOn ? "ON" : "OFF");
@@ -1039,8 +1040,9 @@ void displayMenu() {
   snprintf(menuItems[12], 25, "MIDI Mode: %s", midiModeStr);
   snprintf(menuItems[13], 25, "Analog Debug %s",
            systemConfig.debugAnalogIn ? "ON" : "OFF");
+  strncpy(menuItems[14], "Edit Commands", 25);
 
-  int numMenuItems = 14;
+  int numMenuItems = 15;
 
   displayPtr->setCursor(0, 0);
   displayPtr->printf("-- Menu CHOCOTONE --");
@@ -1099,6 +1101,513 @@ void displayMenu() {
         displayPtr->print(menuItems[i]);
       }
     }
+  }
+  flushDisplay();
+}
+
+// ============================================================================
+// EDIT COMMANDS SUBMENU (v1.5)
+// On-device action editor for buttons and analog inputs
+// ============================================================================
+
+// Helper: Short name for MidiCommandType
+static const char *getTypeName(MidiCommandType t) {
+  switch (t) {
+  case MIDI_OFF:
+    return "OFF";
+  case NOTE_MOMENTARY:
+    return "NtMom";
+  case NOTE_ON:
+    return "NtOn";
+  case NOTE_OFF:
+    return "NtOff";
+  case CC:
+    return "CC";
+  case PC:
+    return "PC";
+  case SYSEX:
+    return "SysEx";
+  case SYSEX_SCROLL:
+    return "SxScr";
+  case TAP_TEMPO:
+    return "Tap";
+  case PRESET_UP:
+    return "Pre+";
+  case PRESET_DOWN:
+    return "Pre-";
+  case PRESET_1:
+    return "Pre1";
+  case PRESET_2:
+    return "Pre2";
+  case PRESET_3:
+    return "Pre3";
+  case PRESET_4:
+    return "Pre4";
+  case CLEAR_BLE_BONDS:
+    return "ClrBL";
+  case WIFI_TOGGLE:
+    return "WiFi";
+  case MENU_TOGGLE:
+    return "Menu";
+  case MENU_UP:
+    return "MnUp";
+  case MENU_DOWN:
+    return "MnDn";
+  case MENU_ENTER:
+    return "MnOk";
+  default:
+    return "?";
+  }
+}
+
+// Helper: Short name for ActionType
+static const char *getActionName(ActionType a) {
+  switch (a) {
+  case ACTION_NONE:
+    return "NONE";
+  case ACTION_PRESS:
+    return "PRESS";
+  case ACTION_2ND_PRESS:
+    return "2PRESS";
+  case ACTION_RELEASE:
+    return "REL";
+  case ACTION_2ND_RELEASE:
+    return "2REL";
+  case ACTION_LONG_PRESS:
+    return "LONG";
+  case ACTION_2ND_LONG_PRESS:
+    return "2LONG";
+  case ACTION_DOUBLE_TAP:
+    return "DTAP";
+  case ACTION_COMBO:
+    return "COMBO";
+  case ACTION_NO_ACTION:
+    return "NONE";
+  default:
+    return "?";
+  }
+}
+
+static const char *getSysexParamName(uint8_t id) {
+  switch ((SysexScrollParamId)id) {
+  case SYSEX_PARAM_PITCH_HIGH:
+    return "PitchHi";
+  case SYSEX_PARAM_DRV_GAIN:
+    return "DrvGain";
+  case SYSEX_PARAM_DLY_FBK:
+    return "DlyFbk";
+  case SYSEX_PARAM_FX1_RATE:
+    return "Fx1Rate";
+  case SYSEX_PARAM_RVB_MIX:
+    return "RvbMix";
+  case SYSEX_PARAM_AMP_GAIN:
+    return "AmpGain";
+  case SYSEX_PARAM_PITCH_LOW:
+    return "PitchLo";
+  default:
+    return "None";
+  }
+}
+
+// HSV to RGB conversion (H: 0-360, S: 0-100, V: 0-100)
+void hsvToRgb(int h, int s, int v, uint8_t *r, uint8_t *g, uint8_t *b) {
+  float fH = h / 60.0f;
+  float fS = s / 100.0f;
+  float fV = v / 100.0f;
+  int i = (int)fH;
+  float f = fH - i;
+  float p = fV * (1.0f - fS);
+  float q = fV * (1.0f - fS * f);
+  float t = fV * (1.0f - fS * (1.0f - f));
+  float rr, gg, bb;
+  switch (i % 6) {
+  case 0:
+    rr = fV;
+    gg = t;
+    bb = p;
+    break;
+  case 1:
+    rr = q;
+    gg = fV;
+    bb = p;
+    break;
+  case 2:
+    rr = p;
+    gg = fV;
+    bb = t;
+    break;
+  case 3:
+    rr = p;
+    gg = q;
+    bb = fV;
+    break;
+  case 4:
+    rr = t;
+    gg = p;
+    bb = fV;
+    break;
+  default:
+    rr = fV;
+    gg = p;
+    bb = q;
+    break;
+  }
+  *r = (uint8_t)(rr * 255);
+  *g = (uint8_t)(gg * 255);
+  *b = (uint8_t)(bb * 255);
+}
+
+// RGB to HSV conversion
+void rgbToHsv(uint8_t r, uint8_t g, uint8_t b, int *h, int *s, int *v) {
+  float rr = r / 255.0f, gg = g / 255.0f, bb = b / 255.0f;
+  float maxC = max(rr, max(gg, bb));
+  float minC = min(rr, min(gg, bb));
+  float delta = maxC - minC;
+  *v = (int)(maxC * 100);
+  *s = (maxC > 0) ? (int)(delta / maxC * 100) : 0;
+  if (delta == 0) {
+    *h = 0;
+    return;
+  }
+  float hue;
+  if (maxC == rr)
+    hue = 60.0f * fmod((gg - bb) / delta, 6.0f);
+  else if (maxC == gg)
+    hue = 60.0f * ((bb - rr) / delta + 2.0f);
+  else
+    hue = 60.0f * ((rr - gg) / delta + 4.0f);
+  if (hue < 0)
+    hue += 360;
+  *h = (int)hue;
+}
+
+void displayEditMenu() {
+  clearDisplayBuffer();
+  displayPtr->setTextColor(DISPLAY_WHITE);
+  displayPtr->setTextSize(1);
+
+  int lineHeight = (oledConfig.type == OLED_128X32) ? 8 : 10;
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)
+    lineHeight = 12;
+  int maxVisible = (oledConfig.type == OLED_128X32)   ? 3
+                   : (oledConfig.type == TFT_128X128) ? 9
+                   : (oledConfig.type == TFT_128X160) ? 11
+                                                      : 5;
+  int headerY = 3;
+  int itemStartY = (oledConfig.type == OLED_128X32) ? 12 : 17;
+  if (oledConfig.type == TFT_128X128 || oledConfig.type == TFT_128X160)
+    itemStartY = 19;
+
+  switch (editMenuState) {
+
+  case EDIT_ROOT: {
+    // Center the title
+    char title[] = "-- Edit Commands --";
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+    const char *items[] = {"Buttons", "Analog Inputs", "<< Back"};
+    for (int i = 0; i < 3; i++) {
+      displayPtr->setCursor(0, itemStartY + i * lineHeight);
+      displayPtr->print(i == editSubSelection ? "> " : "  ");
+      displayPtr->print(items[i]);
+    }
+    break;
+  }
+
+  case EDIT_BTN_LISTEN: {
+    char title[] = "-- Select Button --";
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+    displayPtr->setCursor(0, itemStartY);
+    displayPtr->print("Press any button...");
+    displayPtr->setCursor(0, itemStartY + lineHeight * 2);
+    displayPtr->print("> << Back");
+    break;
+  }
+
+  case EDIT_BTN_ACTIONS: {
+    ButtonConfig &btn = buttonConfigs[currentPreset][editBtnIndex];
+    // Centered title
+    char title[30];
+    snprintf(title, sizeof(title), "BTN %d: %s", editBtnIndex + 1, btn.name);
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+
+    // List action slots + Back
+    int totalItems = btn.messageCount + 1; // +1 for Back
+    int offset = editSubSelection - (maxVisible - 1) / 2;
+    if (offset < 0)
+      offset = 0;
+    if (offset > totalItems - maxVisible)
+      offset = totalItems - maxVisible;
+    if (offset < 0)
+      offset = 0;
+
+    for (int vi = 0; vi < maxVisible && (vi + offset) < totalItems; vi++) {
+      int idx = vi + offset;
+      displayPtr->setCursor(0, itemStartY + vi * lineHeight);
+      displayPtr->print(idx == editSubSelection ? "> " : "  ");
+      if (idx < btn.messageCount) {
+        ActionMessage &m = btn.messages[idx];
+        // Show RGB color swatch (filled rectangle)
+        int swatchX = SCREEN_WIDTH - 12;
+        int swatchY = itemStartY + vi * lineHeight;
+        uint16_t color565 = ((m.rgb[0] & 0xF8) << 8) |
+                            ((m.rgb[1] & 0xFC) << 3) | (m.rgb[2] >> 3);
+        displayPtr->fillRect(swatchX, swatchY, 10, lineHeight - 1, color565);
+        displayPtr->printf("%s:%s Ch%d", getActionName(m.action),
+                           getTypeName(m.type), m.channel);
+      } else {
+        displayPtr->print("<< Back");
+      }
+    }
+    break;
+  }
+
+  case EDIT_BTN_FIELD: {
+    ButtonConfig &btn = buttonConfigs[currentPreset][editBtnIndex];
+    ActionMessage &m = btn.messages[editActionIndex];
+    // Centered title
+    char title[30];
+    snprintf(title, sizeof(title), "%s %s", btn.name, getActionName(m.action));
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+
+    // Fields: Type, Channel, Data1, Data2, H, S, V, Back
+    int fieldCount = 8;
+    for (int i = 0; i < fieldCount; i++) {
+      int dispIdx = i;
+      // Scrolling if needed
+      int lineOff = editFieldIndex - (maxVisible - 1) / 2;
+      if (lineOff < 0)
+        lineOff = 0;
+      if (lineOff > fieldCount - maxVisible)
+        lineOff = fieldCount - maxVisible;
+      if (lineOff < 0)
+        lineOff = 0;
+      if (i < lineOff || i >= lineOff + maxVisible)
+        continue;
+      int row = i - lineOff;
+
+      displayPtr->setCursor(0, itemStartY + row * lineHeight);
+      displayPtr->print(i == editFieldIndex ? "> " : "  ");
+      if (i == 0) {
+        displayPtr->printf("Type: %s", getTypeName(m.type));
+      } else if (i == 1) {
+        displayPtr->printf("Channel: %d", m.channel);
+      } else if (i == 2) {
+        displayPtr->printf("Data1: %d", m.data1);
+      } else if (i == 3) {
+        displayPtr->printf("Data2: %d", m.data2);
+      } else if (i == 4) {
+        int h, s, v;
+        rgbToHsv(m.rgb[0], m.rgb[1], m.rgb[2], &h, &s, &v);
+        displayPtr->printf("Hue: %d", h);
+      } else if (i == 5) {
+        int h, s, v;
+        rgbToHsv(m.rgb[0], m.rgb[1], m.rgb[2], &h, &s, &v);
+        displayPtr->printf("Sat: %d%%", s);
+      } else if (i == 6) {
+        int h, s, v;
+        rgbToHsv(m.rgb[0], m.rgb[1], m.rgb[2], &h, &s, &v);
+        displayPtr->printf("Val: %d%%", v);
+      } else {
+        displayPtr->print("<< Back");
+      }
+    }
+
+    // Show color preview swatch
+    uint16_t previewColor =
+        ((m.rgb[0] & 0xF8) << 8) | ((m.rgb[1] & 0xFC) << 3) | (m.rgb[2] >> 3);
+    displayPtr->fillRect(SCREEN_WIDTH - 14, headerY, 12, 10, previewColor);
+
+    // Show editing indicator with large value
+    if (inSubMenu && editFieldIndex < 7) {
+      displayPtr->setTextSize(2);
+      char val[10];
+      if (editFieldIndex == 0)
+        snprintf(val, sizeof(val), "%s",
+                 getTypeName((MidiCommandType)editingValue));
+      else
+        snprintf(val, sizeof(val), "%d", editingValue);
+      int16_t vx1, vy1;
+      uint16_t vw, vh;
+      displayPtr->getTextBounds(val, 0, 0, &vx1, &vy1, &vw, &vh);
+      int editY = itemStartY + min(fieldCount, maxVisible) * lineHeight + 2;
+      displayPtr->setCursor((SCREEN_WIDTH - vw) / 2, editY);
+      displayPtr->print(val);
+      displayPtr->setTextSize(1);
+    }
+    break;
+  }
+
+  case EDIT_AIN_LIST: {
+    char title[] = "-- Analog Inputs --";
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+
+    int ainCount = systemConfig.analogInputCount;
+    int totalItems = ainCount + 1; // +1 for Back
+    int offset = editSubSelection - (maxVisible - 1) / 2;
+    if (offset < 0)
+      offset = 0;
+    if (offset > totalItems - maxVisible)
+      offset = totalItems - maxVisible;
+    if (offset < 0)
+      offset = 0;
+
+    for (int vi = 0; vi < maxVisible && (vi + offset) < totalItems; vi++) {
+      int idx = vi + offset;
+      displayPtr->setCursor(0, itemStartY + vi * lineHeight);
+      displayPtr->print(idx == editSubSelection ? "> " : "  ");
+      if (idx < ainCount) {
+        AnalogInputConfig &ain = analogInputs[idx];
+        // Show name + ON/OFF + type info
+        if (!ain.enabled) {
+          displayPtr->printf("%s OFF", ain.name);
+        } else if (ain.messageCount > 0 &&
+                   ain.messages[0].type == SYSEX_SCROLL) {
+          displayPtr->printf("%s %s", ain.name,
+                             getSysexParamName(ain.messages[0].data1));
+        } else if (ain.messageCount > 0) {
+          displayPtr->printf("%s %s", ain.name,
+                             getTypeName(ain.messages[0].type));
+        } else {
+          displayPtr->printf("%s ON", ain.name);
+        }
+      } else {
+        displayPtr->print("<< Back");
+      }
+    }
+    break;
+  }
+
+  case EDIT_AIN_DETAIL: {
+    AnalogInputConfig &ain = analogInputs[editAinIndex];
+    // Centered title
+    char title[30];
+    snprintf(title, sizeof(title), "-- %s --", ain.name);
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+
+    // Items: Enabled, then each action (with sysex info), then Back
+    int totalItems = 1 + ain.messageCount + 1; // enabled + actions + back
+    int offset = editSubSelection - (maxVisible - 1) / 2;
+    if (offset < 0)
+      offset = 0;
+    if (offset > totalItems - maxVisible)
+      offset = totalItems - maxVisible;
+    if (offset < 0)
+      offset = 0;
+
+    for (int vi = 0; vi < maxVisible && (vi + offset) < totalItems; vi++) {
+      int i = vi + offset;
+      displayPtr->setCursor(0, itemStartY + vi * lineHeight);
+      displayPtr->print(i == editSubSelection ? "> " : "  ");
+      if (i == 0) {
+        displayPtr->printf("Enabled: %s", ain.enabled ? "ON" : "OFF");
+      } else if (i <= ain.messageCount) {
+        ActionMessage &m = ain.messages[i - 1];
+        if (m.type == SYSEX_SCROLL) {
+          displayPtr->printf("SxScr:%s %d-%d", getSysexParamName(m.data1),
+                             m.minOut, m.maxOut);
+        } else {
+          displayPtr->printf("%s Ch%d #%d", getTypeName(m.type), m.channel,
+                             m.data1);
+        }
+      } else {
+        displayPtr->print("<< Back");
+      }
+    }
+    break;
+  }
+
+  case EDIT_AIN_FIELD: {
+    AnalogInputConfig &ain = analogInputs[editAinIndex];
+    ActionMessage &m = ain.messages[editActionIndex];
+    // Centered title
+    char title[30];
+    snprintf(title, sizeof(title), "%s Action %d", ain.name,
+             editActionIndex + 1);
+    int16_t x1, y1;
+    uint16_t tw, th;
+    displayPtr->getTextBounds(title, 0, 0, &x1, &y1, &tw, &th);
+    displayPtr->setCursor((SCREEN_WIDTH - tw) / 2, headerY);
+    displayPtr->print(title);
+
+    // SysEx Scroll: show Param, MinRange, MaxRange, Back
+    // Others: Type, Channel, Data1, Data2, Back
+    bool isSysexScroll = (m.type == SYSEX_SCROLL);
+    int fieldCount = isSysexScroll ? 5 : 5;
+
+    for (int i = 0; i < fieldCount; i++) {
+      displayPtr->setCursor(0, itemStartY + i * lineHeight);
+      displayPtr->print(i == editFieldIndex ? "> " : "  ");
+      if (isSysexScroll) {
+        if (i == 0)
+          displayPtr->printf("Type: %s", getTypeName(m.type));
+        else if (i == 1)
+          displayPtr->printf("Param: %s", getSysexParamName(m.data1));
+        else if (i == 2)
+          displayPtr->printf("Min: %d", m.minOut);
+        else if (i == 3)
+          displayPtr->printf("Max: %d", m.maxOut);
+        else
+          displayPtr->print("<< Back");
+      } else {
+        if (i == 0)
+          displayPtr->printf("Type: %s", getTypeName(m.type));
+        else if (i == 1)
+          displayPtr->printf("Channel: %d", m.channel);
+        else if (i == 2)
+          displayPtr->printf("Data1: %d", m.data1);
+        else if (i == 3)
+          displayPtr->printf("Data2: %d", m.data2);
+        else
+          displayPtr->print("<< Back");
+      }
+    }
+    if (inSubMenu && editFieldIndex < fieldCount - 1) {
+      displayPtr->setTextSize(2);
+      char val[10];
+      if (editFieldIndex == 0)
+        snprintf(val, sizeof(val), "%s",
+                 getTypeName((MidiCommandType)editingValue));
+      else if (isSysexScroll && editFieldIndex == 1)
+        snprintf(val, sizeof(val), "%s", getSysexParamName(editingValue));
+      else
+        snprintf(val, sizeof(val), "%d", editingValue);
+      int16_t vx1, vy1;
+      uint16_t vw, vh;
+      displayPtr->getTextBounds(val, 0, 0, &vx1, &vy1, &vw, &vh);
+      int editY = itemStartY + fieldCount * lineHeight + 2;
+      displayPtr->setCursor((SCREEN_WIDTH - vw) / 2, editY);
+      displayPtr->print(val);
+      displayPtr->setTextSize(1);
+    }
+    break;
+  }
+
+  default:
+    break;
   }
   flushDisplay();
 }

@@ -382,6 +382,28 @@ extern bool inSubMenu;
 extern bool factoryResetConfirm;
 extern int editingValue;
 
+// Edit Commands submenu state machine
+enum EditMenuState : uint8_t {
+  EDIT_NONE = 0,    // Not in edit mode (normal menu)
+  EDIT_ROOT,        // "Buttons / Analog Inputs / Back"
+  EDIT_BTN_LISTEN,  // "Press a button to edit..."
+  EDIT_BTN_ACTIONS, // Showing action slots for selected button
+  EDIT_BTN_FIELD,   // Editing a specific field (type/ch/data1/data2)
+  EDIT_AIN_LIST,    // Showing analog input list
+  EDIT_AIN_DETAIL,  // Editing analog input fields (ON/OFF + actions)
+  EDIT_AIN_FIELD    // Editing a specific analog field value
+};
+
+extern EditMenuState editMenuState;
+extern int8_t editBtnIndex;     // Which button is being edited (0-15)
+extern int8_t editActionIndex;  // Which action slot (0-5)
+extern int8_t editFieldIndex;   // Which field (0=type, 1=ch, 2=data1, 3=data2)
+extern int8_t editAinIndex;     // Which analog input (0-15)
+extern int8_t editSubSelection; // Cursor position in current submenu
+
+// Number of valid MidiCommandType values for cycling in editor
+#define MIDI_TYPE_COUNT 21 // MIDI_OFF(0) through MENU_ENTER(20)
+
 // Button state tracking
 extern bool buttonPinActive[MAX_BUTTONS];
 extern unsigned long lastButtonPressTime_pads[MAX_BUTTONS];

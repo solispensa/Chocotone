@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "GP5Protocol.h"
 #include "Storage.h"
+#include "SysexScrollData.h"
 #include "UI_Display.h"
 #include "WebInterface.h"
 
@@ -890,7 +891,42 @@ void loop_presetMode() {
 // MENU MODE
 // ============================================
 
+// Forward declaration
+void handleEditMenuInput(int direction, bool enter);
+
 void loop_menuMode() {
+  // === Edit Commands mode: intercept button presses for button selection ===
+  if (editMenuState == EDIT_BTN_LISTEN) {
+    for (int i = 0; i < systemConfig.buttonCount; i++) {
+      int pin = systemConfig.buttonPins[i];
+      bool isPressed = (digitalRead(pin) == LOW);
+      if (isPressed && !buttonPinActive[i]) {
+        unsigned long now = millis();
+        if (now - lastButtonPressTime_pads[i] > buttonDebounce) {
+          lastButtonPressTime_pads[i] = now;
+          buttonPinActive[i] = true;
+          // Skip MENU buttons - they should still navigate
+          ButtonConfig &btn = buttonConfigs[currentPreset][i];
+          if (btn.messageCount > 0 && (btn.messages[0].type == MENU_UP ||
+                                       btn.messages[0].type == MENU_DOWN ||
+                                       btn.messages[0].type == MENU_ENTER ||
+                                       btn.messages[0].type == MENU_TOGGLE)) {
+            // Let menu buttons fall through to normal handling below
+          } else {
+            // Select this button for editing
+            editBtnIndex = i;
+            editSubSelection = 0;
+            editMenuState = EDIT_BTN_ACTIONS;
+            displayEditMenu();
+            return;
+          }
+        }
+      } else if (!isPressed && buttonPinActive[i]) {
+        buttonPinActive[i] = false;
+      }
+    }
+  }
+
   // === Scan buttons for menu commands ===
   // This allows buttons configured with MENU_UP/DOWN/ENTER to work in menu mode
   for (int i = 0; i < systemConfig.buttonCount; i++) {
@@ -911,29 +947,46 @@ void loop_menuMode() {
           if (msg.action == ACTION_PRESS) {
             switch (msg.type) {
             case MENU_TOGGLE:
-              // Exit menu mode
+              // Exit edit mode if active, then exit menu
+              if (editMenuState != EDIT_NONE) {
+                editMenuState = EDIT_NONE;
+              }
               currentMode = 0;
               safeDisplayOLED();
               updateLeds();
               return;
             case MENU_UP:
-              if (inSubMenu || factoryResetConfirm) {
+              if (editMenuState != EDIT_NONE) {
+                handleEditMenuInput(-1, false);
+              } else if (inSubMenu || factoryResetConfirm) {
                 editingValue--;
               } else {
-                menuSelection = (menuSelection - 1 + 14) % 14;
+                menuSelection = (menuSelection - 1 + 15) % 15;
               }
-              displayMenu();
+              if (editMenuState != EDIT_NONE)
+                displayEditMenu();
+              else
+                displayMenu();
               return;
             case MENU_DOWN:
-              if (inSubMenu || factoryResetConfirm) {
+              if (editMenuState != EDIT_NONE) {
+                handleEditMenuInput(1, false);
+              } else if (inSubMenu || factoryResetConfirm) {
                 editingValue++;
               } else {
-                menuSelection = (menuSelection + 1) % 14;
+                menuSelection = (menuSelection + 1) % 15;
               }
-              displayMenu();
+              if (editMenuState != EDIT_NONE)
+                displayEditMenu();
+              else
+                displayMenu();
               return;
             case MENU_ENTER:
-              handleMenuSelection();
+              if (editMenuState != EDIT_NONE) {
+                handleEditMenuInput(0, true);
+              } else {
+                handleMenuSelection();
+              }
               return;
             default:
               break;
@@ -952,7 +1005,20 @@ void loop_menuMode() {
     return;
 
   int change = (newEncoderPosition - oldEncoderPosition);
-  int numMenuItems = 14; // Menu items count
+  int numMenuItems = 15; // Menu items count
+
+  // Route to edit menu handler if in edit mode
+  if (editMenuState != EDIT_NONE) {
+    long menuStep = newEncoderPosition / 2;
+    long oldMenuStep = oldEncoderPosition / 2;
+    if (menuStep != oldMenuStep) {
+      int dir = (menuStep > oldMenuStep) ? 1 : -1;
+      handleEditMenuInput(dir, false);
+    }
+    oldEncoderPosition = newEncoderPosition;
+    displayEditMenu();
+    return;
+  }
 
   if (factoryResetConfirm) {
     // In Factory Reset confirmation - just toggle between Yes (0) and No (1)
@@ -1008,6 +1074,7 @@ void handleMenuSelection() {
     switch (menuSelection) {
     case 0: // Save and Exit
       saveSystemSettings();
+      savePresets(); // Also save button/analog edits
       if (bleModeChanged) {
         Serial.println("BLE Mode changed - rebooting...");
         delay(500);
@@ -1135,6 +1202,11 @@ void handleMenuSelection() {
       systemConfig.debugAnalogIn = !systemConfig.debugAnalogIn;
       displayMenu();
       break;
+    case 14: // Edit Commands
+      editMenuState = EDIT_ROOT;
+      editSubSelection = 0;
+      displayEditMenu();
+      return; // Skip displayMenu() at end
     }
   } else {
     inSubMenu = false;
@@ -1156,6 +1228,319 @@ void handleMenuSelection() {
     }
   }
   displayMenu();
+}
+
+// ============================================
+// EDIT COMMANDS INPUT HANDLER
+// direction: -1 (up/prev), +1 (down/next), 0 (no scroll)
+// enter: true when ENTER/confirm is pressed
+// ============================================
+void handleEditMenuInput(int direction, bool enter) {
+  switch (editMenuState) {
+
+  case EDIT_ROOT: {
+    if (!enter) {
+      editSubSelection = (editSubSelection + direction + 3) % 3;
+    } else {
+      switch (editSubSelection) {
+      case 0: // Buttons
+        editMenuState = EDIT_BTN_LISTEN;
+        break;
+      case 1: // Analog Inputs
+        editMenuState = EDIT_AIN_LIST;
+        editSubSelection = 0;
+        break;
+      case 2: // Back
+        editMenuState = EDIT_NONE;
+        displayMenu();
+        return;
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  case EDIT_BTN_LISTEN: {
+    // Only ENTER goes back (button presses handled separately in loop_menuMode)
+    if (enter) {
+      editMenuState = EDIT_ROOT;
+      editSubSelection = 0;
+      displayEditMenu();
+    }
+    break;
+  }
+
+  case EDIT_BTN_ACTIONS: {
+    ButtonConfig &btn = buttonConfigs[currentPreset][editBtnIndex];
+    int totalItems = btn.messageCount + 1; // actions + Back
+    if (!enter) {
+      editSubSelection += direction;
+      if (editSubSelection < 0)
+        editSubSelection = totalItems - 1;
+      if (editSubSelection >= totalItems)
+        editSubSelection = 0;
+    } else {
+      if (editSubSelection < btn.messageCount) {
+        // Enter action field editor
+        editActionIndex = editSubSelection;
+        editFieldIndex = 0;
+        inSubMenu = false;
+        editMenuState = EDIT_BTN_FIELD;
+      } else {
+        // Back
+        editMenuState = EDIT_BTN_LISTEN;
+        editSubSelection = 0;
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  case EDIT_BTN_FIELD: {
+    ButtonConfig &btn = buttonConfigs[currentPreset][editBtnIndex];
+    ActionMessage &m = btn.messages[editActionIndex];
+    int fieldCount = 8; // Type, Channel, Data1, Data2, Hue, Sat, Val, Back
+
+    if (inSubMenu) {
+      // Currently editing a value with encoder
+      if (!enter) {
+        editingValue += direction;
+        // Constrain based on field
+        if (editFieldIndex == 0) { // Type
+          if (editingValue < 0)
+            editingValue = MIDI_TYPE_COUNT - 1;
+          if (editingValue >= MIDI_TYPE_COUNT)
+            editingValue = 0;
+        } else if (editFieldIndex == 1) { // Channel
+          editingValue = constrain(editingValue, 1, 16);
+        } else if (editFieldIndex <= 3) { // Data1/Data2
+          editingValue = constrain(editingValue, 0, 127);
+        } else if (editFieldIndex == 4) { // Hue
+          if (editingValue < 0)
+            editingValue = 359;
+          if (editingValue >= 360)
+            editingValue = 0;
+        } else { // Sat/Val
+          editingValue = constrain(editingValue, 0, 100);
+        }
+      } else {
+        // Confirm value
+        if (editFieldIndex == 0)
+          m.type = (MidiCommandType)editingValue;
+        else if (editFieldIndex == 1)
+          m.channel = editingValue;
+        else if (editFieldIndex == 2)
+          m.data1 = editingValue;
+        else if (editFieldIndex == 3)
+          m.data2 = editingValue;
+        else if (editFieldIndex >= 4 && editFieldIndex <= 6) {
+          // HSV: get current HSV, update the changed component, convert back to
+          // RGB
+          int h, s, v;
+          rgbToHsv(m.rgb[0], m.rgb[1], m.rgb[2], &h, &s, &v);
+          if (editFieldIndex == 4)
+            h = editingValue;
+          else if (editFieldIndex == 5)
+            s = editingValue;
+          else
+            v = editingValue;
+          hsvToRgb(h, s, v, &m.rgb[0], &m.rgb[1], &m.rgb[2]);
+        }
+        inSubMenu = false;
+      }
+    } else {
+      // Navigating fields
+      if (!enter) {
+        editFieldIndex += direction;
+        if (editFieldIndex < 0)
+          editFieldIndex = fieldCount - 1;
+        if (editFieldIndex >= fieldCount)
+          editFieldIndex = 0;
+      } else {
+        if (editFieldIndex == 7) {
+          // Back to action list
+          editMenuState = EDIT_BTN_ACTIONS;
+          editSubSelection = editActionIndex;
+        } else {
+          // Start editing this field
+          inSubMenu = true;
+          if (editFieldIndex == 0)
+            editingValue = (int)m.type;
+          else if (editFieldIndex == 1)
+            editingValue = m.channel;
+          else if (editFieldIndex == 2)
+            editingValue = m.data1;
+          else if (editFieldIndex == 3)
+            editingValue = m.data2;
+          else {
+            // HSV fields
+            int h, s, v;
+            rgbToHsv(m.rgb[0], m.rgb[1], m.rgb[2], &h, &s, &v);
+            if (editFieldIndex == 4)
+              editingValue = h;
+            else if (editFieldIndex == 5)
+              editingValue = s;
+            else
+              editingValue = v;
+          }
+        }
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  case EDIT_AIN_LIST: {
+    int ainCount = systemConfig.analogInputCount;
+    int totalItems = ainCount + 1; // inputs + Back
+    if (!enter) {
+      editSubSelection += direction;
+      if (editSubSelection < 0)
+        editSubSelection = totalItems - 1;
+      if (editSubSelection >= totalItems)
+        editSubSelection = 0;
+    } else {
+      if (editSubSelection < ainCount) {
+        editAinIndex = editSubSelection;
+        editSubSelection = 0;
+        editMenuState = EDIT_AIN_DETAIL;
+      } else {
+        // Back
+        editMenuState = EDIT_ROOT;
+        editSubSelection = 1; // Return cursor to "Analog Inputs"
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  case EDIT_AIN_DETAIL: {
+    AnalogInputConfig &ain = analogInputs[editAinIndex];
+    int totalItems = 1 + ain.messageCount + 1; // enabled + actions + back
+    if (!enter) {
+      editSubSelection += direction;
+      if (editSubSelection < 0)
+        editSubSelection = totalItems - 1;
+      if (editSubSelection >= totalItems)
+        editSubSelection = 0;
+    } else {
+      if (editSubSelection == 0) {
+        // Toggle enabled
+        ain.enabled = !ain.enabled;
+      } else if (editSubSelection <= ain.messageCount) {
+        // Enter action field editor
+        editActionIndex = editSubSelection - 1;
+        editFieldIndex = 0;
+        inSubMenu = false;
+        editMenuState = EDIT_AIN_FIELD;
+      } else {
+        // Back
+        editMenuState = EDIT_AIN_LIST;
+        editSubSelection = editAinIndex;
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  case EDIT_AIN_FIELD: {
+    AnalogInputConfig &ain = analogInputs[editAinIndex];
+    ActionMessage &m = ain.messages[editActionIndex];
+    bool isSysexScroll = (m.type == SYSEX_SCROLL);
+    int fieldCount =
+        isSysexScroll
+            ? 5
+            : 5; // SysEx: Type,Param,Min,Max,Back | Others: Type,Ch,D1,D2,Back
+    int backIdx = fieldCount - 1;
+
+    if (inSubMenu) {
+      if (!enter) {
+        editingValue += direction;
+        if (editFieldIndex == 0) { // Type
+          if (editingValue < 0)
+            editingValue = MIDI_TYPE_COUNT - 1;
+          if (editingValue >= MIDI_TYPE_COUNT)
+            editingValue = 0;
+        } else if (isSysexScroll) {
+          if (editFieldIndex == 1) { // Param ID
+            if (editingValue < 0)
+              editingValue = 7;
+            if (editingValue > 7)
+              editingValue = 0;
+          } else if (editFieldIndex == 2) { // Min range
+            editingValue = constrain(editingValue, 0, 127);
+          } else if (editFieldIndex == 3) { // Max range
+            editingValue = constrain(editingValue, 0, 127);
+          }
+        } else {
+          if (editFieldIndex == 1)
+            editingValue = constrain(editingValue, 1, 16);
+          else
+            editingValue = constrain(editingValue, 0, 127);
+        }
+      } else {
+        // Confirm
+        if (editFieldIndex == 0) {
+          m.type = (MidiCommandType)editingValue;
+          // If type changed to/from SYSEX_SCROLL, reset field index
+          editFieldIndex = 0;
+        } else if (isSysexScroll) {
+          if (editFieldIndex == 1)
+            m.data1 = editingValue;
+          else if (editFieldIndex == 2)
+            m.minOut = editingValue;
+          else if (editFieldIndex == 3)
+            m.maxOut = editingValue;
+        } else {
+          if (editFieldIndex == 1)
+            m.channel = editingValue;
+          else if (editFieldIndex == 2)
+            m.data1 = editingValue;
+          else if (editFieldIndex == 3)
+            m.data2 = editingValue;
+        }
+        inSubMenu = false;
+      }
+    } else {
+      if (!enter) {
+        editFieldIndex += direction;
+        if (editFieldIndex < 0)
+          editFieldIndex = backIdx;
+        if (editFieldIndex > backIdx)
+          editFieldIndex = 0;
+      } else {
+        if (editFieldIndex == backIdx) {
+          editMenuState = EDIT_AIN_DETAIL;
+          editSubSelection = editActionIndex + 1;
+        } else {
+          inSubMenu = true;
+          if (editFieldIndex == 0)
+            editingValue = (int)m.type;
+          else if (isSysexScroll) {
+            if (editFieldIndex == 1)
+              editingValue = m.data1;
+            else if (editFieldIndex == 2)
+              editingValue = m.minOut;
+            else if (editFieldIndex == 3)
+              editingValue = m.maxOut;
+          } else {
+            if (editFieldIndex == 1)
+              editingValue = m.channel;
+            else if (editFieldIndex == 2)
+              editingValue = m.data1;
+            else if (editFieldIndex == 3)
+              editingValue = m.data2;
+          }
+        }
+      }
+    }
+    displayEditMenu();
+    break;
+  }
+
+  default:
+    break;
+  }
 }
 
 void handleEncoderButtonPress() {
@@ -1187,7 +1572,11 @@ void handleEncoderButtonPress() {
         tapModeTimeout = millis() + 3000;
         safeDisplayOLED();
       } else if (currentMode == 1) {
-        handleMenuSelection();
+        if (editMenuState != EDIT_NONE) {
+          handleEditMenuInput(0, true); // Enter/confirm in edit menu
+        } else {
+          handleMenuSelection();
+        }
       } else if (currentMode == 0) {
         // If in analog debug mode, pressing encoder exits to menu
         if (systemConfig.debugAnalogIn) {

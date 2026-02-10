@@ -200,6 +200,14 @@ bool inSubMenu = false;
 bool factoryResetConfirm = false; // Factory Reset confirmation submenu
 int editingValue = 0;
 
+// Edit Commands submenu state
+EditMenuState editMenuState = EDIT_NONE;
+int8_t editBtnIndex = 0;
+int8_t editActionIndex = 0;
+int8_t editFieldIndex = 0;
+int8_t editAinIndex = 0;
+int8_t editSubSelection = 0;
+
 // Button state tracking
 bool buttonPinActive[MAX_BUTTONS] = {false};
 unsigned long lastButtonPressTime_pads[MAX_BUTTONS] = {0};
