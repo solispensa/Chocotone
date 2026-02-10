@@ -1567,9 +1567,9 @@ void displayEditMenu() {
         else if (i == 1)
           displayPtr->printf("Param: %s", getSysexParamName(m.data1));
         else if (i == 2)
-          displayPtr->printf("Min: %d", m.minOut);
+          displayPtr->printf("Min%%: %d", m.minOut);
         else if (i == 3)
-          displayPtr->printf("Max: %d", m.maxOut);
+          displayPtr->printf("Max%%: %d", m.maxOut);
         else
           displayPtr->print("<< Back");
       } else {

@@ -1467,10 +1467,10 @@ void handleEditMenuInput(int direction, bool enter) {
               editingValue = 7;
             if (editingValue > 7)
               editingValue = 0;
-          } else if (editFieldIndex == 2) { // Min range
-            editingValue = constrain(editingValue, 0, 127);
-          } else if (editFieldIndex == 3) { // Max range
-            editingValue = constrain(editingValue, 0, 127);
+          } else if (editFieldIndex == 2) { // Min range %
+            editingValue = constrain(editingValue, 0, 100);
+          } else if (editFieldIndex == 3) { // Max range %
+            editingValue = constrain(editingValue, 0, 100);
           }
         } else {
           if (editFieldIndex == 1)
