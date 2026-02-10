@@ -20,6 +20,7 @@ Two hardware variants are available depending on your use case:
 | 8 | Tactile Buttons | 6x6mm or 12x12mm momentary | Standard tactile switches | $2-4 |
 | 8 | NeoPixel LEDs | WS2812B individual or strip | WS2812B LED Strip/Ring | $3-8 |
 | - | Analog Inputs | Pots, Expression Pedals, FSR, Piezo | 10k Linear Pot, FSR402 | $2-15 |
+| 2 | 100kΩ Resistors | 1/4W, voltage divider | For battery monitoring (ESP32-S3) | $0.50 |
 | 2 | 10kΩ Resistors | 1/4W | For GPIO 34/35 pull-ups (ESP32) | $0.50 |
 | - | Jumper Wires | 22-24 AWG, various lengths | Breadboard jumpers or custom | $2-5 |
 | 1 | Breadboard/PCB | For prototyping or permanent | Half+ breadboard or custom PCB | $2-10 |
@@ -62,7 +63,7 @@ Two hardware variants are available depending on your use case:
 **Requirements:**
 - BLE (Bluetooth Low Energy) support
 - WiFi capability (for Web Config)
-- **ESP32-S3**: Specifically required for Native USB MIDI functionality.
+- **ESP32-S3**: Specifically required for Native USB MIDI and battery monitoring.
 - Minimum 4MB flash (8MB+ recommended for S3 variants)
 - USB programming interface
 

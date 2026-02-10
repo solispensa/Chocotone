@@ -2,6 +2,25 @@
 
 All notable changes to the Chocotone MIDI Controller project will be documented in this file.
 
+## [v1.5.0-beta-patch-2] - 2026-02-10
+
+### Added
+- **Battery Monitoring (ESP32-S3)** - Auto-calibrating ADC with NVS persistence, voltage divider support, OLED/TFT battery icon
+- **SysEx Scroll Parameters** - AMP GAIN, PITCH LOW, RVB MIX, DRV GAIN, DLY FBK, FX1 RATE for Sonicake Pocket Master
+  - **Whammy Mode!** Use PITCH LOW (-24 to 0) with an expression pedal for pitch-shifting solos
+- **USB MIDI Mode** - Full Native USB MIDI on ESP32-S3 (Note On/Off, CC, PC, SysEx)
+  - Selectable via OLED menu (`MIDI Mode: USB`)
+  - Device appears as "CHOCOTONE USB" on host computer
+
+### Fixed
+- **LED Fix (ESP32-S3)** - Resolved NeoPixel RMT driver conflict by pinning to Arduino ESP32 Core **v3.1.2**
+- **SPM Sync Debounce** - Deferred state requests during rapid bank changes to avoid stale BLE data
+- **BLE Client Bank Detection** - Improved CC#0/CC#32 bank change detection with debounce timer
+
+### Changed
+- **Documentation Revision** - Full update of README, FAQ, CHANGELOG, and guide docs to reflect current firmware state
+- **Arduino ESP32 Core** pinned to v3.1.2 in README and build instructions
+
 ## [v1.5.0-beta-patch-1] - 2026-01-27
 
 ### Fixed

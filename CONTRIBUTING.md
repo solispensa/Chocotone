@@ -1,4 +1,4 @@
-# Contributing to ESP32 MIDI Controller
+# Contributing to Chocotone MIDI Controller
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
 

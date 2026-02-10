@@ -4,15 +4,18 @@ Frequently Asked Questions about the Chocotone MIDI Controller.
 
 ---
 
-## Coming Soon
+## Recently Added
 
-> These features are planned but **not yet implemented** (as of January 2026). Stay tuned for updates!
+> These features were recently implemented and are available in the latest firmware.
 
 ### Can I use USB MIDI class-compliant?
-**Not yet.** USB MIDI class-compliant mode is on the roadmap. Currently, USB is used for configuration transfer only.
+**Yes!** As of v1.5.0, the ESP32-S3 supports **Native USB MIDI**. Set MIDI Mode to **USB** in the OLED menu, and your computer will see Chocotone as a class-compliant MIDI device — no drivers needed.
+
+> [!NOTE]
+> USB MIDI mode requires Arduino ESP32 Core **v3.1.2**. LEDs are disabled in USB mode due to an RMT hardware conflict.
 
 ### Is there battery level monitoring?
-**Not yet.** Battery level display on the OLED is on the roadmap for battery-powered builds.
+**Yes!** As of v1.5.0, Chocotone supports **auto-calibrating battery monitoring** via a voltage divider on the ESP32-S3. The battery level is displayed on the OLED/TFT and the ADC range auto-calibrates over time, persisting to NVS.
 
 ### Will there be more than 16 analog inputs?
 **Planned.** With multiplexer support, up to 16 channels are supported currently. Dual-multiplexer support for 32+ inputs is under consideration.
@@ -53,7 +56,7 @@ Adjust the **Smoothing α** (lower = more smoothing) and **Hysteresis** (higher 
 ## General
 
 ### What is Chocotone?
-Chocotone is an open-source ESP32-based BLE MIDI controller. It's designed to wirelessly control devices like the Sonicake Pocket Master, Valeton GP-5, and other BLE MIDI-compatible equipment.
+Chocotone is an open-source ESP32-based MIDI controller supporting **BLE MIDI** and **Native USB MIDI** (ESP32-S3). It's designed to wirelessly control devices like the Sonicake Pocket Master, Valeton GP-5, and other BLE MIDI-compatible equipment, or connect directly to your DAW via USB.
 
 ### Why "Chocotone"?
 The name comes from a Brazilian Christmas dessert (a chocolate-filled Panettone). The project started as a "Chocolate Plus Pro Max" — an enhanced version of the M-VAVE Chocolate Plus footswitch. See the [About the Name](README.md#about-the-name-) section in the README for the full story!
@@ -114,14 +117,17 @@ See [docs/WIRING.md](docs/WIRING.md) for detailed wiring diagrams and pin assign
 ### How do I change the button count?
 In the web editor, go to **System Config** and change the "Buttons #" field. Click "Apply Changes" to update the layout.
 
-### What are the different BLE modes?
+### What are the different MIDI modes?
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | **CLIENT** | Connects to external BLE MIDI devices | Control pedals like SPM, GP-5 |
 | **SERVER** | Makes Chocotone visible to DAWs/apps | Send MIDI to iOS, Mac, Windows apps |
 | **DUAL** | Both CLIENT and SERVER active | Control pedals AND send to DAW simultaneously |
+| **USB** | Native USB MIDI (ESP32-S3 only) | Direct DAW connection, lowest latency |
 
 💡 **For DAW connections (SERVER/DUAL)**: Use MIDIberry on Windows, or native BLE MIDI on Mac/iOS. Connect from within the MIDI app, not from system Bluetooth settings.
+
+💡 **For USB MIDI**: Just plug in the USB cable — no drivers needed. Your computer sees "CHOCOTONE USB" as a standard MIDI device.
 
 ### How do I save my configuration?
 In the web editor, changes are saved when you click "Save to Device". From the OLED menu, select "Save and Exit" to persist settings.

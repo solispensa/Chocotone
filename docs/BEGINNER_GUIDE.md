@@ -151,12 +151,15 @@ If the web installer doesn't work, you can use Arduino IDE:
      https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
      ```
    - Go to **Tools → Board → Boards Manager**
-   - Search "ESP32" and install "esp32 by Espressif Systems"
+   - Search "ESP32" and install "**esp32 by Espressif Systems** version **3.1.2**"
+
+   > [!IMPORTANT]
+   > Install **v3.1.2 specifically**. Newer versions may cause LED/USB conflicts on ESP32-S3.
 
 3. Install required libraries via **Sketch → Include Library → Manage Libraries**:
    - Adafruit GFX Library
    - Adafruit SSD1306
-   - Adafruit NeoPixel
+   - Adafruit NeoPixel (v1.12.0+)
    - ESP32Encoder
    - ArduinoJson
 
@@ -228,7 +231,16 @@ Chocotone connects via **Bluetooth MIDI** and supports three connection modes:
 Now press buttons on your Chocotone — they'll control your amp!
 
 ### Native USB MIDI (ESP32-S3 only)
-If you have an **ESP32-S3**, you don't even need Bluetooth to control your DAW. Just plug in the USB cable and your computer will see "Chocotone USB MIDI" immediately.
+If you have an **ESP32-S3**, you can use **Native USB MIDI** for the lowest latency connection to your DAW:
+
+1. **Long-press encoder** to enter the menu
+2. Navigate to **MIDI Mode** and select **USB**
+3. Select **Save and Exit** (Chocotone will reboot)
+4. Plug the USB cable into your computer
+5. Your DAW will see **"CHOCOTONE USB"** as a MIDI device
+
+> [!NOTE]
+> LEDs are disabled in USB mode due to an RMT hardware conflict. BLE is also disabled in USB mode.
 
 ### Connecting to DAW/Apps (SERVER Mode)
 

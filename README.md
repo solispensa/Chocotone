@@ -4,8 +4,8 @@
 
 **A powerful, open-source ESP32 and ESP32-S3 based MIDI controller. Configurable via web browser, supporting BLE MIDI and Native USB MIDI.**
 
-> [!WARNING]
-> **USB MIDI (ESP32-S3) is currently under maintenance.** There is a known hardware conflict between the RMT peripheral (used by NeoPixel LEDs) and the USB stack on ESP32-S3. BLE MIDI remains fully functional. We are actively investigating solutions.
+> [!NOTE]
+> **USB MIDI (ESP32-S3) is functional and under active development.** Requires Arduino ESP32 Core **v3.1.2** — newer versions may cause RMT/NeoPixel conflicts. BLE MIDI remains fully stable.
 
 ![Version](https://img.shields.io/badge/version-1.5.0--beta-green.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -200,13 +200,14 @@ Install via Arduino Library Manager or PlatformIO:
 ```
 Adafruit GFX Library @ ^1.11.0
 Adafruit SSD1306 @ ^2.5.0
-Adafruit NeoPixel @ ^1.10.0
+Adafruit ST7735 and ST7789 Library @ ^1.10.0   (for TFT displays)
+Adafruit NeoPixel @ ^1.12.0
 ESP32Encoder @ ^0.10.0
 ArduinoJson @ ^6.21.0
 ```
 
 ### ESP32 Board Support
-- Arduino-ESP32 core version 2.0.0 or later
+- **Arduino ESP32 Core v3.1.2** by Espressif Systems (newer versions may break BLE/NeoPixel compatibility)
 - Install via Arduino IDE Board Manager: "esp32 by Espressif Systems"
 
 ## Installation & Setup
@@ -287,13 +288,13 @@ Connect via USB → Open editor in Chrome/Edge → Read/write config directly (n
 | LED Brightness | Adjust on/dim/tap levels |
 | Pad Debounce | Button debounce timing |
 | Clear BLE Bonds | Reset Bluetooth pairings |
-| BLE Mode | CLIENT/SERVER/DUAL |
+| MIDI Mode | CLIENT / SERVER / DUAL / USB |
 | Analog Debug | Show live ADC values |
 | Factory Reset | Restore defaults |
 
-## BLE Connection
+## MIDI Connection
 
-The controller supports **three BLE modes** (configurable via OLED menu or web interface):
+The controller supports **four MIDI modes** (configurable via OLED menu or web interface):
 
 ### CLIENT Mode (Default)
 - Scans for and connects to external BLE MIDI devices (e.g., Sonicake Pocket Master)
@@ -310,8 +311,13 @@ The controller supports **three BLE modes** (configurable via OLED menu or web i
 - Send button presses to both your pedal AND your DAW
 - Perfect for live performance with backing track control
 
+### USB Mode (ESP32-S3 only)
+- Native USB MIDI — your computer sees Chocotone as a class-compliant MIDI device
+- Lowest latency, no Bluetooth needed
+- LEDs are disabled in this mode (RMT hardware conflict with USB)
+
 > [!TIP]
-> Change BLE mode from the OLED menu: long-press encoder → scroll to "BLE: [mode]" → press to cycle modes → "Save and Exit" to apply (requires reboot)
+> Change MIDI mode from the OLED menu: long-press encoder → scroll to "MIDI: [mode]" → press to cycle modes → "Save and Exit" to apply (requires reboot)
 
 ## Troubleshooting
 
@@ -339,17 +345,24 @@ The controller supports **three BLE modes** (configurable via OLED menu or web i
 ## Project Structure
 
 ```
-Chocotone/
-├── Chocotone.ino        # Main Arduino sketch
-├── Config.h             # Pin definitions and constants
-├── Globals.h/cpp        # Global variables and objects
-├── BleMidi.h/cpp        # BLE MIDI client implementation
-├── Input.h/cpp          # Button and encoder handling
-├── Storage.h/cpp        # NVS persistence
-├── UI_Display.h/cpp     # OLED display functions
-├── WebInterface.h/cpp   # Web server and configuration
-├── sys_ex_data.h/cpp    # Generated SysEx data
-└── delay_time_sysex.h   # Tap tempo delay lookups
+Chocotone_v1.5.0_beta/
+├── Chocotone_v1.5.0_beta.ino  # Main Arduino sketch
+├── Config.h                   # Pin definitions and constants
+├── Globals.h/cpp              # Global variables and objects
+├── BleMidi.h/cpp              # BLE + USB MIDI implementation
+├── Input.h/cpp                # Button, encoder, and action handling
+├── Storage.h/cpp              # NVS persistence
+├── UI_Display.h/cpp           # OLED/TFT display + LED management
+├── WebInterface.h/cpp         # Web server, USB serial config API
+├── WebEditorHTML.h            # Embedded HTML for web editor
+├── AnalogInput.h/cpp          # Expression pedals, pots, FSR, piezo
+├── GP5Protocol.h/cpp          # Valeton GP-5 SysEx sync protocol
+├── DeviceProfiles.h/cpp       # Device-specific presets and templates
+├── DefaultPresets.h           # Factory default presets
+├── SysexScrollData.h          # SysEx scroll parameter tables
+├── SysexScroll*.h             # Individual scroll parameters (AmpGain, PitchLow, etc.)
+├── sys_ex_data.h/cpp          # Generated SysEx lookup data
+└── delay_time_sysex.h         # Tap tempo delay lookups
 ```
 
 ## Development

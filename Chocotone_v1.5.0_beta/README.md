@@ -5,22 +5,34 @@
 
 This directory contains the Arduino source code for the ESP32 MIDI Controller.
 
-## Planned Features for v1.5.0
-- [ ] Analog input (expression pedal support)
-- [ ] Additional features TBD
+## Features Implemented in v1.5.0
+- [x] Analog input (expression pedal support, up to 16 via multiplexer)
+- [x] 128x128 TFT color display (ST7735 SPI)
+- [x] 128x32 OLED support
+- [x] ESP32-S3 Native USB MIDI
+- [x] Battery monitoring (auto-calibrating ADC)
+- [x] SysEx scroll parameters (AMP GAIN, PITCH LOW, RVB MIX, etc.)
+- [x] Device profiles and templates
 
 ## File Structure
 
 | File | Purpose |
 |------|---------|
-| `Chocotone.ino` | Main Arduino sketch with setup() and loop() |
+| `Chocotone_v1.5.0_beta.ino` | Main Arduino sketch with setup() and loop() |
 | `Config.h` | Pin definitions and compile-time constants |
 | `Globals.h/cpp` | Global variables, objects, and data structures |
-| `BleMidi.h/cpp` | BLE MIDI client implementation and SysEx handling |
-| `Input.h/cpp` | Button and rotary encoder input handling |
+| `BleMidi.h/cpp` | BLE MIDI client/server + USB MIDI implementation |
+| `Input.h/cpp` | Button, encoder, and action handling |
 | `Storage.h/cpp` | NVS (non-volatile storage) persistence |
-| `UI_Display.h/cpp` | OLED display rendering functions |
-| `WebInterface.h/cpp` | Web server and configuration interface |
+| `UI_Display.h/cpp` | OLED/TFT display rendering + NeoPixel LED management |
+| `WebInterface.h/cpp` | Web server, USB serial config API |
+| `WebEditorHTML.h` | Embedded HTML for the web editor interface |
+| `AnalogInput.h/cpp` | Analog inputs: expression pedals, pots, FSR, piezo |
+| `GP5Protocol.h/cpp` | Valeton GP-5 SysEx sync protocol |
+| `DeviceProfiles.h/cpp` | Device-specific presets and templates |
+| `DefaultPresets.h` | Factory default presets |
+| `SysexScrollData.h` | SysEx scroll parameter engine |
+| `SysexScroll*.h` | Individual scroll parameters (AmpGain, PitchLow, etc.) |
 | `sys_ex_data.h/cpp` | Generated SysEx lookup tables |
 | `delay_time_sysex.h` | Tap tempo delay time calculations |
 
@@ -36,11 +48,12 @@ This directory contains the Arduino source code for the ESP32 MIDI Controller.
 - System constants (screen size, button count, etc.)
 - Default WiFi AP credentials
 
-### BLE MIDI (BleMidi.h/cpp)
-- BLE client initialization
-- Device scanning and connection
-- MIDI message transmission
-- SysEx data handling
+### BLE + USB MIDI (BleMidi.h/cpp)
+- BLE client initialization and device scanning
+- BLE server mode for DAW connections
+- USB MIDI (ESP32-S3) via TinyUSB
+- MIDI message transmission (Note, CC, PC, SysEx)
+- SysEx scroll parameter engine
 - Auto-reconnection logic
 
 ### Input Handling (Input.h/cpp)
@@ -73,24 +86,31 @@ This directory contains the Arduino source code for the ESP32 MIDI Controller.
 ## Data Flow
 
 ```
-User Input → Input.cpp → MIDI Message → BleMidi.cpp → BLE Device
+User Input → Input.cpp → MIDI Message → BleMidi.cpp → BLE Device / USB DAW
                 ↓                           ↓
          UI_Display.cpp              Storage.cpp (save state)
                 ↓
-         OLED Display + LEDs
+         OLED/TFT Display + LEDs
 ```
+
+### Additional Modules
+- **AnalogInput.h/cpp** — Reads expression pedals, pots, FSR, piezo with smoothing and custom curves
+- **GP5Protocol.h/cpp** — Valeton GP-5 SysEx sync (effect state read/write)
+- **DeviceProfiles.h/cpp** — Device-specific preset templates
 
 ## Key Global Objects
 
 From `Globals.cpp`:
 
 ```cpp
-Adafruit_SSD1306 display      // OLED display controller
+Adafruit_SSD1306 display      // OLED display controller (128x64 or 128x32)
+Adafruit_ST7735 tft           // TFT color display controller (128x128)
 Adafruit_NeoPixel strip       // NeoPixel LED controller  
 ESP32Encoder encoder          // Rotary encoder
 Preferences systemPrefs       // NVS storage
 WebServer server(80)          // HTTP server
 BLEClient* pClient            // BLE MIDI client
+USBMIDI usbMidi               // USB MIDI (ESP32-S3 only)
 ```
 
 ## Build Configuration
