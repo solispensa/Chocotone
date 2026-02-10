@@ -762,10 +762,15 @@ void loop_presetMode() {
             }
           }
 
-          // Handle NOTE_MOMENTARY note off
-          ActionMessage *pressAction = findAction(config, ACTION_PRESS);
-          if (pressAction && pressAction->type == NOTE_MOMENTARY) {
-            sendMidiNoteOff(pressAction->channel, pressAction->data1, 0);
+          // Handle NOTE_MOMENTARY note off for ALL matching messages
+          ActionType momentaryType =
+              config.isAlternate ? ACTION_2ND_PRESS : ACTION_PRESS;
+          for (int m = 0; m < config.messageCount; m++) {
+            ActionMessage &msg = config.messages[m];
+            if ((msg.action == momentaryType || msg.action == ACTION_PRESS) &&
+                msg.type == NOTE_MOMENTARY) {
+              sendMidiNoteOff(msg.channel, msg.data1, 0);
+            }
           }
         } else {
           // Check for Global Override RELEASE or 2ND_RELEASE

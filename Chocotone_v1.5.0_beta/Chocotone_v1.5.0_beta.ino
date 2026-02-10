@@ -446,21 +446,12 @@ void setup() {
                                       ? "CLIENT_ONLY (->SPM)"
                                   : systemConfig.bleMode == BLE_SERVER_ONLY
                                       ? "SERVER_ONLY (DAW->)"
+                                  : systemConfig.bleMode == MIDI_USB_ONLY
+                                      ? "USB_MIDI_ONLY"
                                       : "DUAL_MODE (DAW->ESP->SPM)");
   Serial.printf("WiFi: %s\n", isWifiOn ? "ON" : "OFF");
   Serial.printf("WiFi On at Boot: %s\n",
                 systemConfig.wifiOnAtBoot ? "ENABLED" : "DISABLED");
-
-  // Debug: Print button 4 action settings
-  Serial.println("\n=== Button 4 (User Button 5) Action Settings ===");
-  const ButtonConfig &debugBtn = buttonConfigs[currentPreset][4];
-  Serial.printf("Button Name: %s, Message Count: %d\n", debugBtn.name,
-                debugBtn.messageCount);
-  for (int i = 0; i < debugBtn.messageCount; i++) {
-    const ActionMessage &m = debugBtn.messages[i];
-    Serial.printf("  Action %d: type=%d, channel=%d, data1=%d\n", m.action,
-                  m.type, m.channel, m.data1);
-  }
 }
 
 void loop() {

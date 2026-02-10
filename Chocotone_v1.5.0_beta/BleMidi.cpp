@@ -498,11 +498,15 @@ void sendMidiNoteOn(byte ch, byte n, byte v) {
   if (ch > 16)
     ch = 16;
 
-  // USB MIDI: Send first, no Serial output (shares same USB interface)
+  // USB MIDI: Send via USB
+  // IMPORTANT: Serial.printf MUST be before usbMidi calls - they share the
+  // same TinyUSB stack and interleaving causes MIDI endpoint blocking
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.printf("→ USB: Note On Ch%d N%d V%d\n", ch, n, v);
     usbMidi.noteOn(n, v, ch);
-    return; // Skip BLE sends and Serial logging
+    yield();
+    return;
   }
 #endif
 
@@ -533,10 +537,12 @@ void sendMidiNoteOff(byte ch, byte n, byte v) {
   if (ch > 16)
     ch = 16;
 
-  // USB MIDI: Send first, no Serial output (shares same USB interface)
+  // USB MIDI: Send via USB
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.printf("→ USB: Note Off Ch%d N%d V%d\n", ch, n, v);
     usbMidi.noteOff(n, v, ch);
+    yield();
     return;
   }
 #endif
@@ -563,10 +569,12 @@ void sendMidiCC(byte ch, byte n, byte v) {
   if (ch > 16)
     ch = 16;
 
-  // USB MIDI: Send first, no Serial output (shares same USB interface)
+  // USB MIDI: Send via USB
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.printf("→ USB: CC Ch%d N%d V%d\n", ch, n, v);
     usbMidi.controlChange(n, v, ch);
+    yield();
     return;
   }
 #endif
@@ -593,10 +601,12 @@ void sendMidiPC(byte ch, byte n) {
   if (ch > 16)
     ch = 16;
 
-  // USB MIDI: Send first, no Serial output (shares same USB interface)
+  // USB MIDI: Send via USB
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.printf("→ USB: PC Ch%d P%d\n", ch, n);
     usbMidi.programChange(n, ch);
+    yield();
     return;
   }
 #endif
@@ -672,13 +682,15 @@ void sendDelayTime(int delayMs) {
 }
 
 void sendSysex(const uint8_t *data, size_t length) {
-  // USB MIDI: Send first, no Serial output (shares same USB interface)
+  // USB MIDI: Send via USB
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   if (systemConfig.bleMode == MIDI_USB_ONLY) {
+    Serial.printf("→ USB: SysEx (%d bytes)\n", length);
     for (size_t i = 0; i < length; i++) {
       usbMidi.write(data[i]);
     }
-    return; // Skip BLE and Serial logging
+    yield();
+    return;
   }
 #endif
 
