@@ -99,7 +99,8 @@ BLEClient* pClient            // BLE MIDI client
 See [../README.md](../README.md#software-dependencies) for library versions.
 
 ### Compilation Settings
-- Board: ESP32 Dev Module (or your specific ESP32 board)
+- **Arduino ESP32 Core: v3.1.2** (by Espressif Systems — newer versions may break BLE/NeoPixel compatibility)
+- Board: ESP32 Dev Module (or ESP32-S3 Dev Module for S3 boards)
 - Upload Speed: 921600 (or lower if upload fails)
 - Flash Frequency: 80MHz
 - Partition Scheme: Default (or "No OTA" if space constrained)

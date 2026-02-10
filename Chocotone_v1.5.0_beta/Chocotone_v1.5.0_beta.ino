@@ -172,10 +172,6 @@ void resolveDisplayPinConflicts() {
 
 void setup() {
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
-  // Set USB device name BEFORE begin()
-  USB.productName("CHOCOTONE USB");
-  USB.manufacturerName("Solis Pensa");
-
   // Enable Native USB for CDC (Serial) and MIDI
   USB.begin();
   usbMidi.begin();
